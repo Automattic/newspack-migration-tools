@@ -7,179 +7,22 @@
 
 namespace NewspackCustomContentMigrator\Logic;
 
-use WP_CLI;
+use InvalidArgumentException;
 
 /**
- * Taxonomy implements common migration logic that are used to work with the Simple Local Avatars plugin
+ * Taxonomy logic
  */
 class Taxonomy {
 
 	/**
-	 * Returns single or multiple Category data arrays depending on $where.
+	 * Fixes counts for taxonomy.
 	 *
-	 * @param array $where               Where columns from $supported_where_columns_and_tables.
-	 * @param bool  $return_first_result If true, will return a one dimensional array which doesn't contain further subarrays.
-	 *
-	 * @return array {
-	 *      Array with Category data subarrays, or if $return_first_result === true just these keys and values without subarray structure.
-	 *
-	 *      @type string term_id     Category term_id.
-	 *      @type string taxonomy    Should always be 'category'.
-	 *      @type string name        Category name.
-	 *      @type string slug        Category slug.
-	 *      @type string parent      Category parent term_id.
-	 *      @type string description Category description.
-	 *      @type string count       Category count.
-	 * }
-	 */
-	public function get_categories_data( array $where, bool $return_first_result = false ): array {
-		if ( empty( $where ) ) {
-			return [];
-		}
-
-		global $wpdb;
-		// Supported where columns and the tables where they can be found.
-		$supported_where_columns_and_tables = [
-			'term_id' => 't',
-			'taxonomy' => 'tt',
-			'name' => 't',
-			'slug' => 't',
-			'parent' => 'tt',
-			'description' => 'tt',
-		];
-
-		// Compose AND clause.
-		$and_clause = '';
-		$and_values = [];
-		foreach ( $where as $where_column => $where_value ) {
-
-			// Check if where column is supported.
-			if ( ! isset( $supported_where_columns_and_tables[ $where_column ] ) ) {
-				throw new \RuntimeException( sprintf( "Where column %s not supported.", $where_column ) );
-			}
-
-			// Compose the AND clause.
-			$where_column_escaped = esc_sql( $where_column );
-			$where_table = $supported_where_columns_and_tables[ $where_column ];
-			$and_clause .= ' AND ' . $where_table . '.' . $where_column_escaped . ' = %s ';
-			$and_values[] = $where_value;
-		}
-
-		// Limit clause.
-		$limit_clause = '';
-		if ( true === $return_first_result ) {
-			$limit_clause = ' LIMIT 1 ';
-		}
-
-		$categories = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT t.term_id, tt.taxonomy, t.name, t.slug, tt.parent, tt.description, tt.count
-				FROM {$wpdb->terms} t
-		        JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
-				WHERE tt.taxonomy = 'category' ".
-				$and_clause .
-				$limit_clause,
-				$and_values
-			),
-			ARRAY_A
-		);
-
-		// Return just the first element.
-		if ( true === $return_first_result ) {
-			return $categories[0] ?? [];
-		}
-
-		return $categories;
-	}
-
-	/**
-	 * Fetches a full category tree with all the children categories down to the end ones.
-	 *
-	 * @param array  $category {
-	 *    Category data array.
-	 *
-	 *     @type string term_id     Category term_id.
-	 *     @type string taxonomy    Should always be 'category'.
-	 *     @type string name        Category name.
-	 *     @type string slug        Category slug.
-	 *     @type string parent      Category parent term_id.
-	 *     @type string description Category description.
-	 *     @type string count       Category count.
-	 * }
-	 *
-	 * @return array {
-	 *     A nested array of subarray categories.
-	 *
-	 *     @type string term_id     Category term_id.
-	 *     @type string taxonomy    Should always be 'category'.
-	 *     @type string name        Category name.
-	 *     @type string slug        Category slug.
-	 *     @type string parent      Parent ID.
-	 *     @type string description Category description.
-	 *     @type string count       Category count.
-	 *     @type array  children    Array with children categories with same keys-values as this array.
-	 * }
-	 */
-	public function get_category_tree_data( array $category ): array {
-		$category_tree = $category;
-		$category_tree[ 'children' ] = [];
-
-		$children_categories = $this->get_categories_data( [ 'parent' => $category[ 'term_id' ] ] );
-		if ( ! empty( $children_categories ) ) {
-			foreach ( $children_categories as $child_category ) {
-				$category_tree[ 'children' ][] = $this->get_category_tree_data( $child_category );
-			}
-		}
-
-		return $category_tree;
-	}
-
-	/**
-	 * Uproots and permanently relocates the whole category tree under a new parent.
-	 *
-	 * @param $category_tree_data
-	 * @param int|array $destination_parent_category_data
+	 * @param string $taxonomy Taxonomy, e.g. 'category'.
 	 *
 	 * @return void
 	 */
-	public function replant_category_tree( $category_tree_data, $parent_term_id ) {
-
-		// TODO TEST parent is 0?
-
-		// Get this category if it already exists.
-		$existing_category_data = $this->get_categories_data( [
-			'name' => $category_tree_data['name'],
-			'description' => $category_tree_data['description'],
-			'parent' => $parent_term_id
-		], true );
-
-		// Create if doesn't exist.
-		if ( ! empty( $existing_category_data ) ) {
-			$replanted_category_term_id = $existing_category_data[ 'term_id' ];
-		} else {
-			// Change this slug to free up the slug, so that the newly created category has a nice version of it.
-			$updated = wp_update_term( $category_tree_data[ 'term_id' ], 'category', [ 'slug' => $category_tree_data[ 'slug' ] . '_x' ] );
-			if ( is_wp_error( $updated ) ) {
-				throw new \RuntimeException( sprintf( "Error when changing category %d slug from %s to %s", $category_tree_data[ 'term_id' ], $category_tree_data[ 'slug' ], $category_tree_data[ 'slug' ] . '_old' ) );
-			}
-
-			// Recreate category.
-			$replanted_category_term_id = $this->create_category( $category_tree_data, $parent_term_id );
-		}
-
-		// Reassign all posts from original category to new category.
-		$this->reassign_all_content_from_one_category_to_another( $category_tree_data[ 'term_id' ], $replanted_category_term_id );
-
-		// Replant children categories recursively.
-		foreach ( $category_tree_data[ 'children' ] as $category_child_tree_data ) {
-			$this->replant_category_tree( $category_child_tree_data, $replanted_category_term_id );
-		}
-	}
-
 	public function fix_taxonomy_term_counts( string $taxonomy ) {
-
-		$taxonomy = $pos_args['taxonomy'] ?? null;
-		$get_terms_args  = [
+		$get_terms_args = [
 			'taxonomy'   => $taxonomy,
 			'fields'     => 'ids',
 			'hide_empty' => false,
@@ -187,51 +30,298 @@ class Taxonomy {
 
 		$update_term_ids = get_terms( $get_terms_args );
 		foreach ( $update_term_ids as $key_term_id => $term_id ) {
-			WP_CLI::log( sprintf( '(%d)/(%d) updating count for term_id %d', $key_term_id, count( $update_term_ids ), $term_id ) );
 			wp_update_term_count_now( [ $term_id ], $taxonomy );
 		}
+
+		wp_cache_flush();
 	}
 
-	public function delete_category_tree( array $category_tree_data ): void {
-
-		$d = wp_delete_category($category_tree_data['term_id']);
-
-		foreach ( $category_tree_data[ 'children' ] as $child_category_tree_data ) {
-			$this->delete_category_tree($child_category_tree_data);
-		}
-	}
-
-	public function reassign_all_content_from_one_category_to_another( int $source_term_id, int $destination_term_id ): void {
-		$source_term_taxonomy_id      = $this->get_term_taxonomy_id_by_term_id( $source_term_id );
-		$destination_term_taxonomy_id = $this->get_term_taxonomy_id_by_term_id( $destination_term_id );
-
-		$this->update_object_relational_mapping_term_taxonomy_id( $source_term_taxonomy_id, $destination_term_taxonomy_id );
-	}
-
-	public function get_term_taxonomy_id_by_term_id( $term_id ) {
-		global $wpdb;
-
-		return $wpdb->get_var( $wpdb->prepare( "SELECT term_taxonomy_id FROM {$wpdb->term_taxonomy} WHERE term_id = %d;", $term_id ) );
-	}
-
-	public function update_object_relational_mapping_term_taxonomy_id( $old_term_taxonomy_id, $new_term_taxonomy_id ) {
-		global $wpdb;
-
-		return $wpdb->get_var( $wpdb->prepare( "UPDATE {$wpdb->term_relationships} SET term_taxonomy_id = %d WHERE term_taxonomy_id = %d ;", $new_term_taxonomy_id, $old_term_taxonomy_id ) );
-	}
-
-	public function create_category( $category_tree_data, $parent_term_id ) {
-
-		// \wp_insert_category() returns created term_id, or zero if the category exists.
-		$term_id_if_new_or_zero = wp_insert_category(
+	/**
+	 * Reassigns all content from one taxonomy to a different taxonomy.
+	 *
+	 * @param string $taxonomy     Source taxonomy, e.g. 'category'.
+	 * @param int    $source_term_id      Source term_id.
+	 * @param int    $destination_term_id Destination term_id.
+	 *
+	 * @return void
+	 */
+	public function reassign_all_content_from_one_taxonomy_to_another( string $taxonomy, int $source_term_id, int $destination_term_id ): void {
+		// Get post IDs with both terms.
+		$posts_with_both_terms = get_posts(
 			[
-				'cat_name'             => $category_tree_data['name'],
-				'category_description' => $category_tree_data['description'],
-				'category_parent'      => $parent_term_id,
+				'fields'           => 'ids',
+				'posts_per_page'   => -1,
+				'post_type'        => 'any',
+				'post_status'      => 'any',
+				'suppress_filters' => true,
+				'tax_query'        => [
+					'relation' => 'AND',
+					[
+						'taxonomy' => $taxonomy,
+						'field'    => 'term_taxonomy_id',
+						'terms'    => [ $source_term_id ],
+					],
+					[
+						'taxonomy' => $taxonomy,
+						'field'    => 'term_taxonomy_id',
+						'terms'    => [ $destination_term_id ],
+					],
+				],
 			]
 		);
 
-		return $term_id_if_new_or_zero;
+		// Delete the source term from these posts.
+		if ( ! empty( $posts_with_both_terms ) ) {
+			$this->delete_object_relational_mapping_term_taxonomy_id( $source_term_id, $posts_with_both_terms );
+		}
+
+		$this->update_object_relational_mapping_term_taxonomy_id( $source_term_id, $destination_term_id );
+
+		$this->fix_taxonomy_term_counts( $taxonomy );
 	}
 
+	/**
+	 * Runs a direct DB UPDATE on wp_term_relationships table and updates term_taxonomy_id from one value to a different one.
+	 *
+	 * @param int $old_term_taxonomy_id Old term_taxonomy_id.
+	 * @param int $new_term_taxonomy_id New term_taxonomy_id.
+	 *
+	 * @return string|null Return from $wpdb::get_var().
+	 */
+	public function update_object_relational_mapping_term_taxonomy_id( $old_term_taxonomy_id, $new_term_taxonomy_id ) {
+		global $wpdb;
+
+		return $wpdb->update( $wpdb->term_relationships, [ 'term_taxonomy_id' => $new_term_taxonomy_id ], [ 'term_taxonomy_id' => $old_term_taxonomy_id ] );
+	}
+
+	/**
+	 * Runs a direct DB DELETE on wp_term_relationships table and deletes all rows with a given term_taxonomy_id and post_ids.
+	 *
+	 * @param int   $term_taxonomy_id Term_taxonomy_id.
+	 * @param array $post_ids          Post IDs.
+	 *
+	 * @return string|null Return from $wpdb::query().
+	 */
+	public function delete_object_relational_mapping_term_taxonomy_id( $term_taxonomy_id, $post_ids ) {
+		global $wpdb;
+
+		$object_id_placeholders = implode( ', ', array_fill( 0, count( $post_ids ), '%d' ) );
+
+		return $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->term_relationships} WHERE object_id IN( $object_id_placeholders ) and term_taxonomy_id = %d", array_merge( $post_ids, [ $term_taxonomy_id ] ) ) ); //phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	}
+
+	/**
+	 * Gets a term_id by its taxonomy, name and parent ID.
+	 * For example, you can search for a category with a name and optional parent ID.
+	 *
+	 * @param string $taxonomy       Taxonomy, e.g. 'category'.
+	 * @param string $name           Taxonomy name, e.g. 'Some category name'.
+	 * @param int    $parent_term_id Parent term_id, e.g. 123 or 0.
+	 *
+	 * @return string|null Term ID or null if not found.
+	 */
+	public function get_term_id_by_taxonmy_name_and_parent( string $taxonomy, string $name, int $parent_term_id = 0 ) {
+		global $wpdb;
+
+		$query_prepare = "select t.term_id
+			from {$wpdb->terms} t
+			join {$wpdb->term_taxonomy} tt on tt.term_id = t.term_id
+			where tt.taxonomy = %s and t.name = %s and tt.parent = %d;";
+
+		// First try with converting name chars to HTML entities.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$existing_term_id = $wpdb->get_var(
+			$wpdb->prepare(
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				$query_prepare,
+				$taxonomy,
+				htmlentities( $name ),
+				$parent_term_id
+			)
+		);
+
+		// Try without converting name chars to HTML entities.
+		if ( ! $existing_term_id ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			$existing_term_id = $wpdb->get_var(
+				$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+					$query_prepare,
+					$taxonomy,
+					$name,
+					$parent_term_id
+				)
+			);
+		}
+
+		return $existing_term_id;
+	}
+
+	/**
+	 * Gets or creates a category by its name and parent term_id.
+	 *
+	 * @param string $cat_name      Category name.
+	 * @param int    $cat_parent_id Category's parent term_id.
+	 *
+	 * @throws \RuntimeException If nonexisting $cat_parent_id is given.
+	 *
+	 * @return string|null Category term ID.
+	 */
+	public function get_or_create_category_by_name_and_parent_id( string $cat_name, int $cat_parent_id = 0 ) {
+		global $wpdb;
+
+		// Get term_id if it exists.
+
+		$existing_term_id = $this->get_term_id_by_taxonmy_name_and_parent( 'category', $cat_name, $cat_parent_id );
+		if ( ! is_null( $existing_term_id ) ) {
+			return $existing_term_id;
+		}
+
+		// If it doesn't exist, then create it.
+
+		// Double check this parent exists.
+		if ( 0 != $cat_parent_id ) {
+			$existing_cat_parent_id = $wpdb->get_var(
+				$wpdb->prepare(
+					"select t.term_id
+						from {$wpdb->terms} t
+						join {$wpdb->term_taxonomy} tt on tt.term_id = t.term_id
+						where tt.taxonomy = 'category' and tt.term_id = %d;",
+					$cat_parent_id
+				)
+			);
+			if ( is_null( $existing_cat_parent_id ) ) {
+				throw new \RuntimeException( sprintf( 'Wrong parent category term_id=%d given, does not exist.', $cat_parent_id ) );
+			}
+		}
+
+		// Create cat.
+		$cat_id = wp_insert_category(
+			[
+				'cat_name'        => $cat_name,
+				'category_parent' => $cat_parent_id,
+			]
+		);
+
+		return $cat_id;
+	}
+
+	/**
+	 * Gets duplicate term slugs.
+	 *
+	 * @return array
+	 */
+	public function get_duplicate_term_slugs() {
+		global $wpdb;
+
+		return $wpdb->get_results(
+			"SELECT
+			t.slug,
+			GROUP_CONCAT( DISTINCT tt.taxonomy ORDER BY tt.taxonomy SEPARATOR ', ' ) as taxonomies,
+			GROUP_CONCAT(
+			    CONCAT( tt.term_id, ':', tt.term_taxonomy_id, ':', tt.taxonomy )
+			    ORDER BY t.term_id, tt.term_taxonomy_id ASC SEPARATOR '  |  '
+			    ) as 'term_id:term_taxonomy_id:taxonomy',
+			COUNT( DISTINCT tt.term_taxonomy_id ) as term_taxonomy_id_count
+			FROM $wpdb->terms t
+			LEFT JOIN $wpdb->term_taxonomy tt ON t.term_id = tt.term_id
+			GROUP BY t.slug, tt.term_id
+			HAVING term_taxonomy_id_count > 1
+			ORDER BY term_taxonomy_id_count DESC"
+		);
+	}
+
+	/**
+	 * Gets terms and taxonomies by slug.
+	 *
+	 * @param string $slug Slug.
+	 * @param array  $taxonomies Taxonomies.
+	 *
+	 * @return array
+	 */
+	public function get_terms_and_taxonomies_by_slug( string $slug, array $taxonomies = [ 'category', 'post_tag' ] ) {
+		global $wpdb;
+
+		$query = "SELECT
+	                t.term_id,
+	                t.name, t.slug,
+	                tt.term_taxonomy_id,
+	                tt.taxonomy,
+	                tt.parent,
+	                tt.count
+				FROM $wpdb->terms t
+				INNER JOIN $wpdb->term_taxonomy tt ON t.term_id = tt.term_id
+				WHERE t.slug = %s";
+
+		if ( ! empty( $taxonomies ) ) {
+			$query .= 'AND tt.taxonomy IN ( '
+			          . implode( ',', array_fill( 0, count( $taxonomies ), '%s' ) )
+			          . ' )';
+		}
+
+		$query .= ' ORDER BY t.term_id, tt.term_taxonomy_id ASC';
+
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				$query,
+				array_merge( [ $slug ], $taxonomies )
+			)
+		);
+	}
+
+	/**
+	 * Obtains a new slug that does not exist in the database.
+	 *
+	 * @param string $slug Slug.
+	 * @param int    $offset Offset.
+	 *
+	 * @return string
+	 */
+	public function get_new_term_slug( string $slug, int $offset = 1 ) {
+		$new_slug = $slug . '-' . $offset;
+
+		do {
+			$slug_exists = ! is_null( term_exists( $new_slug ) );
+
+			if ( $slug_exists ) {
+				$offset++;
+				$new_slug = $slug . '-' . $offset;
+			}
+		} while ( $slug_exists );
+
+		return $new_slug;
+	}
+
+	/**
+	 * Get terms from a taxonomy that are assigned to fewer than or equal to $assigned_to_max_num_posts posts.
+	 * This is useful for finding terms that are not assigned to many posts.
+	 *
+	 * @param string $taxonomy Taxonomy name - e.g. 'post_tag'.
+	 * @param int    $assigned_to_max_num_posts Max number of posts a term can be assigned to.
+	 *
+	 * @throws InvalidArgumentException If the taxonomy does not exist.
+	 * @return array Ids of terms assigned to fewer than or equal to $assigned_to_max_num_posts posts.
+	 */
+	public function get_terms_assigned_to_max_num_posts( string $taxonomy, int $assigned_to_max_num_posts ): array {
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			throw new InvalidArgumentException( esc_html( sprintf( 'Taxonomy "%s" does not exist.', $taxonomy ) ) );
+		}
+
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		return $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT t.term_id
+				FROM $wpdb->terms t
+					LEFT JOIN $wpdb->term_taxonomy tt ON t.term_id = tt.term_id
+					LEFT JOIN $wpdb->term_relationships tr ON tt.term_taxonomy_id = tr.term_taxonomy_id
+				WHERE tt.taxonomy = %s
+			GROUP BY t.term_id
+			HAVING COUNT(tr.object_id) <= %d",
+				$taxonomy,
+				$assigned_to_max_num_posts
+			)
+		);
+	}
 }
