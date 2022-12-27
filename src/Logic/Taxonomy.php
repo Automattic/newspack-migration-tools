@@ -7,6 +7,8 @@
 
 namespace NewspackCustomContentMigrator\Logic;
 
+use WP_CLI;
+
 /**
  * Taxonomy implements common migration logic that are used to work with the Simple Local Avatars plugin
  */
@@ -133,7 +135,7 @@ class Taxonomy {
 	}
 
 	/**
-	 * Relocates the whole category tree and plants it under a new parent.
+	 * Uproots and permanently relocates the whole category tree under a new parent.
 	 *
 	 * @param $category_tree_data
 	 * @param int|array $destination_parent_category_data
@@ -151,8 +153,6 @@ class Taxonomy {
 			'parent' => $parent_term_id
 		], true );
 
-		// TODO TEST when $category_recreated_data exists.
-
 		// Create if doesn't exist.
 		if ( ! empty( $existing_category_data ) ) {
 			$replanted_category_term_id = $existing_category_data[ 'term_id' ];
@@ -168,16 +168,56 @@ class Taxonomy {
 		}
 
 		// Reassign all posts from original category to new category.
+		$this->reassign_all_content_from_one_category_to_another( $category_tree_data[ 'term_id' ], $replanted_category_term_id );
 
-		// Recreate children recursively.
+		// Replant children categories recursively.
 		foreach ( $category_tree_data[ 'children' ] as $category_child_tree_data ) {
 			$this->replant_category_tree( $category_child_tree_data, $replanted_category_term_id );
-
-			// Reassign all posts from original child category to new child category.
 		}
+	}
 
-		$d = 1;
+	public function fix_taxonomy_term_counts( string $taxonomy ) {
 
+		$taxonomy = $pos_args['taxonomy'] ?? null;
+		$get_terms_args  = [
+			'taxonomy'   => $taxonomy,
+			'fields'     => 'ids',
+			'hide_empty' => false,
+		];
+
+		$update_term_ids = get_terms( $get_terms_args );
+		foreach ( $update_term_ids as $key_term_id => $term_id ) {
+			WP_CLI::log( sprintf( '(%d)/(%d) updating count for term_id %d', $key_term_id, count( $update_term_ids ), $term_id ) );
+			wp_update_term_count_now( [ $term_id ], $taxonomy );
+		}
+	}
+
+	public function delete_category_tree( array $category_tree_data ): void {
+
+		$d = wp_delete_category($category_tree_data['term_id']);
+
+		foreach ( $category_tree_data[ 'children' ] as $child_category_tree_data ) {
+			$this->delete_category_tree($child_category_tree_data);
+		}
+	}
+
+	public function reassign_all_content_from_one_category_to_another( int $source_term_id, int $destination_term_id ): void {
+		$source_term_taxonomy_id      = $this->get_term_taxonomy_id_by_term_id( $source_term_id );
+		$destination_term_taxonomy_id = $this->get_term_taxonomy_id_by_term_id( $destination_term_id );
+
+		$this->update_object_relational_mapping_term_taxonomy_id( $source_term_taxonomy_id, $destination_term_taxonomy_id );
+	}
+
+	public function get_term_taxonomy_id_by_term_id( $term_id ) {
+		global $wpdb;
+
+		return $wpdb->get_var( $wpdb->prepare( "SELECT term_taxonomy_id FROM {$wpdb->term_taxonomy} WHERE term_id = %d;", $term_id ) );
+	}
+
+	public function update_object_relational_mapping_term_taxonomy_id( $old_term_taxonomy_id, $new_term_taxonomy_id ) {
+		global $wpdb;
+
+		return $wpdb->get_var( $wpdb->prepare( "UPDATE {$wpdb->term_relationships} SET term_taxonomy_id = %d WHERE term_taxonomy_id = %d ;", $new_term_taxonomy_id, $old_term_taxonomy_id ) );
 	}
 
 	public function create_category( $category_tree_data, $parent_term_id ) {
