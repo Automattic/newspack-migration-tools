@@ -226,4 +226,23 @@ class Attachments {
 
 		return $image_urls;
 	}
+
+	/**
+	 * Find an attachment by its filename.
+	 * 
+	 * @param string $filename The filename.
+	 * @return int The attachment ID.
+	 */
+	public function get_attachment_by_filename( $filename ) {
+		global $wpdb;
+
+		$attachment_id = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT post_id FROM $wpdb->postmeta WHERE meta_key = '_wp_attached_file' AND meta_value LIKE '%s'",
+				'%' . $filename . '%',
+			),
+		);
+
+		return $attachment_id;
+	}
 }
