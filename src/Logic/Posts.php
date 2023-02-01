@@ -464,4 +464,88 @@ SQL;
 		);
 		return $deleted;
 	}
+
+	/**
+	 * @param array $post_types Post types.
+	 *
+	 * @return array $updated {
+	 *     Resulting updated records.
+	 *
+	 *     @type int ID                   Live Post ID.
+	 *     @type string post_name_old     Previous post_name.
+	 *     @type string post_name_updated New post_name.
+	 * }
+	 */
+	public function fix_duplicate_slugs( array $post_types ): array {
+		global $wpdb;
+
+		$updated = [];
+
+		// Query which post_names have dupes.
+		$post_types_placeholders = implode( ',', array_fill( 0, count( $post_types ), '%s' ) );
+		$results = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT post_name, COUNT(*) counter
+				FROM $wpdb->posts
+				WHERE post_type IN ( $post_types_placeholders )
+					AND post_status = 'publish'
+				GROUP BY post_name HAVING counter > 1 ;",
+				$post_types
+			),
+			ARRAY_A
+		);
+
+		// Get the post_names.
+		$post_names = [];
+		foreach ( $results as $result ) {
+			$post_names[] = $result['post_name'];
+		}
+
+		foreach ( $post_names as $key_post_name => $post_name ) {
+
+			WP_CLI::log( sprintf( "(%d)/(%d) fixing %s ...", $key_post_name + 1, count( $post_names ), $post_name ) );
+
+			// Get IDs with this post_name. Order by post_modified and ID descending.
+			$post_ids = $wpdb->get_col(
+				$wpdb->prepare(
+					"SELECT ID
+					FROM $wpdb->posts
+					WHERE post_name = %s
+			        AND post_type IN ( $post_types_placeholders )
+					ORDER BY post_modified, ID DESC;",
+					array_merge( [ $post_name ], $post_types )
+				)
+			);
+
+			// Fix dupe post_names.
+			foreach ( $post_ids as $key_post_id => $post_id ) {
+				// Leave first/last one.
+				if ( 0 === $key_post_id ) {
+					continue;
+				}
+
+				// Rename slugs of previous one(s) by appending "-1" to them.
+				$post_name_updated = $post_name . '-' . ( $key_post_id + 1 );
+				$updated_res = $wpdb->update(
+					$wpdb->posts,
+					[ 'post_name' => $post_name_updated ],
+					[ 'ID' => $post_id ],
+				);
+				if ( 1 === $updated_res ) {
+					$updated[] = [
+						'ID' => $post_id,
+						'post_name_old' => $post_name,
+						'post_name_updated' => $post_name_updated,
+					];
+
+					WP_CLI::log( sprintf( "Updated ID %d post_name = %s", $post_id, $post_name_updated ) );
+				}
+			}
+		}
+
+		// Needed for $wpdb->update.
+		wp_cache_flush();
+
+		return $updated;
+	}
 }
