@@ -649,6 +649,8 @@ class PostsMigrator implements InterfaceCommand {
 	}
 
 	/**
+	 * Callable for `newspack-content-migrator fix-dupe-slugs`.
+	 *
 	 * @param array $positional_args Positional arguments.
 	 * @param array $assoc_args      Associative arguments.
 	 * @return void
@@ -670,9 +672,9 @@ class PostsMigrator implements InterfaceCommand {
 				);
 			}
 
-			WP_CLI::success( sprintf( "List of post IDs that had their post_name updated was saved to %s .", $log_file ) );
+			WP_CLI::success( sprintf( 'List of post IDs that had their post_name updated was saved to %s .', $log_file ) );
 		}
 
-		WP_CLI::success( "Done 👍");
+		WP_CLI::success( 'Done 👍' );
 	}
 }
