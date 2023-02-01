@@ -549,7 +549,7 @@ SQL;
 						'post_name_updated' => $post_name_updated,
 					];
 
-					WP_CLI::log( sprintf( 'Updated ID %d post_name = %s', $post_id, $post_name_updated ) );
+					WP_CLI::log( sprintf( 'Updated ID %d post_name to %s', $post_id, $post_name_updated ) );
 				}
 			}
 		}
