@@ -4,6 +4,7 @@ namespace NewspackCustomContentMigrator\Command\General;
 
 use \NewspackCustomContentMigrator\Command\InterfaceCommand;
 use \NewspackCustomContentMigrator\Logic\Posts;
+use \NewspackCustomContentMigrator\Utils\Logger;
 use \WP_CLI;
 
 class PostsMigrator implements InterfaceCommand {
@@ -34,10 +35,16 @@ class PostsMigrator implements InterfaceCommand {
 	private $posts_logic = null;
 
 	/**
+	 * @var Logger.
+	 */
+	private $logger;
+
+	/**
 	 * Constructor.
 	 */
 	private function __construct() {
 		$this->posts_logic = new Posts();
+		$this->logger      = new Logger();
 	}
 
 	/**
@@ -235,6 +242,14 @@ class PostsMigrator implements InterfaceCommand {
 					$clear_revisions_arguments
 				),
 			)
+		);
+
+		WP_CLI::add_command(
+			'newspack-content-migrator fix-dupe-slugs',
+			[ $this, 'cmd_fix_dupe_slugs' ],
+			[
+				'shortdesc' => 'Fixes duplicate slugs used by Posts and Pages.',
+			]
 		);
 	}
 
@@ -631,5 +646,33 @@ class PostsMigrator implements InterfaceCommand {
 			$assoc_args['post-id'] = $post->post_ID;
 			$this->cmd_clear_post_revisions( $positional_args, $assoc_args );
 		}
+	}
+
+	/**
+	 * @param array $positional_args Positional arguments.
+	 * @param array $assoc_args      Associative arguments.
+	 * @return void
+	 */
+	public function cmd_fix_dupe_slugs( $positional_args, $assoc_args ) {
+
+		$log_file = 'fixed_dupe_slugs.log';
+
+		WP_CLI::log( 'Fixing duplicate slugs for posts and pages...' );
+		$updated = $this->posts_logic->fix_duplicate_slugs( [ 'post', 'page' ] );
+
+		if ( ! empty( $updated ) ) {
+			// Save to log.
+			foreach ( $updated as $update ) {
+				$this->logger->log(
+					$log_file,
+					json_encode( $update ),
+					$to_cli = false
+				);
+			}
+
+			WP_CLI::success( sprintf( "List of post IDs that had their post_name updated was saved to %s .", $log_file ) );
+		}
+
+		WP_CLI::success( "Done 👍");
 	}
 }
