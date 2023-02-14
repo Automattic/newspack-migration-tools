@@ -5,13 +5,57 @@ namespace NewspackCustomContentMigrator\Logic;
 use WP_Query;
 use WP_CLI;
 
+/**
+ * Posts logic class.
+ */
 class Posts {
 	/**
-	 * Gets IDs of all the Pages.
+	 * @param string|array $post_type   Post type(s).
+	 * @param array        $post_status Post statuses.
+	 * @param boolean      $nopaging    Deprecated usage, optional param kept for backward compatibility. Always defaults to true.
 	 *
-	 * @return array Pages IDs.
+	 * @return array
 	 */
 	public function get_all_posts_ids( $post_type = 'post', $post_status = [ 'publish', 'future', 'draft', 'pending', 'private', 'inherit' ], $nopaging = true ) {
+		global $wpdb;
+
+		// Create $post_type statement placeholders.
+		if ( ! is_array( $post_type ) ) {
+			$post_type = [ $post_type ];
+		}
+		$post_type_placeholders = implode( ',', array_fill( 0, count( $post_type ), '%s' ) );
+
+		// Create $post_status statement placeholders.
+		$post_status_placeholders = implode( ',', array_fill( 0, count( $post_status ), '%s' ) );
+
+		// phpcs:disable -- used wpdb's prepare() and placeholders.
+		$ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"select ID
+			from {$wpdb->posts}
+			where post_type IN ( $post_type_placeholders )
+			and post_status IN ( $post_status_placeholders ) ;",
+				array_merge( $post_type, $post_status )
+			)
+		);
+		// phpcs:enable
+
+		return $ids;
+	}
+
+	/**
+
+	 * Gets IDs of all the Posts.
+	 * Uses WP_Query::get_posts. If $nopaging=true is used, might break on larger DBs on Atomic. Deprecation notice below.
+	 *
+	 * @deprecated May break on large DBs on Atomic due to Atomic resource restrictions, replaced by self::get_all_posts_ids().
+	 * @param string|array $post_type   $post_type argument for \WP_Query::get_posts.
+	 * @param array        $post_status $post_status argument for \WP_Query::get_posts.
+	 * @param boolean      $nopaging    $nopaging argument for \WP_Query::get_posts.
+	 *
+	 * @return array Post IDs.
+	 */
+	public function get_all_posts_ids_old( $post_type = 'post', $post_status = [ 'publish', 'future', 'draft', 'pending', 'private', 'inherit' ], $nopaging = true ) {
 		$ids = array();
 
 		// Arguments in \WP_Query::parse_query .
@@ -107,6 +151,7 @@ SQL;
 		global $wpdb;
 
 		$post_types = [];
+		// phpcs:ignore
 		$results    = $wpdb->get_results( "SELECT DISTINCT post_type FROM {$wpdb->posts}" );
 		foreach ( $results as $result ) {
 			$post_types[] = $result->post_type;
@@ -124,9 +169,9 @@ SQL;
 	 *      }
 	 * ```
 	 *
+	 * @param string $taxonomy   Taxonomy.
+	 * @param int    $term_id    term_id.
 	 * @param array  $post_types Post types.
-	 * @param string $taxonomy Taxonomy.
-	 * @param int    $term_id term_id.
 	 *
 	 * @return \WP_Post[]
 	 */
@@ -150,9 +195,9 @@ SQL;
 	/**
 	 * Gets taxonomy with custom meta.
 	 *
-	 * @param            $meta_key
-	 * @param            $meta_value
-	 * @param string     $taxonomy
+	 * @param string $meta_key   Meta key.
+	 * @param string $meta_value Meta value.
+	 * @param string $taxonomy   Taxonomy.
 	 *
 	 * @return int|\WP_Error|\WP_Term[]
 	 */
@@ -175,8 +220,9 @@ SQL;
 	/**
 	 * Gets all Posts which has the meta key and value.
 	 *
-	 * @param string $meta_key
-	 * @param string $meta_value
+	 * @param string $meta_key   Meta key.
+	 * @param string $meta_value Meta value.
+	 * @param array  $post_types Post types.
 	 *
 	 * @return array|null
 	 */
@@ -195,16 +241,18 @@ SQL;
 			array_push( $args_prepare, $post_type );
 		}
 
+		// phpcs:disable -- Used wpdb's prepare() and safely sanitized placeholders.
 		$results_meta_post_ids = $wpdb->get_results(
 			$wpdb->prepare(
 				"select post_id from {$wpdb->prefix}postmeta pm
 				join {$wpdb->prefix}posts p on p.id = pm.post_id
 				where pm.meta_key = %s and pm.meta_value = %s
-			    and p.post_type in ( $post_types_placeholders )",
+			    and p.post_type in ( $post_types_placeholders ); ",
 				$args_prepare
 			),
 			ARRAY_A
 		);
+		// phpcs:enable
 
 		if ( empty( $results_meta_post_ids ) ) {
 			return [];
@@ -249,6 +297,10 @@ SQL;
 
 	/**
 	 * Returns all posts' IDs.
+	 * Warning -- might break on Atomic with larger DBs due to resource restrictions. Try using self::get_all_posts_ids() instead.
+	 *
+	 * @param string|array $post_type   Post type.
+	 * @param array        $post_status Post status.
 	 *
 	 * @return int[]|\WP_Post[]
 	 */
@@ -367,7 +419,7 @@ SQL;
 	/**
 	 * Generate Jetpack Slideshow Block code from Media Posts.
 	 *
-	 * @param int[] $post_ids Media Posts IDs.
+	 * @param int[] $images Media Posts IDs.
 	 * @return string Jetpack Slideshow block code to be add to the post content.
 	 */
 	public function generate_jetpack_slideshow_block_from_pictures( $images ) {
