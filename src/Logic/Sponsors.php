@@ -64,18 +64,24 @@ class Sponsors {
 		}
 
 		// Get the sponsor term.
-		$sponsor_term = get_term_by( 'name', $sponsor_post->post_title );
+		$sponsor_term = get_term_by( 'name', $sponsor_post->post_title, self::SPONSORS_TAXONOMY );
 		if ( ! is_a( $sponsor_term, 'WP_Term' ) ) {
 			$this->logger->log( 'sponsors', sprintf( 'No sponsor term found for sponsor %s', $sponsor_post->post_title ), false );
 			return false;
 		}
 
 		// Add the Sponsor term to the target post.
-		$add_terms = wp_set_object_terms( $sponsor_post->ID, $sponsor_term->term_id, self::SPONSORS_TAXONOMY, true );
+		$add_terms = wp_set_object_terms( $target_post->ID, $sponsor_term->term_id, self::SPONSORS_TAXONOMY, true );
 		if ( is_wp_error( $add_terms ) ) {
-			$this->logger->log( 'sponsors', sprintf( 'Failed to add sponsor term to post %d', $target_post->ID ), false );
+			$this->logger->log( 'sponsors', sprintf(
+				'Failed to add sponsor term to post %d because %s',
+				$target_post->ID,
+				$add_terms->get_error_message()
+			), false );
 			return false;
 		}
+
+		clean_post_cache( $sponsor_post->ID );
 
 		return true;
 
