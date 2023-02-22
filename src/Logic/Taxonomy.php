@@ -324,4 +324,27 @@ class Taxonomy {
 			)
 		);
 	}
+
+	/**
+	 * Obtains a new slug that does not exist in the database.
+	 *
+	 * @param string $slug Slug.
+	 * @param int    $offset Offset.
+	 *
+	 * @return string
+	 */
+	public function get_new_term_slug( string $slug, int $offset = 1 ) {
+		$new_slug = $slug . '-' . $offset;
+
+		do {
+			$slug_exists = ! is_null( term_exists( $new_slug ) );
+
+			if ( $slug_exists ) {
+				$offset++;
+				$new_slug = $slug . '-' . $offset;
+			}
+		} while ( $slug_exists );
+
+		return $new_slug;
+	}
 }
