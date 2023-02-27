@@ -251,6 +251,42 @@ class PostsMigrator implements InterfaceCommand {
 				'shortdesc' => 'Fixes duplicate slugs used by Posts and Pages.',
 			]
 		);
+
+		WP_CLI::add_command(
+			'newspack-content-migrator hide-featured-images',
+			[ $this, 'cmd_hide_featured_images' ],
+			[
+				'shortdesc' => 'Hide featured image per posts or per categories.',
+				'synopsis'  => [
+					[
+						'type'        => 'assoc',
+						'name'        => 'batch',
+						'description' => 'Bath to start from.',
+						'optional'    => true,
+						'repeating'   => false,
+					],
+					[
+						'type'        => 'assoc',
+						'name'        => 'posts-per-batch',
+						'description' => 'Posts to import per batch',
+						'optional'    => true,
+						'repeating'   => false,
+					],
+					[
+						'type'      => 'assoc',
+						'name'      => 'post-ids',
+						'optional'  => true,
+						'repeating' => false,
+					],
+					[
+						'type'      => 'assoc',
+						'name'      => 'category-id',
+						'optional'  => true,
+						'repeating' => false,
+					],
+				],
+			]
+		);
 	}
 
 	/**
@@ -656,7 +692,6 @@ class PostsMigrator implements InterfaceCommand {
 	 * @return void
 	 */
 	public function cmd_fix_dupe_slugs( $positional_args, $assoc_args ) {
-
 		$log_file = 'fixed_dupe_slugs.log';
 
 		WP_CLI::log( 'Fixing duplicate slugs for posts and pages...' );
@@ -676,6 +711,86 @@ class PostsMigrator implements InterfaceCommand {
 		}
 
 		WP_CLI::success( 'Done 👍' );
+	}
+
+	/**
+	 * Callable for `newspack-content-migrator hide-featured-images`.
+	 *
+	 * @param array $positional_args Positional arguments.
+	 * @param array $assoc_args      Associative arguments.
+	 * @return void
+	 */
+	public function cmd_hide_featured_images( $positional_args, $assoc_args ) {
+		$log_file = 'hide_featured_images.log';
+
+		$posts_per_batch = isset( $assoc_args['posts-per-batch'] ) ? intval( $assoc_args['posts-per-batch'] ) : 10000;
+		$batch           = isset( $assoc_args['batch'] ) ? intval( $assoc_args['batch'] ) : 1;
+		$post_ids        = isset( $assoc_args['post-ids'] ) ? explode( ',', $assoc_args['post-ids'] ) : null;
+		$category_id     = isset( $assoc_args['category-id'] ) ? intval( $assoc_args['category-id'] ) : null;
+
+		if ( ! $post_ids && ! $category_id ) {
+			WP_CLI::error( 'Please set at least one of the two parameters (post_ids, category_id) to not run this command on all the posts.' );
+		}
+
+		$meta_query = [
+			[
+				'key'     => '_newspack_featured_image_is_hidden',
+				'compare' => 'NOT EXISTS',
+			],
+		];
+
+		$query_base_params = [
+			'post_type'   => 'post',
+			'post_status' => 'any',
+			'fields'      => 'ids',
+		];
+
+		if ( $post_ids ) {
+			$query_base_params['post__in'] = $post_ids;
+		}
+
+		if ( $category_id ) {
+			$query_base_params['cat'] = $category_id;
+		}
+
+		$total_query = new \WP_Query(
+			array_merge(
+				$query_base_params,
+				[
+					'posts_per_page' => -1,
+					'no_found_rows'  => true,
+					'meta_query'     => $meta_query, //phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+				]
+			)
+		);
+
+		WP_CLI::warning( sprintf( 'Total posts: %d', count( $total_query->posts ) ) );
+
+		$query = new \WP_Query(
+			array_merge(
+				$query_base_params,
+				[
+					'orderby'        => 'ID',
+					'paged'          => $batch,
+					'posts_per_page' => $posts_per_batch,
+					'meta_query'     => $meta_query, //phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+				]
+			)
+		);
+
+		$posts = $query->get_posts();
+
+		foreach ( $posts as $post_id ) {
+			update_post_meta( $post_id, 'newspack_featured_image_position', 'hidden' );
+			update_post_meta( $post_id, '_newspack_featured_image_is_hidden', true );
+			$this->logger->log(
+				$log_file,
+				sprintf( 'Featured image hidden for the post %d', $post_id ),
+				true
+			);
+		}
+
+		wp_cache_flush();
 	}
 
 
