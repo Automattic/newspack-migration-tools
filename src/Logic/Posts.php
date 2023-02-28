@@ -399,7 +399,10 @@ SQL;
 	public function generate_jetpack_slideshow_block_from_media_posts( $post_ids ) {
 		$posts = [];
 		foreach ( $post_ids as $post_id ) {
-			$posts[] = get_post( $post_id );
+			$post = get_post( $post_id );
+			if ( $post ) {
+				$posts[] = get_post( $post_id );
+			}
 		}
 
 		if ( empty( $posts ) ) {
@@ -469,7 +472,7 @@ SQL;
 		global $wpdb;
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT post_parent as post_ID, COUNT(ID) as num_of_revisions 
+				"SELECT post_parent as post_ID, COUNT(ID) as num_of_revisions
 					FROM $wpdb->posts WHERE post_type = 'revision'
 					GROUP BY post_parent
 					HAVING COUNT(ID) > %d",
@@ -563,7 +566,6 @@ SQL;
 		}
 
 		foreach ( $post_names as $key_post_name => $post_name ) {
-
 			WP_CLI::log( sprintf( '(%d)/(%d) fixing %s ...', $key_post_name + 1, count( $post_names ), $post_name ) );
 
 			// Get IDs with this post_name. Order by post_modified and ID descending.
