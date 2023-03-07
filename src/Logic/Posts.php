@@ -1,8 +1,7 @@
 <?php
 
-namespace NewspackCustomContentMigrator\Logic;
+namespace Newspack\MigrationTools\Logic;
 
-use WP_Query;
 use WP_CLI;
 
 /**
@@ -36,6 +35,95 @@ class Posts {
 			where post_type IN ( $post_type_placeholders )
 			and post_status IN ( $post_status_placeholders ) ;",
 				array_merge( $post_type, $post_status )
+			)
+		);
+		// phpcs:enable
+
+		return $ids;
+	}
+
+	/**
+	 * This function conveniently returns all post IDs in a given range.
+	 *
+	 * @param int          $from_id From Post ID.
+	 * @param int          $to_id  To Post ID.
+	 * @param array        $post_types Target Post Types.
+	 * @param string|array $post_status Target Post Statuses.
+	 *
+	 * @return array
+	 */
+	public function get_post_ids_in_range( int $from_id, int $to_id, array $post_types, $post_status = '' ): array {
+		if ( empty( $post_status ) ) {
+			$post_status = [ 'publish', 'future', 'draft', 'pending', 'private', 'inherit' ];
+		}
+		global $wpdb;
+
+		$post_type_placeholders = implode( ',', array_fill( 0, count( $post_types ), '%s' ) );
+
+		// Create $post_status statement placeholders.
+		$post_status_placeholders = implode( ',', array_fill( 0, count( $post_status ), '%s' ) );
+
+		// phpcs:disable -- used wpdb's prepare() and placeholders.
+		$ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT ID
+			FROM {$wpdb->posts}
+			WHERE ID BETWEEN %d AND %d
+			AND post_type IN ( $post_type_placeholders )
+			AND post_status IN ( $post_status_placeholders )",
+				$from_id,
+				$to_id,
+				...$post_types,
+				...$post_status
+			)
+		);
+		// phpcs:enable
+
+		return $ids;
+	}
+
+	/**
+	 * Returns all Post IDs in a given category.
+	 *
+	 * @param int          $category_term_id Category ID.
+	 * @param string|array $post_type        Post type(s).
+	 * @param array        $post_status      Post statuses.
+	 *
+	 * @return array
+	 */
+	public function get_all_posts_ids_in_category( $category_term_id, $post_type = 'post', $post_status = [ 'publish', 'future', 'draft', 'pending', 'private', 'inherit' ] ) {
+		global $wpdb;
+
+		// Create $post_type statement placeholders.
+		if ( ! is_array( $post_type ) ) {
+			$post_type = [ $post_type ];
+		}
+
+		// Placeholders.
+		$post_type_placeholders   = implode( ',', array_fill( 0, count( $post_type ), '%s' ) );
+		$post_status_placeholders = implode( ',', array_fill( 0, count( $post_status ), '%s' ) );
+
+		// Get term_taxonomy_id.
+		$term_taxonomy_id = $wpdb->get_var(
+			$wpdb->prepare(
+				"select term_taxonomy_id from {$wpdb->term_taxonomy} where term_id = %d;",
+				$category_term_id
+			)
+		);
+		if ( ! $term_taxonomy_id ) {
+			throw new \UnexpectedValueException( sprintf( 'Term taxonomy ID not found for term_id %s.', $category_term_id ) );
+		}
+
+		// phpcs:disable -- used wpdb's prepare() and placeholders.
+		$ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"select wp.ID
+				from {$wpdb->posts} wp
+				join {$wpdb->term_relationships} wtr on wtr.object_id = wp.ID
+				where wtr.term_taxonomy_id = %d
+			    and wp.post_type IN ( $post_type_placeholders )
+				and wp.post_status IN ( $post_status_placeholders ) ;",
+				array_merge( [ $term_taxonomy_id ], $post_type, $post_status )
 			)
 		);
 		// phpcs:enable
