@@ -32,7 +32,7 @@ class GutenbergBlockGenerator {
 	/**
 	 * Constructor.
 	 */
-	private function __construct() {
+	public function __construct() {
 		$this->logger = new Logger();
 	}
 
