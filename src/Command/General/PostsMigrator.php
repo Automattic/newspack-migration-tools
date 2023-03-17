@@ -793,35 +793,6 @@ class PostsMigrator implements InterfaceCommand {
 		wp_cache_flush();
 	}
 
-
-	/**
-	 * Generate Newspack Iframe Block code from HTML
-	 * By Creating an HTML file and uploading it to be set as the iframe source.
-	 *
-	 * @param string $html_to_embed HTML code to embed.
-	 * @param int    $post_id Post ID where to embed the HTML, used to generate unique Iframe source filename.
-	 * @return string Iframe block code to be add to the post content.
-	 */
-	public function embed_iframe_block_from_html( $html_to_embed, $post_id ) {
-		$iframe_folder      = "iframe-$post_id-" . wp_generate_password( 8, false );
-		$wp_upload_dir      = wp_upload_dir();
-		$iframe_upload_dir  = '/newspack_iframes/';
-		$iframe_upload_path = $wp_upload_dir['path'] . $iframe_upload_dir;
-		$iframe_path        = $iframe_upload_path . $iframe_folder;
-
-		// create iframe directory if not existing.
-		if ( ! file_exists( $iframe_path ) ) {
-			wp_mkdir_p( $iframe_path );
-		}
-
-		// Save iframe content in html file.
-		file_put_contents( "$iframe_path/index.html", $html_to_embed );
-		$iframe_src       = $wp_upload_dir['url'] . $iframe_upload_dir . $iframe_folder . DIRECTORY_SEPARATOR;
-		$iframe_directory = path_join( $wp_upload_dir['subdir'] . $iframe_upload_dir, $iframe_folder );
-
-		return '<!-- wp:newspack-blocks/iframe {"src":"' . $iframe_src . '","archiveFolder":"' . $iframe_directory . '"} /-->';
-	}
-
 	/**
 	 * Generate Newspack Iframe Block code from URL.
 	 *
