@@ -802,32 +802,4 @@ class PostsMigrator implements InterfaceCommand {
 	public function embed_iframe_block_from_src( $src ) {
 		return '<!-- wp:newspack-blocks/iframe {"src":"' . $src . '"} /-->';
 	}
-
-	/**
-	 * Generate Jetpack Slideshow Block code from Media Posts.
-	 *
-	 * @param int[] $post_ids Media Posts IDs.
-	 * @return string Jetpack Slideshow block code to be add to the post content.
-	 */
-	public function generate_jetpack_slideshow_block_from_media_posts( $post_ids ) {
-		$posts = array();
-		foreach ( $post_ids as $post_id ) {
-			$media_post = get_post( $post_id );
-			if ( $media_post ) {
-				$posts[] = $media_post;
-			}
-		}
-
-		if ( empty( $posts ) ) {
-			return '';
-		}
-
-		$content  = '<!-- wp:jetpack/slideshow {"ids":[' . join( ',', $post_ids ) . '],"sizeSlug":"large"} -->';
-		$content .= '<div class="wp-block-jetpack-slideshow aligncenter" data-effect="slide"><div class="wp-block-jetpack-slideshow_container swiper-container"><ul class="wp-block-jetpack-slideshow_swiper-wrapper swiper-wrapper">';
-		foreach ( $posts as $post ) {
-			$content .= '<li class="wp-block-jetpack-slideshow_slide swiper-slide"><figure><img alt="' . $post->post_title . '" class="wp-block-jetpack-slideshow_image wp-image-' . $post->ID . '" data-id="' . $post->ID . '" src="' . wp_get_attachment_url( $post->ID ) . '"><figcaption class="wp-block-jetpack-slideshow_caption gallery-caption">' . $post->post_title . '</figcaption></figure></li>';
-		}
-		$content .= '</ul><a class="wp-block-jetpack-slideshow_button-prev swiper-button-prev swiper-button-white" role="button"></a><a class="wp-block-jetpack-slideshow_button-next swiper-button-next swiper-button-white" role="button"></a><a aria-label="Pause Slideshow" class="wp-block-jetpack-slideshow_button-pause" role="button"></a><div class="wp-block-jetpack-slideshow_pagination swiper-pagination swiper-pagination-white"></div></div></div><!-- /wp:jetpack/slideshow -->';
-		return $content;
-	}
 }
