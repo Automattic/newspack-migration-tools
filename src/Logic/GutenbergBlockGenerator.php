@@ -176,10 +176,11 @@ class GutenbergBlockGenerator {
     /**
      * Generate a Jetpack Slideshow Block.
      *
-     * @param int[]  $attachment_ids Attachments IDs to be used in the tiled gallery.
-     * @param int    $images_per_row Images per row.
-     * @param string $image_size Image size (thumbnail, medium, large, full), full by default.
-     * @param string $image_link_to Link images to `none`, `media`, or to `attachment`.
+     * @param int[]   $attachment_ids Attachments IDs to be used in the tiled gallery.
+     * @param int     $images_per_row Images per row.
+     * @param string  $image_size Image size (thumbnail, medium, large, full), full by default.
+     * @param string  $image_link_to Link images to `none`, `media`, or to `attachment`.
+     * @param boolean $crop_images To crop the gallery images or not.
      * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
      */
     public function get_gallery( $attachment_ids, $images_per_row = 3, $image_size = 'full', $image_link_to = 'none', $crop_images = false ) {
