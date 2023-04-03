@@ -16,7 +16,6 @@
 namespace NewspackCustomContentMigrator\Logic;
 
 use \NewspackCustomContentMigrator\Utils\Logger;
-use \WP_CLI;
 
 /**
  * Class ContentDiffMigrator and main logic.
@@ -25,6 +24,8 @@ use \WP_CLI;
  */
 class GutenbergBlockGenerator {
 	/**
+	 * Logger class.
+	 *
 	 * @var Logger.
 	 */
 	private $logger;
