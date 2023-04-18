@@ -560,13 +560,42 @@ class GutenbergBlockGenerator {
 	}
 
 	/**
+	 * Generate a Genesis Accordion Block.
+	 *
+	 * WARNING: To use this block we need to install Genesis Blocks: https://wordpress.org/plugins/genesis-blocks/.
+	 *
+	 * @param string  $title Accordion title.
+	 * @param string  $body Accordion body content.
+	 * @param boolean $use_html_block If the content shoulb have a html block as parent, if not it defaults to paragraph.
+	 * @param boolean $open If the accordion is open by default, defaults to false.
+	 *
+	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 */
+	public function get_accordion( $title, $body, $use_html_block = false, $open = false ) {
+		$inner_block = $use_html_block ? $this->get_html( $body ) : $this->get_paragraph( $body );
+
+		$attrs = $open ? [ 'accordionOpen' => $open ] : [];
+		return [
+			'blockName'    => 'genesis-blocks/gb-accordion',
+			'attrs'        => $attrs,
+			'innerBlocks'  => [ $inner_block ],
+			'innerHTML'    => '<div class="wp-block-genesis-blocks-gb-accordion gb-block-accordion"><details><summary class="gb-accordion-title">' . $title . '</summary><div class="gb-accordion-text"></div></details></div>',
+			'innerContent' => [
+				'<div class="wp-block-genesis-blocks-gb-accordion gb-block-accordion"><details><summary class="gb-accordion-title">' . $title . '</summary><div class="gb-accordion-text">',
+				null,
+				'</div></details></div>',
+			],
+		];
+	}
+
+	/**
 	 * Generate a List Block item.
 	 *
 	 * @param string $content Item content.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_list_item( $content ) {
+	private function get_list_item( $content ) {
 		$item = '<li>' . $content . '</li>';
 
 		return [
