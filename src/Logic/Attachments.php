@@ -70,9 +70,11 @@ class Attachments {
 		$att_id = media_handle_sideload( $file_array, $post_id, $title, $args );
 
 		// If this was a download and there was an error then clean up the temp file.
-		if ( is_wp_error( $att_id ) && $is_http ) {
+		if ( is_wp_error( $att_id ) ) {
 			@unlink( $file_array['tmp_name'] );
+			WP_CLI::warning( $att_id->get_error_message() );
 		}
+
 
 		if ( $alt ) {
 			update_post_meta( $att_id, '_wp_attachment_image_alt', $alt );
