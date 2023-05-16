@@ -64,9 +64,13 @@ class SimpleLocalAvatars {
 			update_user_meta( $user_id, self::AVATAR_RATING_META_KEY, $rating );
 		}
 
-		$avatar = get_user_meta( $user_id, self::AVATAR_META_KEY, true );
+		// $avatar = get_user_meta( $user_id, self::AVATAR_META_KEY, true );
+		// if ( ! empty( $avatar ) ) {
+		// 	return false;
+		// }
 
-		if ( ! empty( $avatar ) ) {
+		// Check that the avatar was actually imported.
+		if ( ! did_action('simple_local_avatar_updated') ) {
 			return false;
 		}
 
@@ -80,5 +84,16 @@ class SimpleLocalAvatars {
 	 */
 	public function is_sla_plugin_active() {
 		return null !== $this->simple_local_avatars;
+	}
+
+	/**
+	 * Check whether a user has an avatar or not
+	 * 
+	 * @param int $user_id The user ID.
+	 * 
+	 * @return boolean True if the user has an avatar, false otherwise
+	 */
+	public function user_has_avatar( $user_id ) {
+		return ! empty( $this->simple_local_avatars->get_avatar( '', $user_id ) );
 	}
 }
