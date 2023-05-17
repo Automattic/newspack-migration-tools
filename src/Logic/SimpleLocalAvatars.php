@@ -64,10 +64,10 @@ class SimpleLocalAvatars {
 			update_user_meta( $user_id, self::AVATAR_RATING_META_KEY, $rating );
 		}
 
-		// $avatar = get_user_meta( $user_id, self::AVATAR_META_KEY, true );
-		// if ( ! empty( $avatar ) ) {
-		// 	return false;
-		// }
+		$avatar = get_user_meta( $user_id, self::AVATAR_META_KEY, true );
+		if ( ! empty( $avatar ) ) {
+			return false;
+		}
 
 		// Check that the avatar was actually imported.
 		if ( ! did_action('simple_local_avatar_updated') ) {
