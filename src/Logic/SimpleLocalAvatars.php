@@ -91,13 +91,29 @@ class SimpleLocalAvatars {
 	}
 
 	/**
-	 * Check whether a user has an avatar or not
+	 * If user has local attachment ID avatar, returns the attachment ID.
 	 *
 	 * @param int $user_id The user ID.
 	 *
-	 * @return boolean True if the user has an avatar, false otherwise
+	 * @return int|null Returns attachment ID if local attachment is used, or null otherwise.
 	 */
-	public function user_has_avatar( $user_id ) {
-		return ! empty( $this->simple_local_avatars->get_avatar( '', $user_id ) );
+	public function get_local_avatar_attachment_id( $user_id ) {
+		$usermeta = get_user_meta( $user_id, self::AVATAR_META_KEY, true );
+		if ( isset( $usermeta['media_id'] ) && ! empty( $usermeta['media_id'] ) ) {
+			return $usermeta['media_id'];
+		}
+
+		return false;
+	}
+
+	/**
+	 * Check whether a user has a local avatar.
+	 *
+	 * @param int $user_id The user ID.
+	 *
+	 * @return boolean True if the user has a local attachment ID as avatar, false otherwise.
+	 */
+	public function user_has_local_avatar( $user_id ) {
+		return (bool) $this->get_local_avatar_attachment_id( $user_id );
 	}
 }
