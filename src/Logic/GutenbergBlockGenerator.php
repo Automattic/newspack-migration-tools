@@ -39,12 +39,22 @@ class GutenbergBlockGenerator {
 
 	/**
 	 * Generate a Jetpack Tiled Gallery Block.
+	 * Notes:
+	 *      - after updating the Posts, it is necessary to manually open the post in the editor, click "Attempt recovery", and click "Update" to get the correct HTML
+	 *      - at the time of writing this, JP Tiled Gallery doesn't support captions
 	 *
 	 * @param int[]    $attachment_ids Attachments IDs to be used in the tiled gallery.
+	 * @param ?string  $link_to         `linkTo` attribute of the Jetpack Tiled Gallery block. Can be null, or "media", or "attachment".
 	 * @param string[] $tile_sizes_list List of tiles sizes in percentages (e.g. ['50', '50']).
-	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 *
+	 * @return array to be used in the serialize_block() or serialize_blocks() function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_jetpack_tiled_gallery( $attachment_ids, $tile_sizes_list = [ '66.79014', '33.20986', '33.33333', '33.33333', '33.33333', '50.00000', '50.00000' ] ) {
+	public function get_jetpack_tiled_gallery( $attachment_ids, $link_to = null, $tile_sizes_list = [ '66.79014', '33.20986', '33.33333', '33.33333', '33.33333', '50.00000', '50.00000' ] ) {
+		// Validate $link_to param.
+		if ( ! in_array( $link_to, [ 'media', 'attachment'] ) ){
+			throw new \UnexpectedValueException( 'Invalid $link_to param value.' );
+		}
+
 		$gallery_content = '
         <div class="wp-block-jetpack-tiled-gallery aligncenter is-style-rectangular">
             <div class="tiled-gallery__gallery">
@@ -100,12 +110,17 @@ class GutenbergBlockGenerator {
 			unset( $attachment_ids[ $non_existing_attachment_index ] );
 		}
 
+		$attrs = [
+			'columnWidths' => [], // It will be filled after fixing the block manually from the backend.
+			'ids'          => $attachment_ids
+		];
+		if ( $link_to ) {
+			$attrs['linkTo'] = $link_to;
+		}
+
 		return [
 			'blockName'    => 'jetpack/tiled-gallery',
-			'attrs'        => [
-				'columnWidths' => [], // It will be filled after fixing the block manually from the backend.
-				'ids'          => $attachment_ids,
-			],
+			'attrs'        => $attrs,
 			'innerBlocks'  => [],
 			'innerHTML'    => $gallery_content,
 			'innerContent' => [ $gallery_content ],
@@ -198,7 +213,12 @@ class GutenbergBlockGenerator {
 		}
 
 		foreach ( $attachment_posts as $attachment_post ) {
-			$image_blocks[] = $this->get_image( $attachment_post );
+			/**
+			 * In order for 'linkTo' attribute to work, it's not enough to add this as attribute to the block, but also the image blocks need to get the surrounding <a> element.
+			 * More here: https://wordpress.com/support/wordpress-editor/blocks/gallery-block/#link-settings
+			 */
+			$link_to_attachment_url = 'none' !== $image_link_to ? true : false;
+			$image_blocks[] = $this->get_image( $attachment_post, 'full', $link_to_attachment_url );
 		}
 
 		// Inner content.
@@ -223,20 +243,30 @@ class GutenbergBlockGenerator {
 	/**
 	 * Generate a List Block item.
 	 *
-	 * @param \WP_Post $attachment_post Image Post.
-	 * @param string   $size Image size, full by default.
+	 * @param \WP_Post $attachment_post        Image Post.
+	 * @param string   $size                   Image size, full by default.
+	 * @param bool     $link_to_attachment_url Whether to link to the attachment URL or not.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_image( $attachment_post, $size = 'full' ) {
+	public function get_image( $attachment_post, $size = 'full', $link_to_attachment_url = true ) {
 		$caption_tag = ! empty( $attachment_post->post_excerpt ) ? '<figcaption class="wp-element-caption">' . $attachment_post->post_excerpt . '</figcaption>' : '';
 		$image_alt   = get_post_meta( $attachment_post->ID, '_wp_attachment_image_alt', true );
+		$image_url   = wp_get_attachment_url( $attachment_post->ID );
 
 		$attrs = [
 			'sizeSlug' => $size,
 		];
 
-		$content = '<figure class="wp-block-image size-' . $size . '"><img src="' . wp_get_attachment_url( $attachment_post->ID ) . '" alt="' . $image_alt . '"/>' . $caption_tag . '</figure>';
+		// Add <a> link to attachment URL.
+		$a_opening_tag = '';
+		$a_closing_tag = '';
+		if ( $link_to_attachment_url ) {
+			$a_opening_tag = sprintf( '<a href="%s">', $image_url );
+			$a_closing_tag = '</a>';
+		}
+
+		$content = '<figure class="wp-block-image size-' . $size . '">' . $a_opening_tag . '<img src="' . $image_url . '" alt="' . $image_alt . '"/>' . $a_closing_tag .  $caption_tag . '</figure>';
 
 		return [
 			'blockName'    => 'core/image',
