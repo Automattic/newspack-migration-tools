@@ -47,11 +47,13 @@ class GutenbergBlockGenerator {
 	 * @param ?string  $link_to         `linkTo` attribute of the Jetpack Tiled Gallery block. Can be null, or "media", or "attachment".
 	 * @param string[] $tile_sizes_list List of tiles sizes in percentages (e.g. ['50', '50']).
 	 *
+	 * @throws \UnexpectedValueException If $link_to param is invalid.
+	 *
 	 * @return array to be used in the serialize_block() or serialize_blocks() function to get the raw content of a Gutenberg Block.
 	 */
 	public function get_jetpack_tiled_gallery( $attachment_ids, $link_to = null, $tile_sizes_list = [ '66.79014', '33.20986', '33.33333', '33.33333', '33.33333', '50.00000', '50.00000' ] ) {
 		// Validate $link_to param.
-		if ( ! in_array( $link_to, [ 'media', 'attachment'] ) ){
+		if ( ! in_array( $link_to, [ 'media', 'attachment' ] ) ) {
 			throw new \UnexpectedValueException( 'Invalid $link_to param value.' );
 		}
 
@@ -112,7 +114,7 @@ class GutenbergBlockGenerator {
 
 		$attrs = [
 			'columnWidths' => [], // It will be filled after fixing the block manually from the backend.
-			'ids'          => $attachment_ids
+			'ids'          => $attachment_ids,
 		];
 		if ( $link_to ) {
 			$attrs['linkTo'] = $link_to;
@@ -218,7 +220,7 @@ class GutenbergBlockGenerator {
 			 * More here: https://wordpress.com/support/wordpress-editor/blocks/gallery-block/#link-settings
 			 */
 			$link_to_attachment_url = 'none' !== $image_link_to ? true : false;
-			$image_blocks[] = $this->get_image( $attachment_post, 'full', $link_to_attachment_url );
+			$image_blocks[]         = $this->get_image( $attachment_post, 'full', $link_to_attachment_url );
 		}
 
 		// Inner content.
@@ -266,7 +268,7 @@ class GutenbergBlockGenerator {
 			$a_closing_tag = '</a>';
 		}
 
-		$content = '<figure class="wp-block-image size-' . $size . '">' . $a_opening_tag . '<img src="' . $image_url . '" alt="' . $image_alt . '"/>' . $a_closing_tag .  $caption_tag . '</figure>';
+		$content = '<figure class="wp-block-image size-' . $size . '">' . $a_opening_tag . '<img src="' . $image_url . '" alt="' . $image_alt . '"/>' . $a_closing_tag . $caption_tag . '</figure>';
 
 		return [
 			'blockName'    => 'core/image',
@@ -586,6 +588,117 @@ class GutenbergBlockGenerator {
 			'innerBlocks'  => array_map( [ $this, 'get_list_item' ], $elements ),
 			'innerHTML'    => '<ol></ol>',
 			'innerContent' => $inner_content,
+		];
+	}
+
+	/**
+	 * Generate a Youtube block -- uses core/embed.
+	 *
+	 * @param string $src     YT src.
+	 * @param string $caption Optional.
+	 *
+	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 */
+	public function get_youtube( $src, $caption = '' ) {
+		// Remove GET params from $src, otherwise the embed might not work.
+		$src_parsed  = wp_parse_url( $src );
+		$src_cleaned = $src_parsed['scheme'] . '://' . $src_parsed['host'] . $src_parsed['path'];
+
+		return $this->get_core_embed( $src_cleaned, $caption );
+	}
+
+	/**
+	 * Generate a Vimeo block -- uses core/embed.
+	 *
+	 * @param string $src     Vimeo src.
+	 * @param string $caption Optional.
+	 *
+	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 */
+	public function get_vimeo( $src, $caption = '' ) {
+		return $this->get_core_embed( $src, $caption );
+	}
+
+	/**
+	 * Generate a Vimeo block -- uses core/embed.
+	 *
+	 * @param string $src     Vimeo src.
+	 * @param string $caption Optional.
+	 *
+	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 */
+	public function get_twitter( $src, $caption = '' ) {
+		return [
+			'blockName'    => 'core/embed',
+			'attrs'        => [
+				'url'              => $src,
+				'type'             => 'rich',
+				'providerNameSlug' => 'twitter',
+				'responsive'       => true,
+			],
+			'innerBlocks'  => [],
+			'innerHTML'    => ' <figure class="wp-block-embed is-type-rich is-provider-twitter wp-block-embed-twitter"><div class="wp-block-embed__wrapper"> ' . $src . ' </div></figure> ',
+			'innerContent' => [
+				0 => ' <figure class="wp-block-embed is-type-rich is-provider-twitter wp-block-embed-twitter"><div class="wp-block-embed__wrapper"> ' . $src . ' </div></figure> ',
+			],
+		];
+	}
+
+	/**
+	 * Generate a core/embed.
+	 *
+	 * @param string $src     Src.
+	 * @param string $caption Optional.
+	 *
+	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 */
+	public function get_core_embed( $src, $caption = '' ) {
+		return [
+			'blockName'    => 'core/embed',
+			'attrs'        => [
+				'url'              => $src,
+				'type'             => 'rich',
+				'providerNameSlug' => 'embed-handler',
+				'responsive'       => true,
+				'className'        => 'wp-embed-aspect-16-9 wp-has-aspect-ratio',
+			],
+			'innerBlocks'  => [],
+			'innerHTML'    => ' <figure class="wp-block-embed is-type-rich is-provider-embed-handler wp-block-embed-embed-handler wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper"> ' . $src . ' </div></figure> ',
+			'innerContent' => [
+				0 => ' <figure class="wp-block-embed is-type-rich is-provider-embed-handler wp-block-embed-embed-handler wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper"> ' . $src . ' </div></figure> ',
+			],
+		];
+	}
+
+	/**
+	 * Generate a Facebook block (which is visible in menu only after Jetpack connection is registered),
+	 * which uses core/embed in background.
+	 *
+	 * @param string $src     Facebook src.
+	 * @param string $caption Optional.
+	 *
+	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 */
+	public function get_facebook( $src, $caption = '' ) {
+		return $this->get_core_embed( $src, $caption );
+	}
+
+	/**
+	 * Generate a Newspack Iframe block.
+	 *
+	 * @param string $src URL.
+	 *
+	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 */
+	public function get_iframe( $src ) {
+		return [
+			'blockName'    => 'newspack-blocks/iframe',
+			'attrs'        => [
+				'src' => $src,
+			],
+			'innerBlocks'  => [],
+			'innerHTML'    => '',
+			'innerContent' => [],
 		];
 	}
 
