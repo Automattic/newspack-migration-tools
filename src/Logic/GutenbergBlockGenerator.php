@@ -563,6 +563,45 @@ class GutenbergBlockGenerator {
 	}
 
 	/**
+	 * Generate a Group Block with the constrained layout.
+	 *
+	 * @param array $inner_blocks   Inner blocks.
+	 * @param array $custom_classes Custom classes to be added to the group block.
+	 *
+	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 */
+	public function get_group_constrained( $inner_blocks, $custom_classes = [] ) {
+
+		$class_append_custom = ! empty( $custom_classes ) ? implode( ' ', $custom_classes ) : '';
+
+		$inner_content   = [];
+		$inner_content[] = ' <div class="wp-block-group' . ( ! empty( $class_append_custom ) ? ' ' . implode( ' ', $custom_classes ) : '' ) . '">';
+		$inner_content   = array_merge( $inner_content, array_fill( 1, count( $inner_blocks ), null ) );
+		$inner_content[] = '</div> ';
+
+		$attrs = [];
+		if ( ! empty( $custom_classes ) ) {
+			$attrs['className'] = implode( ' ', $custom_classes );
+		}
+		$attrs = array_merge(
+			$attrs,
+			[
+				'layout' => [
+					'type' => 'constrained',
+				],
+			]
+		);
+
+		return [
+			'blockName'    => 'core/group',
+			'attrs'        => $attrs,
+			'innerBlocks'  => $inner_blocks,
+			'innerHTML'    => ' <div class="wp-block-group' . ( ! empty( $class_append_custom ) ? ' ' . implode( ' ', $custom_classes ) : '' ) . '">  </div> ',
+			'innerContent' => $inner_content,
+		];
+	}
+
+	/**
 	 * Generate a List Block.
 	 *
 	 * @param array   $elements List elements.
