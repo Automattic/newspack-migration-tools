@@ -564,6 +564,7 @@ class GutenbergBlockGenerator {
 
 	/**
 	 * Generate a Group Block with the constrained layout.
+	 * Since Group block can have three different layouts with different markup and behavior, splitting these into separate methods.
 	 *
 	 * @param array $inner_blocks   Inner blocks.
 	 * @param array $custom_classes Custom classes to be added to the group block.
