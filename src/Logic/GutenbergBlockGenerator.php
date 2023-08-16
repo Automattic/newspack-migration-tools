@@ -248,15 +248,17 @@ class GutenbergBlockGenerator {
 	 * @param \WP_Post $attachment_post        Image Post.
 	 * @param string   $size                   Image size, full by default.
 	 * @param bool     $link_to_attachment_url Whether to link to the attachment URL or not.
+	 * @param string   $classname              Media HTML class.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_image( $attachment_post, $size = 'full', $link_to_attachment_url = true ) {
+	public function get_image( $attachment_post, $size = 'full', $link_to_attachment_url = true, $classname = null ) {
 		$caption_tag = ! empty( $attachment_post->post_excerpt ) ? '<figcaption class="wp-element-caption">' . $attachment_post->post_excerpt . '</figcaption>' : '';
 		$image_alt   = get_post_meta( $attachment_post->ID, '_wp_attachment_image_alt', true );
 		$image_url   = wp_get_attachment_url( $attachment_post->ID );
 
 		$attrs = [
+			'id'       => $attachment_post->ID,
 			'sizeSlug' => $size,
 		];
 
@@ -268,7 +270,13 @@ class GutenbergBlockGenerator {
 			$a_closing_tag = '</a>';
 		}
 
-		$content = '<figure class="wp-block-image size-' . $size . '">' . $a_opening_tag . '<img src="' . $image_url . '" alt="' . $image_alt . '"/>' . $a_closing_tag . $caption_tag . '</figure>';
+		if ( $classname ) {
+			$attrs['className'] = $classname;
+		}
+
+		$figure_class = 'wp-block-image size-' . $size . ( $classname ? " $classname" : '' );
+
+		$content = '<figure class="' . $figure_class . '">' . $a_opening_tag . '<img src="' . $image_url . '" alt="' . $image_alt . '" class="wp-image-' . $attachment_post->ID . '"/>' . $a_closing_tag . $caption_tag . '</figure>';
 
 		return [
 			'blockName'    => 'core/image',
@@ -288,11 +296,18 @@ class GutenbergBlockGenerator {
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
 	public function get_heading( $heading_content, $heading_level = 'h2', $anchor = '' ) {
+		$attrs = [];
+		$level = intval( str_replace( 'h', '', $heading_level ) );
+
+		if ( $level > 2 ) {
+			$attrs['level'] = $level;
+		}
+
 		$anchor_attribute = ! empty( $anchor ) ? ' id="' . $anchor . '"' : '';
-		$content          = "<$heading_level" . $anchor_attribute . '>' . $heading_content . "</$heading_level>";
+		$content          = "<$heading_level" . $anchor_attribute . ' class="wp-block-heading">' . $heading_content . "</$heading_level>";
 		return [
 			'blockName'    => 'core/heading',
-			'attrs'        => [],
+			'attrs'        => $attrs,
 			'innerBlocks'  => [],
 			'innerHTML'    => $content,
 			'innerContent' => [ $content ],
@@ -304,15 +319,30 @@ class GutenbergBlockGenerator {
 	 *
 	 * @param string $paragraph_content Paragraph content.
 	 * @param string $anchor Paragraph anchor.
+	 * @param string $text_color Paragraph text color (black, blue, green, red, yellow, gray, dark-gray, medium-gray, light-gray, white).
+	 * @param string $font_size Paragraph font size (small, normal, medium, large, huge).
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_paragraph( $paragraph_content, $anchor = '' ) {
+	public function get_paragraph( $paragraph_content, $anchor = '', $text_color = '', $font_size = '' ) {
+		$classes = [];
+		$attrs   = [];
+		if ( ! empty( $text_color ) ) {
+			$classes[]         = 'has-' . $text_color . '-color has-text-color';
+			$attrs['fontSize'] = $text_color;
+		}
+		if ( ! empty( $font_size ) ) {
+			$classes[]         = 'has-' . $font_size . '-font-size';
+			$attrs['fontSize'] = $font_size;
+		}
+
+		$class = ! empty( $classes ) ? ' class="' . implode( ' ', $classes ) . '"' : '';
+
 		$anchor_attribute = ! empty( $anchor ) ? ' id="' . $anchor . '"' : '';
-		$content          = '<p' . $anchor_attribute . '>' . $paragraph_content . '</p>';
+		$content          = '<p' . $anchor_attribute . $class . '>' . $paragraph_content . '</p>';
 
 		return [
 			'blockName'    => 'core/paragraph',
-			'attrs'        => [],
+			'attrs'        => $attrs,
 			'innerBlocks'  => [],
 			'innerHTML'    => $content,
 			'innerContent' => [ $content ],
@@ -617,16 +647,18 @@ class GutenbergBlockGenerator {
 			$attrs['ordered'] = true;
 		}
 
+		$list_tag = $ordered ? 'ol' : 'ul';
+
 		// Inner content.
 		$inner_content = array_fill( 1, count( $elements ), null );
-		array_unshift( $inner_content, '<ol>' );
-		array_push( $inner_content, '</ol>' );
+		array_unshift( $inner_content, '<' . $list_tag . '>' );
+		array_push( $inner_content, '</' . $list_tag . '>' );
 
 		return [
 			'blockName'    => 'core/list',
 			'attrs'        => $attrs,
 			'innerBlocks'  => array_map( [ $this, 'get_list_item' ], $elements ),
-			'innerHTML'    => '<ol></ol>',
+			'innerHTML'    => '<' . $list_tag . '></' . $list_tag . '>',
 			'innerContent' => $inner_content,
 		];
 	}
