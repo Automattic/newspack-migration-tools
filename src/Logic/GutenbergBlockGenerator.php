@@ -249,13 +249,19 @@ class GutenbergBlockGenerator {
 	 * @param string   $size                   Image size, full by default.
 	 * @param bool     $link_to_attachment_url Whether to link to the attachment URL or not.
 	 * @param string   $classname              Media HTML class.
+	 * @param string   $align                  Image alignment (left, right).
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_image( $attachment_post, $size = 'full', $link_to_attachment_url = true, $classname = null ) {
+	public function get_image( $attachment_post, $size = 'full', $link_to_attachment_url = true, $classname = null, $align = null ) {
+		// Validate size.
+		if ( ! in_array( $size, [ 'thumbnail', 'medium', 'large', 'full' ] ) ) {
+			$size = 'full';
+		}
+
 		$caption_tag = ! empty( $attachment_post->post_excerpt ) ? '<figcaption class="wp-element-caption">' . $attachment_post->post_excerpt . '</figcaption>' : '';
 		$image_alt   = get_post_meta( $attachment_post->ID, '_wp_attachment_image_alt', true );
-		$image_url   = wp_get_attachment_url( $attachment_post->ID );
+		$image_url   = wp_get_attachment_image_src( $attachment_post->ID, $size )[0];
 
 		$attrs = [
 			'id'       => $attachment_post->ID,
@@ -274,7 +280,11 @@ class GutenbergBlockGenerator {
 			$attrs['className'] = $classname;
 		}
 
-		$figure_class = 'wp-block-image size-' . $size . ( $classname ? " $classname" : '' );
+		if ( $align ) {
+			$attrs['align'] = $align;
+		}
+
+		$figure_class = 'wp-block-image size-' . $size . ( $classname ? " $classname" : '' ) . ( $align ? " align$align" : '' );
 
 		$content = '<figure class="' . $figure_class . '">' . $a_opening_tag . '<img src="' . $image_url . '" alt="' . $image_alt . '" class="wp-image-' . $attachment_post->ID . '"/>' . $a_closing_tag . $caption_tag . '</figure>';
 
@@ -759,15 +769,27 @@ class GutenbergBlockGenerator {
 	 * Generate a Newspack Iframe block.
 	 *
 	 * @param string $src URL.
+	 * @param string $width Width.
+	 * @param string $height Height.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_iframe( $src ) {
+	public function get_iframe( $src, $width = null, $height = null ) {
+		$attrs = [
+			'src' => $src,
+		];
+
+		if ( $width ) {
+			$attrs['width'] = $width;
+		}
+
+		if ( $height ) {
+			$attrs['height'] = $height;
+		}
+
 		return [
 			'blockName'    => 'newspack-blocks/iframe',
-			'attrs'        => [
-				'src' => $src,
-			],
+			'attrs'        => $attrs,
 			'innerBlocks'  => [],
 			'innerHTML'    => '',
 			'innerContent' => [],
