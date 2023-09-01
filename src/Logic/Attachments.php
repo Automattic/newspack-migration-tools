@@ -58,6 +58,16 @@ class Attachments {
 			'tmp_name' => $tmpfname,
 		];
 
+		// If the path does not have a file extension, let's try to find one for it.
+		// Without the extension, the upload will fail because WP will not allow that "file type".
+		if ( ! pathinfo( $path, PATHINFO_EXTENSION ) ) {
+			$mimetype           = mime_content_type( $tmpfname );
+			$probably_extension = array_search( $mimetype, wp_get_mime_types() );
+			if ( ! empty ( $probably_extension ) ) {
+				$file_array['name'] .= '.' . $probably_extension;
+			}
+		}
+
 		if ( $title ) {
 			$args['post_title'] = $title;
 		}
