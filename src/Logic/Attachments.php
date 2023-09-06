@@ -74,7 +74,7 @@ class Attachments {
 			}
 		}
 
-		$maybe_exising_attachment_id = $this->maybe_get_exisiting_attachment_id( $file_array['tmp_name'], $file_array['name'] );
+		$maybe_exising_attachment_id = $this->maybe_get_existing_attachment_id( $file_array['tmp_name'], $file_array['name'] );
 		if ( null !== $maybe_exising_attachment_id ) {
 			@unlink( $file_array['tmp_name'] );
 			return $maybe_exising_attachment_id;
@@ -113,7 +113,7 @@ class Attachments {
 	 *
 	 * @return int|null Attachment ID if found, null otherwise.
 	 */
-	public function maybe_get_exisiting_attachment_id( string $filepath, string $filename = '' ): int|null {
+	public function maybe_get_existing_attachment_id( string $filepath, string $filename = '' ): int|null {
 		if ( ! file_exists( $filepath ) ) {
 			return null;
 		}
