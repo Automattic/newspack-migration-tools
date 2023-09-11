@@ -154,7 +154,7 @@ class Attachments {
 	 * @param integer   $posts_per_batch Total of posts tohandle per batch.
 	 * @param integer   $batch Current batch in the loop.
 	 * @param integer   $start_index Index from where to start the loop.
-	 * @param func|null $logger Method to log results.
+	 * @param callable|null $logger Method to log results.
 	 *
 	 * @return mixed[] Array of the broken URLs indexed by the post IDs.
 	 */
@@ -304,7 +304,7 @@ class Attachments {
 		$attachment_id = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT post_id FROM $wpdb->postmeta WHERE meta_key = '_wp_attached_file' AND meta_value LIKE '%s'",
-				'%' . $filename . '%',
+				'%' . $filename,
 			),
 		);
 
