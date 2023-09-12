@@ -44,4 +44,17 @@ class Redirection {
 		] );
 	}
 
+	/**
+	 * Get redirects for a url.
+	 *
+	 * Will not return regex matches – only an exact match on the from-url.
+	 */
+	public function get_redirects_by_exact_from_url( string $from ): array {
+		$redirect = \Red_Item::get_for_url( $from );
+		if ( ! empty( $redirect ) ) {
+			return array_filter( $redirect, fn( $item ) => $from === $item->get_url() );
+		}
+		return [];
+	}
+
 }
