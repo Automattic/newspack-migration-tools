@@ -12,7 +12,7 @@ use \WP_CLI;
 class ContentFixerMigrator implements InterfaceCommand {
 	const POST_CONTENT_SHORTCODES_MIGRATION_LOG = 'POST_CONTENT_SHORTCODES_MIGRATION.log';
 
-    /**
+	/**
 	 * @var PostsLogic.
 	 */
 	private $posts_logic = null;
@@ -22,7 +22,7 @@ class ContentFixerMigrator implements InterfaceCommand {
 	 */
 	private static $instance = null;
 
-    /**
+	/**
 	 * Constructor.
 	 */
 	private function __construct() {
@@ -56,7 +56,7 @@ class ContentFixerMigrator implements InterfaceCommand {
 			)
 		);
 
-        WP_CLI::add_command(
+		WP_CLI::add_command(
 			'newspack-content-migrator remove-shortcodes-from-post-body',
 			array( $this, 'remove_shortcodes_from_post_body' ),
 			array(
@@ -137,7 +137,7 @@ class ContentFixerMigrator implements InterfaceCommand {
 		);
 	}
 
-    /**
+	/**
 	 * Callable for `newspack-content-migrator remove-shortcodes-from-post-body`.
 	 */
 	public function remove_shortcodes_from_post_body( $args, $assoc_args ) {
@@ -224,7 +224,7 @@ class ContentFixerMigrator implements InterfaceCommand {
 		);
 	}
 
-    /**
+	/**
 	 * Strip shortcodes from content.
 	 *
 	 * @param string[] $shortcodes Shortcodes to strip.
@@ -244,13 +244,13 @@ class ContentFixerMigrator implements InterfaceCommand {
 		return $text;
 	}
 
-    /**
-     * Simple file logging.
-     *
-     * @param string  $file    File name or path.
-     * @param string  $message Log message.
-     * @param boolean $to_cli Display the logged message in CLI.
-     */
+	/**
+	 * Simple file logging.
+	 *
+	 * @param string  $file    File name or path.
+	 * @param string  $message Log message.
+	 * @param boolean $to_cli Display the logged message in CLI.
+	 */
 	private function log( $file, $message, $to_cli = true ) {
 		$message .= "\n";
 		if ( $to_cli ) {
