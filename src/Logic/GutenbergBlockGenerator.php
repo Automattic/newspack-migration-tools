@@ -243,7 +243,7 @@ class GutenbergBlockGenerator {
 	}
 
 	/**
-	 * Generate a List Block item.
+	 * Generate an Image Block item.
 	 *
 	 * @param \WP_Post $attachment_post        Image Post.
 	 * @param string   $size                   Image size, full by default.
@@ -294,6 +294,41 @@ class GutenbergBlockGenerator {
 			'innerBlocks'  => [],
 			'innerHTML'    => $content,
 			'innerContent' => [ $content ],
+		];
+	}
+
+	/**
+	 * Generate a File Block item with a PDF preview.
+	 *
+	 * @param \WP_Post $attachment_post        File Post.
+	 * @param string   $title                  File title.
+	 * @param bool     $show_download_button   Whether to show the download button or not.
+	 * @param int      $height                 PDF Block height in px, empty by default (which set it to 800px, plugin's default).
+	 *
+	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 */
+	public function get_file_pdf( $attachment_post, $title = '', $show_download_button = true, $height = 800 ) {
+		$attachment_url = wp_get_attachment_url( $attachment_post->ID );
+		$uuid           = $this->format_uuidv4();
+		$title          = empty( $title ) ? $attachment_post->post_title : $title;
+
+		$attrs = [
+			'id'             => $attachment_post->ID,
+			'href'           => $attachment_url,
+			'displayPreview' => true,
+			'previewHeight'  => $height,
+		];
+
+		$download_button = $show_download_button ? '<a href="' . $attachment_url . '" class="wp-block-file__button wp-element-button" download aria-describedby="wp-block-file--media-' . $uuid . '">Download</a>' : '';
+
+		$inner_html = '<div class="wp-block-file"><object class="wp-block-file__embed" data="' . $attachment_url . '" type="application/pdf" style="width:100%;height:' . $height . 'px" aria-label="' . $title . '"></object><a id="wp-block-file--media-' . $uuid . '" href="' . $attachment_url . '">' . $title . '</a>' . $download_button . '</div>';
+
+		return [
+			'blockName'    => 'core/file',
+			'attrs'        => $attrs,
+			'innerBlocks'  => [],
+			'innerHTML'    => $inner_html,
+			'innerContent' => [ $inner_html ],
 		];
 	}
 
@@ -853,6 +888,23 @@ class GutenbergBlockGenerator {
 	 */
 	private function get_tile_image_size_by_index( $index, $tile_sizes_list ) {
 		return $tile_sizes_list[ $index % count( $tile_sizes_list ) ];
+	}
+
+	/**
+	 * Generate a UUId v4.
+	 *
+	 * @param string $data Data to be used to generate the UUID v4.
+	 *
+	 * @return string UUID v4.
+	 */
+	private function format_uuidv4( $data = null ) {
+		$data = $data ?? random_bytes( 16 );
+		assert( strlen( $data ) == 16 );
+
+		$data[6] = chr( ord( $data[6] ) & 0x0f | 0x40 ); // set version to 0100.
+		$data[8] = chr( ord( $data[8] ) & 0x3f | 0x80 ); // set bits 6-7 to 10.
+
+		return vsprintf( '%s%s-%s-%s-%s-%s%s%s', str_split( bin2hex( $data ), 4 ) );
 	}
 
 	/**
