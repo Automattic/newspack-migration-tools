@@ -27,6 +27,13 @@ class Lede {
 	private $cap;
 
 	/**
+	 * Posts instance.
+	 *
+	 * @var Posts Posts instance.
+	 */
+	private $posts;
+
+	/**
 	 * Logger instance.
 	 *
 	 * @var Logger Logger instance.
