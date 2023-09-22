@@ -45,7 +45,7 @@ class Lede {
 	/**
 	 * Converts Lede Authors to GA authors for a single post.
 	 *
-	 * @param string $live_table_prefix Live tables prefix. Needed to access live_posts and live_postmeta.
+	 * @param string $live_table_prefix Live tables prefix. Needed to access live_posts, live_postmeta and live_users.
 	 * @param int    $post_id           Post ID.
 	 *
 	 * @throws \RuntimeException If required live tables don't exist.
@@ -56,37 +56,15 @@ class Lede {
 		global $wpdb;
 
 		/**
-		 * Validate that tables live_posts and live_postmeta exist.
-		 */
-		$live_posts_table    = esc_sql( $live_table_prefix . 'posts' );
-		$live_postmeta_table = esc_sql( $live_table_prefix . 'postmeta' );
-		// phpcs:ignore -- Table name properly escaped.
-		$test_var = $wpdb->get_var( "select 1 from $live_posts_table;" );
-		if ( ! $test_var ) {
-			throw new \RuntimeException(
-				sprintf(
-					'Table %s not found -- needed to access original Lede Author data.',
-					$live_posts_table
-				)
-			);
-		}
-		// phpcs:ignore -- Table name properly escaped.
-		$test_var = $wpdb->get_var( "select 1 from $live_postmeta_table;" );
-		if ( ! $test_var ) {
-			throw new \RuntimeException( sprintf( 'Table %s not found -- needed to access original Lede Author data.', $live_postmeta_table ) );
-		}
-
-
-		/**
 		 * Get this post's byline postmeta.
 		 */
 		// phpcs:ignore -- Table name properly escaped.
-		$byline_postmeta_row = $wpdb->get_row( "select * from {$wpdb->postmeta} where meta_key = 'byline' and post_id = %d ;", $post_id );
+		$byline_postmeta_row = $wpdb->get_row( $wpdb->prepare( "select * from {$wpdb->postmeta} where meta_key = 'byline' and post_id = %d ;", $post_id ), ARRAY_A );
 		if ( empty( $byline_postmeta_row ) ) {
 			return null;
 		}
 
-		$byline_meta = unserialize( $byline_postmeta_row[0]['meta_value'] );
+		$byline_meta = unserialize( $byline_postmeta_row['meta_value'] );
 		foreach ( $byline_meta['profiles'] as $profile ) {
 			$type = $profile['type'];
 
@@ -100,15 +78,15 @@ class Lede {
 			switch ( $type ) {
 				case 'byline_id':
 					// Unserialized data expects to contain 'term_id' and 'post_id'.
-					$term_id  = $profile['type']['atts']['term_id'] ?? null;
-					$post_id  = $profile['type']['atts']['post_id'] ?? null;
+					$term_id  = $profile['atts']['term_id'] ?? null;
+					$post_id  = $profile['atts']['post_id'] ?? null;
 					$ga_id    = $this->convert_byline_id_author_profile_type_to_ga( $live_table_prefix, $term_id, $post_id );
 					$ga_ids[] = $ga_id;
 					break;
 
 				case 'text':
 					// Unserialized data is only expected to have 'text', i.e. display_name.
-					$text     = $profile['type']['atts']['text'] ?? null;
+					$text     = $profile['atts']['text'] ?? null;
 					$ga_id    = $this->convert_text_author_profile_type_to_ga( $text );
 					$ga_ids[] = $ga_id;
 					break;
@@ -152,8 +130,9 @@ class Lede {
 
 	/**
 	 * Converts Lede Author byline of type 'profile' to GA.
+	 * If a GA exists with same display_name, it will return that GA's ID and also update its data from Lede Author data.
 	 *
-	 * @param string $live_table_prefix Live tables prefix. Needed to access live_posts and live_postmeta.
+	 * @param string $live_table_prefix Live tables prefix. Needed to access live_posts, live_postmeta and live_users.
 	 * @param int    $term_id              Not really used because we seem to be finding all the info in author $post_id.
 	 * @param int    $post_id              Author post ID.
 	 *
@@ -166,7 +145,7 @@ class Lede {
 
 		$live_posts_table = esc_sql( $live_table_prefix . 'posts' );
 		// phpcs:ignore -- Table name properly escaped.
-		$profile_post_row = $wpdb->get_row( $wpdb->prepare( "select * from {$live_posts_table} where ID = %d;", $post_id ) );
+		$profile_post_row = $wpdb->get_row( $wpdb->prepare( "select * from {$live_posts_table} where ID = %d;", $post_id ), ARRAY_A );
 		if ( empty( $profile_post_row ) ) {
 			return null;
 		}
@@ -190,8 +169,9 @@ class Lede {
 		}
 
 		// Get author data from wp_postmeta.
+		$live_postmeta_table = esc_sql( $live_table_prefix . 'postmeta' );
 		// phpcs:ignore -- Table name properly escaped.
-		$profile_postmeta_rows = $wpdb->get_results( "SELECT * FROM {$live_posts_table} WHERE post_id = {$profile_post_row['ID']};", ARRAY_A );
+		$profile_postmeta_rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$live_postmeta_table} WHERE post_id = %d;", $profile_post_row['ID'] ), ARRAY_A );
 		foreach ( $profile_postmeta_rows as $profile_postmeta_row ) {
 
 			// user_login can be stored as postmeta. Use it if exists.
@@ -240,34 +220,59 @@ class Lede {
 
 		// Append social links to the description.
 		if ( ! empty( $social_links ) ) {
+			if ( ! isset( $ga_args['description'] ) ) {
+				$ga_args['description'] = '';
+			}
 			$ga_args['description'] .= ! empty( $ga_args['description'] ) ? ' ' : '';
 			$ga_args['description'] .= implode( ' ', $social_links );
 		}
 
 		// Check if GA already exists.
-		$ga_id = null;
-		if ( isset( $ga_args['user_login'] ) && ! empty( $ga_args['user_login'] ) ) {
-			$ga    = $this->cap->get_guest_author_by_user_login( $ga_args['user_login'] );
-			$ga_id = $ga ? $ga->ID : null;
-		} else {
-			$ga    = $this->cap->get_guest_author_by_display_name( $ga_args['display_name'] );
-			$ga_id = $ga ? $ga->ID : null;
-		}
-		if ( $ga_id ) {
-			return $ga_id;
-		}
+		$ga    = $this->cap->get_guest_author_by_display_name( $ga_args['display_name'] );
+		$ga    = is_array( $ga ) && count( $ga ) > 1 ? $ga[0] : $ga;
+		$ga_id = $ga ? $ga->ID : null;
 
-		// Create GA.
-		$ga_id = $this->cap->create_guest_author( $ga_args );
+		// Create GA if doesn't exist, or update existing GA's data.
 		if ( ! $ga_id ) {
-			throw new \RuntimeException( sprintf( 'create_guest_author() did not return ga_id, ga_args:%s', json_encode( $ga_args ) ) );
+			$ga_id = $this->cap->create_guest_author( $ga_args );
+			if ( ! $ga_id ) {
+				throw new \RuntimeException( sprintf( 'create_guest_author() did not return ga_id, ga_args:%s', json_encode( $ga_args ) ) );
+			}
+		} else {
+			$update_args = [];
+			if ( isset( $ga_args['first_name'] ) ) {
+				$update_args['first_name'] = $ga_args['first_name'];
+			}
+			if ( isset( $ga_args['last_name'] ) ) {
+				$update_args['last_name'] = $ga_args['last_name'];
+			}
+			if ( isset( $ga_args['user_email'] ) ) {
+				$update_args['user_email'] = $ga_args['user_email'];
+			}
+			if ( isset( $ga_args['website'] ) ) {
+				$update_args['website'] = $ga_args['website'];
+			}
+			if ( isset( $ga_args['description'] ) ) {
+				$update_args['description'] = $ga_args['description'];
+			}
+			if ( isset( $ga_args['avatar'] ) ) {
+				$update_args['avatar'] = $ga_args['avatar'];
+			}
+
+			$this->cap->update_guest_author( $ga_id, $update_args );
 		}
 
 		// Link WP_User.
 		if ( $linked_wp_user_id ) {
-			$wp_user = get_user_by( 'ID', $linked_wp_user_id );
-			if ( $wp_user ) {
-				$this->cap->link_guest_author_to_wp_user( $ga_id, $wp_user );
+			$live_users_table = esc_sql( $live_table_prefix . 'users' );
+			// Get user with original ID from live table. Then find the new user ID.
+			// phpcs:ignore -- Table name properly escaped.
+			$wp_user_email = $wpdb->get_var( $wpdb->prepare( "select user_email from {$live_users_table} where ID = %d;", $linked_wp_user_id ), ARRAY_A );
+			if ( $wp_user_email ) {
+				$wp_user = get_user_by( 'email', $wp_user_email );
+				if ( $wp_user ) {
+					$this->cap->link_guest_author_to_wp_user( $ga_id, $wp_user );
+				}
 			}
 		}
 
