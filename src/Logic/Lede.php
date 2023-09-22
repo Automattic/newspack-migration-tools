@@ -112,11 +112,11 @@ class Lede {
 
 		// Get existing GA.
 		$result = $this->cap->get_guest_author_by_display_name( $text );
-		if ( 1 == count( $result ) ) {
+		if ( $result && is_object( $result ) ) {
 			$ga_id = $result->ID;
 
 			return $ga_id;
-		} elseif ( count( $result ) > 1 ) {
+		} elseif ( $result && is_array( $result ) && count( $result ) > 1 ) {
 			$ga_id = $result[0]->ID;
 
 			return $ga_id;
@@ -188,6 +188,9 @@ class Lede {
 
 			// Short bio can be stored as short_bio meta_key. Append it to description with a double line break.
 			if ( 'short_bio' == $profile_postmeta_row['meta_key'] && ! empty( $profile_postmeta_row['meta_value'] ) ) {
+				if ( ! isset( $ga_args['description'] ) ) {
+					$ga_args['description'] = '';
+				}
 				$ga_args['description'] .= ! empty( $ga_args['description'] ) ? "\n\n" : '';
 				$ga_args['description'] .= $profile_postmeta_row['meta_value'];
 			}
