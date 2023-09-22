@@ -65,6 +65,7 @@ class Lede {
 		}
 
 		$byline_meta = unserialize( $byline_postmeta_row['meta_value'] );
+		$ga_ids      = [];
 		foreach ( $byline_meta['profiles'] as $profile ) {
 			$type = $profile['type'];
 
@@ -74,14 +75,13 @@ class Lede {
 			}
 
 			// Convert byline to GAs.
-			$ga_ids = [];
 			switch ( $type ) {
 				case 'byline_id':
 					// Unserialized data expects to contain 'term_id' and 'post_id'.
-					$term_id  = $profile['atts']['term_id'] ?? null;
-					$post_id  = $profile['atts']['post_id'] ?? null;
-					$ga_id    = $this->convert_byline_id_author_profile_type_to_ga( $live_table_prefix, $term_id, $post_id );
-					$ga_ids[] = $ga_id;
+					$byline_term_id = $profile['atts']['term_id'] ?? null;
+					$byline_post_id = $profile['atts']['post_id'] ?? null;
+					$ga_id          = $this->convert_byline_id_author_profile_type_to_ga( $live_table_prefix, $byline_term_id, $byline_post_id );
+					$ga_ids[]       = $ga_id;
 					break;
 
 				case 'text':
@@ -133,19 +133,18 @@ class Lede {
 	 * If a GA exists with same display_name, it will return that GA's ID and also update its data from Lede Author data.
 	 *
 	 * @param string $live_table_prefix Live tables prefix. Needed to access live_posts, live_postmeta and live_users.
-	 * @param int    $term_id              Not really used because we seem to be finding all the info in author $post_id.
-	 * @param int    $post_id              Author post ID.
-	 *
-	 * @throws \RuntimeException If GA wasn't created successfully.
+	 * @param int    $byline_term_id    Not really used because we seem to be finding all the info in author $post_id.
+	 * @param int    $byline_post_id    Author post ID.
 	 *
 	 * @return int|null GA ID, existing or newly created.
+	 * @throws \RuntimeException If GA wasn't created successfully.
 	 */
-	public function convert_byline_id_author_profile_type_to_ga( $live_table_prefix, $term_id, $post_id ) {
+	public function convert_byline_id_author_profile_type_to_ga( $live_table_prefix, $byline_term_id, $byline_post_id ) {
 		global $wpdb;
 
 		$live_posts_table = esc_sql( $live_table_prefix . 'posts' );
 		// phpcs:ignore -- Table name properly escaped.
-		$profile_post_row = $wpdb->get_row( $wpdb->prepare( "select * from {$live_posts_table} where ID = %d;", $post_id ), ARRAY_A );
+		$profile_post_row = $wpdb->get_row( $wpdb->prepare( "select * from {$live_posts_table} where ID = %d;", $byline_post_id ), ARRAY_A );
 		if ( empty( $profile_post_row ) ) {
 			return null;
 		}
