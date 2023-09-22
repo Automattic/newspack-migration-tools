@@ -74,17 +74,17 @@ class Lede {
 		$byline_meta = unserialize( $byline_postmeta_row['meta_value'] );
 		$ga_ids      = [];
 		foreach ( $byline_meta['profiles'] as $profile ) {
-			$type = $profile['type'];
 
 			// Check if script knows how to convert this byline type.
+			$type = $profile['type'];
 			if ( ! in_array( $type, self::KNOWN_LEDE_AUTHOR_BYLINE_TYPES ) ) {
 				throw new \RuntimeException( sprintf( "Byline type '$type' is unknown. See self::KNOWN_LEDE_AUTHOR_BYLINE_TYPES and write more code to convert this byline type to GA." ) );
 			}
 
-			// Convert byline to GAs.
+			// Convert byline types to GAs.
 			switch ( $type ) {
 				case 'byline_id':
-					// Unserialized data expects to contain 'term_id' and 'post_id'.
+					// Unserialized postmeta data expects to contain 'term_id' and 'post_id'.
 					$byline_term_id = $profile['atts']['term_id'] ?? null;
 					$byline_post_id = $profile['atts']['post_id'] ?? null;
 					$ga_id          = $this->convert_byline_id_author_profile_type_to_ga( $live_table_prefix, $byline_term_id, $byline_post_id );
@@ -92,7 +92,7 @@ class Lede {
 					break;
 
 				case 'text':
-					// Unserialized data is only expected to have 'text', i.e. display_name.
+					// Unserialized postmeta data is only expected to have 'text', i.e. display_name.
 					$text     = $profile['atts']['text'] ?? null;
 					$ga_id    = $this->convert_text_author_profile_type_to_ga( $text );
 					$ga_ids[] = $ga_id;
@@ -100,7 +100,7 @@ class Lede {
 			}
 		}
 
-		// Finally assign GAs to the post.
+		// Assign GAs to the post.
 		if ( $ga_ids ) {
 			$this->cap->assign_guest_authors_to_post( $ga_ids, $post_id, $append_to_existing_users = false );
 		}
@@ -156,7 +156,7 @@ class Lede {
 			return null;
 		}
 
-		// post_title is mandatory.
+		// post_title is display name is mandatory.
 		if ( empty( $profile_post_row['post_title'] ) ) {
 			return null;
 		}
@@ -165,7 +165,7 @@ class Lede {
 		$ga_args      = [];
 		$social_links = [];
 
-		// Get author data available from wp_posts.
+		// Get author data stored in wp_post.
 		$ga_args['display_name'] = $profile_post_row['post_title'];
 		if ( ! empty( $profile_post_row['post_content'] ) ) {
 			$ga_args['description'] = $profile_post_row['post_content'];
@@ -174,13 +174,13 @@ class Lede {
 			$ga_args['user_login'] = $profile_post_row['post_name'];
 		}
 
-		// Get author data from wp_postmeta.
+		// Get author data stored in wp_postmeta.
 		$live_postmeta_table = esc_sql( $live_table_prefix . 'postmeta' );
 		// phpcs:ignore -- Table name properly escaped.
 		$profile_postmeta_rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$live_postmeta_table} WHERE post_id = %d;", $profile_post_row['ID'] ), ARRAY_A );
 		foreach ( $profile_postmeta_rows as $profile_postmeta_row ) {
 
-			// user_login can be stored as postmeta. Use it if exists.
+			// user_login.
 			if ( 'user_login' == $profile_postmeta_row['meta_key'] && ! empty( $profile_postmeta_row['meta_value'] ) ) {
 				$ga_args['user_login'] = $profile_postmeta_row['meta_value'];
 			}
@@ -193,7 +193,7 @@ class Lede {
 				$ga_args['user_email'] = $profile_postmeta_row['meta_value'];
 			}
 
-			// Short bio can be stored as short_bio meta_key. Append it to description with a double line break.
+			// Short bio. Append it to description after a double line break.
 			if ( 'short_bio' == $profile_postmeta_row['meta_key'] && ! empty( $profile_postmeta_row['meta_value'] ) ) {
 				if ( ! isset( $ga_args['description'] ) ) {
 					$ga_args['description'] = '';
@@ -220,7 +220,7 @@ class Lede {
 				$linked_wp_user_id = $profile_postmeta_row['meta_value'];
 			}
 
-			// Get additional social links.
+			// Additional social links.
 			if ( 'twitter' == $profile_postmeta_row['meta_key'] && ! empty( $profile_postmeta_row['meta_value'] ) ) {
 				$handle         = $profile_postmeta_row['meta_value'];
 				$social_links[] = sprintf( '<a href="https://twitter.com/%s" target="_blank">Twitter @%s</a>', $handle, $handle );
@@ -271,7 +271,7 @@ class Lede {
 			$this->cap->update_guest_author( $ga_id, $update_args );
 		}
 
-		// Link WP_User.
+		// Link GA to WP_User.
 		if ( $linked_wp_user_id ) {
 			$live_users_table = esc_sql( $live_table_prefix . 'users' );
 			// Get user with original ID from live table. Then find the new user ID.
@@ -287,5 +287,4 @@ class Lede {
 
 		return $ga_id;
 	}
-
 }
