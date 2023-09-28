@@ -113,7 +113,7 @@ class Attachments {
 	 *
 	 * @return int|null Attachment ID if found, null otherwise.
 	 */
-	public function maybe_get_existing_attachment_id( string $filepath, string $filename = '' ): int|null {
+	public function maybe_get_existing_attachment_id( string $filepath, string $filename = '' ) {
 		if ( ! file_exists( $filepath ) ) {
 			return null;
 		}
