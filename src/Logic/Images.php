@@ -1,4 +1,9 @@
 <?php
+/**
+ * Replaces strings in <img> elements in Posts.
+ *
+ * @package NewspackCustomContentMigrator
+ */
 
 namespace NewspackCustomContentMigrator\Logic;
 
@@ -22,6 +27,7 @@ class Images {
 		global $wpdb;
 
 		// Get post_content.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$post_content         = $wpdb->get_var( $wpdb->prepare( "SELECT post_content FROM {$wpdb->posts} WHERE ID = %d", $post_id ) );
 		$post_content_updated = $post_content;
 
@@ -45,6 +51,7 @@ class Images {
 		// Update post_content.
 		$updated = 0;
 		if ( $post_content_updated != $post_content ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 			$updated = $wpdb->update( $wpdb->posts, [ 'post_content' => $post_content_updated ], [ 'ID' => $post_id ] );
 		}
 
