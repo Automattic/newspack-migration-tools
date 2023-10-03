@@ -2,7 +2,7 @@
 
 namespace Newspack\MigrationTools\Logic;
 
-use WP_CLI;
+use Newspack\MigrationTools\Util\Log\CliLog;
 
 /**
  * Posts logic class.
@@ -11,11 +11,10 @@ class Posts {
 	/**
 	 * @param string|array $post_type   Post type(s).
 	 * @param array        $post_status Post statuses.
-	 * @param boolean      $nopaging    Deprecated usage, optional param kept for backward compatibility. Always defaults to true.
 	 *
 	 * @return array
 	 */
-	public function get_all_posts_ids( $post_type = 'post', $post_status = [ 'publish', 'future', 'draft', 'pending', 'private', 'inherit' ], $nopaging = true ) {
+	public function get_all_posts_ids( $post_type = 'post', $post_status = [ 'publish', 'future', 'draft', 'pending', 'private', 'inherit' ] ) {
 		global $wpdb;
 
 		// Create $post_type statement placeholders.
@@ -37,6 +36,7 @@ class Posts {
 				array_merge( $post_type, $post_status )
 			)
 		);
+
 		// phpcs:enable
 
 		return $ids;
@@ -45,9 +45,9 @@ class Posts {
 	/**
 	 * This function conveniently returns all post IDs in a given range.
 	 *
-	 * @param int          $from_id From Post ID.
-	 * @param int          $to_id  To Post ID.
-	 * @param array        $post_types Target Post Types.
+	 * @param int          $from_id     From Post ID.
+	 * @param int          $to_id       To Post ID.
+	 * @param array        $post_types  Target Post Types.
 	 * @param string|array $post_status Target Post Statuses.
 	 *
 	 * @return array
@@ -77,36 +77,7 @@ class Posts {
 				...$post_status
 			)
 		);
-		// phpcs:enable
 
-		return $ids;
-	}
-
-	public function get_post_ids_in_range( int $from_id, int $to_id, array $post_types, $post_status = '' ): array {
-		if ( empty( $post_status ) ) {
-			$post_status = [ 'publish', 'future', 'draft', 'pending', 'private', 'inherit' ];
-		}
-		global $wpdb;
-
-		$post_type_placeholders = implode( ',', array_fill( 0, count( $post_types ), '%s' ) );
-
-		// Create $post_status statement placeholders.
-		$post_status_placeholders = implode( ',', array_fill( 0, count( $post_status ), '%s' ) );
-
-		// phpcs:disable -- used wpdb's prepare() and placeholders.
-		$ids = $wpdb->get_col(
-			$wpdb->prepare(
-				"SELECT ID
-			FROM {$wpdb->posts}
-			WHERE ID BETWEEN %d AND %d
-			AND post_type IN ( $post_type_placeholders )
-			AND post_status IN ( $post_status_placeholders )",
-				$from_id,
-				$to_id,
-				...$post_types,
-				...$post_status
-			)
-		);
 		// phpcs:enable
 
 		return $ids;
@@ -118,6 +89,8 @@ class Posts {
 	 * @param int          $category_term_id Category ID.
 	 * @param string|array $post_type        Post type(s).
 	 * @param array        $post_status      Post statuses.
+	 *
+	 * @throws \UnexpectedValueException If term_taxonomy_id not found.
 	 *
 	 * @return array
 	 */
@@ -134,6 +107,7 @@ class Posts {
 		$post_status_placeholders = implode( ',', array_fill( 0, count( $post_status ), '%s' ) );
 
 		// Get term_taxonomy_id.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$term_taxonomy_id = $wpdb->get_var(
 			$wpdb->prepare(
 				"select term_taxonomy_id from {$wpdb->term_taxonomy} where term_id = %d;",
@@ -141,6 +115,7 @@ class Posts {
 			)
 		);
 		if ( ! $term_taxonomy_id ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			throw new \UnexpectedValueException( sprintf( 'Term taxonomy ID not found for term_id %s.', $category_term_id ) );
 		}
 
@@ -156,17 +131,18 @@ class Posts {
 				array_merge( [ $term_taxonomy_id ], $post_type, $post_status )
 			)
 		);
+
 		// phpcs:enable
 
 		return $ids;
 	}
 
 	/**
-
 	 * Gets IDs of all the Posts.
 	 * Uses WP_Query::get_posts. If $nopaging=true is used, might break on larger DBs on Atomic. Deprecation notice below.
 	 *
 	 * @deprecated May break on large DBs on Atomic due to Atomic resource restrictions, replaced by self::get_all_posts_ids().
+	 *
 	 * @param string|array $post_type   $post_type argument for \WP_Query::get_posts.
 	 * @param array        $post_status $post_status argument for \WP_Query::get_posts.
 	 * @param boolean      $nopaging    $nopaging argument for \WP_Query::get_posts.
@@ -216,7 +192,7 @@ class Posts {
 			ORDER BY wp.ID;
 SQL;
 		// phpcs:ignore -- false positive, all params are fully sanitized.
-		$results_post_ids               = $wpdb->get_results( $wpdb->prepare( $sql_get_post_ids_with_taxonomy, $tag_taxonomy ), ARRAY_A );
+		$results_post_ids = $wpdb->get_results( $wpdb->prepare( $sql_get_post_ids_with_taxonomy, $tag_taxonomy ), ARRAY_A );
 
 		if ( ! empty( $results_post_ids ) ) {
 			foreach ( $results_post_ids as $result_post_id ) {
@@ -230,7 +206,7 @@ SQL;
 	/**
 	 * For a post ID, gets tags which have the given taxonomy.
 	 *
-	 * @param int    $post_id         Post ID.
+	 * @param int    $post_id      Post ID.
 	 * @param string $tag_taxonomy Tag tagxonomy.
 	 *
 	 * @return array Tag names with given taxonomy which this post has.
@@ -250,7 +226,7 @@ SQL;
 			AND wp.post_status = 'publish'
 SQL;
 		// phpcs:ignore -- false positive, all params are fully sanitized.
-		$results_names                  = $wpdb->get_results( $wpdb->prepare( $sql_get_post_ids_with_taxonomy, $tag_taxonomy, $post_id ), ARRAY_A );
+		$results_names = $wpdb->get_results( $wpdb->prepare( $sql_get_post_ids_with_taxonomy, $tag_taxonomy, $post_id ), ARRAY_A );
 		if ( ! empty( $results_names ) ) {
 			foreach ( $results_names as $results_name ) {
 				$names[] = $results_name['name'];
@@ -270,7 +246,7 @@ SQL;
 
 		$post_types = [];
 		// phpcs:ignore
-		$results    = $wpdb->get_results( "SELECT DISTINCT post_type FROM {$wpdb->posts}" );
+		$results = $wpdb->get_results( "SELECT DISTINCT post_type FROM {$wpdb->posts}" );
 		foreach ( $results as $result ) {
 			$post_types[] = $result->post_type;
 		}
@@ -294,11 +270,13 @@ SQL;
 	 * @return \WP_Post[]
 	 */
 	public function get_post_objects_with_taxonomy_and_term( $taxonomy, $term_id, $post_types = array( 'post', 'page' ) ) {
+		//phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
 		return get_posts(
 			[
 				'posts_per_page' => -1,
 				// Target all post_types.
 				'post_type'      => $post_types,
+				//phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
 				'tax_query'      => [
 					[
 						'taxonomy' => $taxonomy,
@@ -320,9 +298,11 @@ SQL;
 	 * @return int|\WP_Error|\WP_Term[]
 	 */
 	public function get_terms_with_meta( $meta_key, $meta_value, $taxonomy = 'category' ) {
+		//phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 		return get_terms(
 			[
 				'hide_empty' => false,
+				//phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 				'meta_query' => [
 					[
 						'key'     => $meta_key,
@@ -436,15 +416,16 @@ SQL;
 	/**
 	 * Batch posts and execute a callback action on each one, with a wait time between the batches.
 	 *
-	 * @param array    $query_args Arguments to retrieve posts, the same as the ones for get_posts function.
-	 * @param callable $callback The callback function to execute on each post, get the post as parameter.
-	 * @param integer  $wait The waiting time between batches in seconds.
+	 * @param array    $query_args      Arguments to retrieve posts, the same as the ones for get_posts function.
+	 * @param callable $callback        The callback function to execute on each post, get the post as parameter.
+	 * @param integer  $wait            The waiting time between batches in seconds.
 	 * @param integer  $posts_per_batch Total of posts tohandle per batch.
-	 * @param integer  $batch Current batch in the loop.
+	 * @param integer  $batch           Current batch in the loop.
+	 *
 	 * @return void
 	 */
 	public function throttled_posts_loop( $query_args, $callback, $wait = 3, $posts_per_batch = 1000, $batch = 1 ) {
-		WP_CLI::line( sprintf( 'Batch #%d', $batch ) );
+		CliLog::get_logger( 'Posts' )->info( sprintf( 'Batch #%d', $batch ) );
 
 		$args = array_merge(
 			array(
@@ -475,7 +456,8 @@ SQL;
 	 * By Creating an HTML file and uploading it to be set as the iframe source.
 	 *
 	 * @param string $html_to_embed HTML code to embed.
-	 * @param int    $post_id Post ID where to embed the HTML, used to generate unique Iframe source filename.
+	 * @param int    $post_id       Post ID where to embed the HTML, used to generate unique Iframe source filename.
+	 *
 	 * @return string Iframe block code to be add to the post content.
 	 */
 	public function embed_iframe_block_from_html( $html_to_embed, $post_id ) {
@@ -502,6 +484,7 @@ SQL;
 	 * Generate Newspack Iframe Block code from URL.
 	 *
 	 * @param string $src Iframe source URL.
+	 *
 	 * @return string Iframe block code to be add to the post content.
 	 */
 	public function embed_iframe_block_from_src( $src ) {
@@ -512,6 +495,7 @@ SQL;
 	 * Generate Jetpack Slideshow Block code from Media Posts.
 	 *
 	 * @param int[] $post_ids Media Posts IDs.
+	 *
 	 * @return string Jetpack Slideshow block code to be add to the post content.
 	 */
 	public function generate_jetpack_slideshow_block_from_media_posts( $post_ids ) {
@@ -534,49 +518,7 @@ SQL;
 			$content .= '<li class="wp-block-jetpack-slideshow_slide swiper-slide"><figure><img alt="' . $post->post_title . '" class="wp-block-jetpack-slideshow_image wp-image-' . $post->ID . '" data-id="' . $post->ID . '" src="' . wp_get_attachment_url( $post->ID ) . '"/><figcaption class="wp-block-jetpack-slideshow_caption gallery-caption">' . $caption . '</figcaption></figure></li>';
 		}
 		$content .= '</ul><a class="wp-block-jetpack-slideshow_button-prev swiper-button-prev swiper-button-white" role="button"></a><a class="wp-block-jetpack-slideshow_button-next swiper-button-next swiper-button-white" role="button"></a><a aria-label="Pause Slideshow" class="wp-block-jetpack-slideshow_button-pause" role="button"></a><div class="wp-block-jetpack-slideshow_pagination swiper-pagination swiper-pagination-white"></div></div></div><!-- /wp:jetpack/slideshow -->';
-		return $content;
-	}
 
-	/**
-	 * Generate Jetpack Slideshow Block code from Media Posts.
-	 *
-	 * @param int[] $images Media Posts IDs.
-	 * @return string Jetpack Slideshow block code to be add to the post content.
-	 */
-	public function generate_jetpack_slideshow_block_from_pictures( $images ) {
-		foreach ( $images as $key => $image ) {
-			$post          = get_page_by_title( $image['name'], OBJECT, 'attachment' );
-			$attachment_id = 0;
-
-			if ( ! $post ) {
-				$attachment = array(
-					'guid'           => $image['filename'],
-					'post_mime_type' => "image/{$image['filetype']}",
-					'post_title'     => $image['name'],
-					'post_content'   => '',
-					'post_status'    => 'inherit',
-				);
-
-				$attachment_id = wp_insert_attachment( $attachment, $image['filename'] );
-			}
-
-			$images[ $key ]['post_id'] = $post ? $post->ID : $attachment_id;
-		}
-
-		$images_posts_ids = array_map(
-			function( $image ) {
-				return $image['post_id'];
-			},
-			$images
-		);
-
-		$content  = '<!-- wp:jetpack/slideshow {"ids":[' . join( ',', $images_posts_ids ) . '],"sizeSlug":"large"} -->';
-		$content .= '<div class="wp-block-jetpack-slideshow aligncenter" data-effect="slide"><div class="wp-block-jetpack-slideshow_container swiper-container"><ul class="wp-block-jetpack-slideshow_swiper-wrapper swiper-wrapper">';
-		foreach ( $images as $image ) {
-			$caption  = ! empty( $image['description'] ) ? $image['description'] : $image['name'];
-			$content .= '<li class="wp-block-jetpack-slideshow_slide swiper-slide"><figure><img alt="' . $image['name'] . '" class="wp-block-jetpack-slideshow_image wp-image-' . $image['post_id'] . '" data-id="' . $image['post_id'] . '" src="' . $image['filename'] . '"/><figcaption class="wp-block-jetpack-slideshow_caption gallery-caption">' . $caption . '</figcaption></figure></li>';
-		}
-		$content .= '</ul><a class="wp-block-jetpack-slideshow_button-prev swiper-button-prev swiper-button-white" role="button"></a><a class="wp-block-jetpack-slideshow_button-next swiper-button-next swiper-button-white" role="button"></a><a aria-label="Pause Slideshow" class="wp-block-jetpack-slideshow_button-pause" role="button"></a><div class="wp-block-jetpack-slideshow_pagination swiper-pagination swiper-pagination-white"></div></div></div><!-- /wp:jetpack/slideshow -->';
 		return $content;
 	}
 
@@ -584,10 +526,12 @@ SQL;
 	 * Gets a list of post IDs and the number of revisions each one has. It will return only posts that have more than $num_of_revisions revisions
 	 *
 	 * @param integer $num_of_revisions The minimum number of revisions you want to search for.
+	 *
 	 * @return array An array of objects, each object having two keys: post_ID and num_of_revisions.
 	 */
 	public function get_posts_by_number_of_revisions( $num_of_revisions = 500 ) {
 		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT post_parent as post_ID, COUNT(ID) as num_of_revisions
@@ -597,6 +541,7 @@ SQL;
 				$num_of_revisions
 			)
 		);
+
 		return $results;
 	}
 
@@ -604,28 +549,33 @@ SQL;
 	 * Gets the number of revisions a post has
 	 *
 	 * @param integer $post_id The post ID.
+	 *
 	 * @return integer
 	 */
 	public function get_post_number_of_revisions( $post_id ) {
 		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$result = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT COUNT(ID) FROM $wpdb->posts WHERE post_type = 'revision' AND post_parent = %d",
 				$post_id
 			)
 		);
+
 		return (int) $result;
 	}
 
 	/**
 	 * Deletes revisions from a post, from the oldest to the newest
 	 *
-	 * @param integer $post_id The post ID.
+	 * @param integer $post_id    The post ID.
 	 * @param integer $chunk_size The number of revisions to be deleted.
+	 *
 	 * @return integer|false The number of revisions deleted or false on failure.
 	 */
 	public function delete_post_revisions( $post_id, $chunk_size ) {
 		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$ids          = $wpdb->get_col(
 			$wpdb->prepare(
 				"SELECT ID FROM $wpdb->posts WHERE post_type = 'revision' AND post_parent = %d ORDER BY post_date ASC LIMIT %d",
@@ -634,12 +584,14 @@ SQL;
 			)
 		);
 		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
-		$deleted      = $wpdb->query(
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$deleted = $wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM $wpdb->posts WHERE ID IN ($placeholders)", // phpcs:ignore
 				$ids
 			)
 		);
+
 		return $deleted;
 	}
 
@@ -651,10 +603,10 @@ SQL;
 	 * @return array $updated {
 	 *     Resulting updated records.
 	 *
-	 *     @type int ID                   Live Post ID.
-	 *     @type string post_name_old     Previous post_name.
-	 *     @type string post_name_updated New post_name.
-	 * }
+	 * @type int ID                   Live Post ID.
+	 * @type string post_name_old     Previous post_name.
+	 * @type string post_name_updated New post_name.
+	 *                          }
 	 */
 	public function fix_duplicate_slugs( array $post_types ): array {
 		global $wpdb;
@@ -664,7 +616,7 @@ SQL;
 		// Query which post_names have dupes.
 		$post_types_placeholders = implode( ',', array_fill( 0, count( $post_types ), '%s' ) );
 		// phpcs:disable -- Placeholders used and query sanitized
-		$results                 = $wpdb->get_results(
+		$results = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT post_name, COUNT(*) counter
 				FROM $wpdb->posts
@@ -683,8 +635,10 @@ SQL;
 			$post_names[] = $result['post_name'];
 		}
 
+		$cli_log = CliLog::get_logger( 'Posts: fix_duplicate_slugs()' );
+
 		foreach ( $post_names as $key_post_name => $post_name ) {
-			WP_CLI::log( sprintf( '(%d)/(%d) fixing %s ...', $key_post_name + 1, count( $post_names ), $post_name ) );
+			$cli_log->info( sprintf( '(%d)/(%d) fixing %s ...', $key_post_name + 1, count( $post_names ), $post_name ) );
 
 			// Get IDs with this post_name. Order by post_modified and ID descending.
 			// phpcs:disable -- Placeholders used and query sanitized
@@ -709,7 +663,8 @@ SQL;
 
 				// Rename slugs of previous one(s) by appending "-1" to them.
 				$post_name_updated = $post_name . '-' . ( $key_post_id + 1 );
-				$updated_res       = $wpdb->update(
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.DirectQuery
+				$updated_res = $wpdb->update(
 					$wpdb->posts,
 					[ 'post_name' => $post_name_updated ],
 					[ 'ID' => $post_id ],
@@ -721,7 +676,7 @@ SQL;
 						'post_name_updated' => $post_name_updated,
 					];
 
-					WP_CLI::log( sprintf( 'Updated ID %d post_name to %s', $post_id, $post_name_updated ) );
+					$cli_log->info( sprintf( 'Updated ID %d post_name to %s', $post_id, $post_name_updated ) );
 				}
 			}
 		}
