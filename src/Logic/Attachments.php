@@ -23,6 +23,24 @@ class Attachments {
 	}
 
 	/**
+	 * Wrapper for import_external_file() with fewer args and enforced post_id.
+	 *
+	 * @param int $post_id              Post ID of the post the media should be attached to.
+	 * @param string $path              Media file full URL or full local path, or URL to the media file.
+	 * @param string $alt_text          Optional. Image Attachment `alt` attribute.
+	 * @param array $attachment_args    Optional. Attachment creation argument to override used by the \media_handle_sideload(), used
+	 *                                      internally by the \wp_insert_attachment(), and even more internally by the \wp_insert_post().
+	 * @param string $desired_filename  Optional. If the file you are importing has a different (or no) file extension than the one
+	 *                                      you want the resulting attachment to have, you can specify it here. Make sure that it
+	 *                                      actually matches the file mime type.
+	 *
+	 * @return int|WP_Error
+	 */
+	public function import_attachment_for_post( int $post_id, string $path, string $alt_text = '', array $attachment_args = [], string $desired_filename = '' ): int|WP_Error {
+		return $this->import_external_file( $path, null, null, null, $alt_text, $post_id, $attachment_args, $desired_filename );
+	}
+
+	/**
 	 * Imports/downloads external media file to the Media Library, either from a URL or from a local path.
 	 *
 	 * To untangle the terminology, the optional params Title, Caption, Description and Alt are the params we see in the
@@ -37,10 +55,13 @@ class Attachments {
 	 *                            `yyyy/mm` folder.
 	 * @param array  $args        Optional. Attachment creation argument to override used by the \media_handle_sideload(), used
 	 *                            internally by the \wp_insert_attachment(), and even more internally by the \wp_insert_post().
+	 * @param string $desired_filename Optional. If the file you are importing has a different (or no) file extension than the one
+	 * you want the resulting attachment to have, you can specify it here. Make sure that it
+	 * actually matches the file mime type.
 	 *
 	 * @return int|WP_Error Attachment ID.
 	 */
-	public function import_external_file( $path, $title = null, $caption = null, $description = null, $alt = null, $post_id = 0, $args = [] ) {
+	public function import_external_file( $path, $title = null, $caption = null, $description = null, $alt = null, $post_id = 0, $args = [], $desired_filename = '' ) {
 		// Fetch remote or local file.
 		$is_http = 'http' == substr( $path, 0, 4 );
 		if ( $is_http ) {
@@ -52,11 +73,14 @@ class Attachments {
 			// The `media_handle_sideload()` function deletes the local file after import, so to preserve the local path, we're
 			// first saving it to a temp location, in exactly the same way the WP's own `\download_url()` function above does.
 			$tmpfname = wp_tempnam( $path );
+			if ( ! file_exists( $path ) ) {
+				return new WP_Error( sprintf( 'File %s was not found', $path ) );
+			}
 			copy( $path, $tmpfname );
 		}
 
-		if ( ! file_exists( $tmpfname ) || filesize( $tmpfname ) < 1 ) {
-			return new WP_Error( sprintf( 'File %s was not found or it was empty', $path ) );
+		if ( filesize( $tmpfname ) < 1 ) {
+			return new WP_Error( sprintf( 'File %s was empty', $path ) );
 		}
 
 		$file_array = [
@@ -64,9 +88,11 @@ class Attachments {
 			'tmp_name' => $tmpfname,
 		];
 
-		// If the path does not have a file extension, let's try to find one for it.
-		// Without the extension, the upload will fail because WP will not allow that "file type".
-		if ( ! pathinfo( $path, PATHINFO_EXTENSION ) ) {
+		if ( ! empty( $desired_filename ) ) {
+			$file_array['name'] = $desired_filename;
+		} elseif ( ! pathinfo( $path, PATHINFO_EXTENSION ) ) {
+			// If the path does not have a file extension, let's try to find one for it.
+			// Without the extension, the upload will fail because WP will not allow that "file type".
 			$mimetype           = mime_content_type( $tmpfname );
 			$probably_extension = array_search( $mimetype, wp_get_mime_types() );
 			if ( ! empty( $probably_extension ) ) {
