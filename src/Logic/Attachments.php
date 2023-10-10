@@ -160,7 +160,7 @@ class Attachments {
 		 * Check if files with numeric suffix like `filename-1.jpg` exist in DB.
 		 *
 		 * In case of imported duplicates, WP changes the file name to something like `filename-1.jpg`. In most cases, it wouldn't
-		 * be necessary to search for duplicates, because the original `filename-1.jpg` should already be found in the DB.
+		 * be necessary to search for duplicates, because the original `filename.jpg` should already be found in the DB.
 		 * But some cases were encountered where the original was deleted and duplicates '-1', '-2' exist, and this script would
 		 * not catch those without this.
 		 */
