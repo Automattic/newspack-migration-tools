@@ -161,8 +161,8 @@ class Attachments {
 		 *
 		 * In case of imported duplicates, WP changes the file name to something like `filename-1.jpg`. In most cases, it wouldn't
 		 * be necessary to search for duplicates, because the original `filename.jpg` should already be found in the DB.
-		 * But some cases were encountered where the original was deleted and duplicates '-1', '-2' exist, and this script would
-		 * not catch those without this.
+		 * But some cases were encountered where the original was deleted and duplicates '-1', '-2' remained, and this script would
+		 * not catch those without this part.
 		 */
 		$filename_path_parts    = pathinfo( $filename );
 		$filename_before_suffix = $filename_path_parts['filename'];
