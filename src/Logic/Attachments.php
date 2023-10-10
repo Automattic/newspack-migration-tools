@@ -5,6 +5,9 @@ namespace NewspackCustomContentMigrator\Logic;
 use \WP_CLI;
 use WP_Error;
 
+/**
+ * Attachments logic.
+ */
 class Attachments {
 	/**
 	 * Imports a media object from file and returns the ID.
@@ -149,13 +152,51 @@ class Attachments {
 		}
 
 		global $wpdb;
+
+		// Check if the file with same name exists in the DB.
 		$like = '%' . $wpdb->esc_like( $filename );
-		$sql  = $wpdb->prepare(
-			"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_wp_attached_file' AND meta_value LIKE '%s'",
-			$like
+
+		/*
+		 * Check if files with numeric suffix like `filename-1.jpg` exist in DB.
+		 *
+		 * In case of imported duplicates, WP changes the file name to something like `filename-1.jpg`. In most cases, it wouldn't
+		 * be necessary to search for duplicates, because the original `filename-1.jpg` should already be found in the DB.
+		 * But some cases were encountered where the original was deleted and duplicates '-1', '-2' exist, and this script would
+		 * not catch those without this.
+		 */
+		$filename_path_parts    = pathinfo( $filename );
+		$filename_before_suffix = $filename_path_parts['filename'];
+		$filename_after_suffix  = '.' . $filename_path_parts['extension'];
+		/**
+		 * Here's the regex explained:
+		 *  - .+ -- anything first
+		 *  - %s -- is for filename before suffix
+		 *  - -[0-9]+ -- dash and one or more numbers
+		 *  - \%s -- is for filename after suffix
+		 */
+		$regex_duplicates = esc_sql(
+			sprintf(
+				'.+%s-[0-9]+\\%s',
+				$filename_before_suffix,
+				$filename_after_suffix
+			)
 		);
 
-		foreach ( $wpdb->get_col( $sql ) as $attachment_id ) {
+		// phpcs:disable -- $regex_duplicates is properly sanitized.
+		$sql  = $wpdb->prepare(
+			"SELECT post_id
+			FROM {$wpdb->postmeta}
+			WHERE meta_key = '_wp_attached_file'
+			AND (
+			    meta_value LIKE '%s'
+				OR meta_value REGEXP '$regex_duplicates'
+			) ;",
+			$like
+		);
+		$attachment_ids = $wpdb->get_col( $sql );
+		// phpcs:enable
+
+		foreach ( $attachment_ids as $attachment_id ) {
 
 			$candidate_path = get_attached_file( $attachment_id );
 			// Check the file sizes first. It's a fast operation and will save us from having to do the md5 check.
@@ -165,7 +206,7 @@ class Attachments {
 
 			if ( md5_file( $candidate_path ) === md5_file( $filepath ) ) {
 				return $attachment_id;
-			}       
+			}
 		}
 
 		return null;
@@ -319,19 +360,22 @@ class Attachments {
 
 	/**
 	 * Find an attachment by its filename.
-	 * 
+	 *
 	 * @param string $filename The filename.
 	 * @return int The attachment ID.
 	 */
 	public function get_attachment_by_filename( $filename ) {
 		global $wpdb;
 
+		$filename = esc_sql( $filename );
+		// phpcs:disable -- $filename is properly sanitized.
 		$attachment_id = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT post_id FROM $wpdb->postmeta WHERE meta_key = '_wp_attached_file' AND meta_value LIKE '%s'",
 				'%' . $filename,
 			),
 		);
+		// phpcs:enable
 
 		return $attachment_id;
 	}
