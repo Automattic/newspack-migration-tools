@@ -917,4 +917,33 @@ class GutenbergBlockGenerator {
 	public function get_block_json_array_from_content( $content ) {
 		return json_encode( current( parse_blocks( $content ) ) ); // phpcs:disable WordPress.WP.AlternativeFunctions.json_encode_json_encode
 	}
+
+	/**
+	 * Generate a Newspack Homepage Articles Block.
+	 *
+	 * @param array $category_ids array of category IDs.
+	 * @param array $args args to pass to the block.
+	 *
+	 * @return array
+	 */
+	public function get_homepage_articles_for_category( array $category_ids, array $args ): array {
+		if ( empty( $category_ids ) ) {
+			return [];
+		}
+		$args['categories'] = $category_ids;
+
+		if ( empty( $args['postsToShow'] ) ) {
+			// Enforce a sane default if the value is not passed.
+			$args['postsToShow'] = 16;
+		}
+
+		return [
+			'blockName'    => 'newspack-blocks/homepage-articles',
+			'attrs'        => $args,
+			'innerBlocks'  => [],
+			'innerHTML'    => '',
+			'innerContent' => [],
+		];
+	}
+
 }
