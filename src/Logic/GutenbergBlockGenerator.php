@@ -366,24 +366,33 @@ class GutenbergBlockGenerator {
 	 * @param string $anchor Paragraph anchor.
 	 * @param string $text_color Paragraph text color (black, blue, green, red, yellow, gray, dark-gray, medium-gray, light-gray, white).
 	 * @param string $font_size Paragraph font size (small, normal, medium, large, huge).
+	 * @param array  $additional_css_classes Additional paragraph classes.
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_paragraph( $paragraph_content, $anchor = '', $text_color = '', $font_size = '' ) {
-		$classes = [];
-		$attrs   = [];
+	public function get_paragraph( $paragraph_content, $anchor = '', $text_color = '', $font_size = '', array $additional_css_classes = [] ) {
+
+		// Paragraph can have both <p class=""> classes, and <!-- wp:paragraph {"className":""} --> className attributes (called "Additional CSS classes" in Gutenberg).
+		$paragraph_element_classes = [];
+		$attrs                     = [];
 		if ( ! empty( $text_color ) ) {
-			$classes[]         = 'has-' . $text_color . '-color has-text-color';
-			$attrs['fontSize'] = $text_color;
+			$paragraph_element_classes[] = 'has-' . $text_color . '-color has-text-color';
+			$attrs['fontSize']           = $text_color;
 		}
 		if ( ! empty( $font_size ) ) {
-			$classes[]         = 'has-' . $font_size . '-font-size';
-			$attrs['fontSize'] = $font_size;
+			$paragraph_element_classes[] = 'has-' . $font_size . '-font-size';
+			$attrs['fontSize']           = $font_size;
 		}
 
-		$class = ! empty( $classes ) ? ' class="' . implode( ' ', $classes ) . '"' : '';
+		// Add additional CSS classes to <p> and Block.
+		if ( ! empty( $additional_css_classes ) ) {
+			$paragraph_element_classes = array_merge( $paragraph_element_classes, $additional_css_classes );
+			$attrs['className']        = implode( ' ', $additional_css_classes );
+		}
+
+		$paragraph_element_class_string = ! empty( $paragraph_element_classes ) ? ' class="' . implode( ' ', $paragraph_element_classes ) . '"' : '';
 
 		$anchor_attribute = ! empty( $anchor ) ? ' id="' . $anchor . '"' : '';
-		$content          = '<p' . $anchor_attribute . $class . '>' . $paragraph_content . '</p>';
+		$content          = '<p' . $anchor_attribute . $paragraph_element_class_string . '>' . $paragraph_content . '</p>';
 
 		return [
 			'blockName'    => 'core/paragraph',
