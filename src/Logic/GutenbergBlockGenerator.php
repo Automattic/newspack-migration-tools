@@ -16,6 +16,7 @@
 namespace NewspackCustomContentMigrator\Logic;
 
 use \NewspackCustomContentMigrator\Utils\Logger;
+use WP_Post;
 
 /**
  * Class ContentDiffMigrator and main logic.
@@ -291,6 +292,27 @@ class GutenbergBlockGenerator {
 		return [
 			'blockName'    => 'core/image',
 			'attrs'        => $attrs,
+			'innerBlocks'  => [],
+			'innerHTML'    => $content,
+			'innerContent' => [ $content ],
+		];
+	}
+
+	/**
+	 * Get a video block.
+	 *
+	 * @param WP_Post $attachment_post
+	 *
+	 * @return array
+	 */
+	public function get_video( WP_Post $attachment_post ): array {
+		$video_url   = wp_get_attachment_url( $attachment_post->ID);
+		$content = <<<VIDEO
+<figure class="wp-block-video"><video controls src="$video_url"></video></figure>
+VIDEO;
+		return [
+			'blockName'    => 'core/video',
+			'attrs'        => [],
 			'innerBlocks'  => [],
 			'innerHTML'    => $content,
 			'innerContent' => [ $content ],
@@ -655,7 +677,7 @@ class GutenbergBlockGenerator {
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_group_constrained( $inner_blocks, $custom_classes = [] ) {
+	public function get_group_constrained( $inner_blocks, $custom_classes = [], $attrs = [] ) {
 
 		$class_append_custom = ! empty( $custom_classes ) ? implode( ' ', $custom_classes ) : '';
 
@@ -664,7 +686,6 @@ class GutenbergBlockGenerator {
 		$inner_content   = array_merge( $inner_content, array_fill( 1, count( $inner_blocks ), null ) );
 		$inner_content[] = '</div> ';
 
-		$attrs = [];
 		if ( ! empty( $custom_classes ) ) {
 			$attrs['className'] = implode( ' ', $custom_classes );
 		}
@@ -928,7 +949,7 @@ class GutenbergBlockGenerator {
 	}
 
 	/**
-	 * Generate a Newspack Homepage Articles Block.
+	 * Generate a Newspack Homepage Articles Block for categories.
 	 *
 	 * @param array $category_ids array of category IDs.
 	 * @param array $args args to pass to the block.
@@ -940,6 +961,34 @@ class GutenbergBlockGenerator {
 			return [];
 		}
 		$args['categories'] = $category_ids;
+
+		if ( empty( $args['postsToShow'] ) ) {
+			// Enforce a sane default if the value is not passed.
+			$args['postsToShow'] = 16;
+		}
+
+		return [
+			'blockName'    => 'newspack-blocks/homepage-articles',
+			'attrs'        => $args,
+			'innerBlocks'  => [],
+			'innerHTML'    => '',
+			'innerContent' => [],
+		];
+	}
+
+	/**
+	 * Generate a Newspack Homepage Articles Block with specific posts.
+	 *
+	 * @param array $category_ids array of post IDs.
+	 * @param array $args args to pass to the block.
+	 *
+	 * @return array
+	 */
+	public function get_homepage_articles_for_specific_posts( array $post_ids, array $args ): array {
+		if ( empty( $post_ids ) ) {
+			return [];
+		}
+		$args['specificPosts'] = $post_ids;
 
 		if ( empty( $args['postsToShow'] ) ) {
 			// Enforce a sane default if the value is not passed.
