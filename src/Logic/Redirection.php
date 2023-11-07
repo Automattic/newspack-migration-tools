@@ -57,4 +57,16 @@ class Redirection {
 		return [];
 	}
 
+	/**
+	 * Helper to see if a redirect already exists for a url.
+	 *
+	 * @param string $from Url to check redirects from.
+	 *
+	 * @return bool true if a redirect from that url already exists.
+	 */
+	public function redirect_from_exists( string $from ): bool {
+		$existing_redirects = $this->get_redirects_by_exact_from_url( $from );
+		return ! empty( $existing_redirects );
+	}
+
 }
