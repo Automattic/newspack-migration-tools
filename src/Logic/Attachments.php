@@ -28,11 +28,11 @@ class Attachments {
 	/**
 	 * Wrapper for import_external_file() with fewer args and enforced post_id.
 	 *
-	 * @param int $post_id              Post ID of the post the media should be attached to.
+	 * @param int    $post_id              Post ID of the post the media should be attached to.
 	 * @param string $path              Media file full URL or full local path, or URL to the media file.
 	 * @param string $alt_text          Optional. Image Attachment `alt` attribute.
-	 * @param array $attachment_args    Optional. Attachment creation argument to override used by the \media_handle_sideload(), used
-	 *                                      internally by the \wp_insert_attachment(), and even more internally by the \wp_insert_post().
+	 * @param array  $attachment_args    Optional. Attachment creation argument to override used by the \media_handle_sideload(), used
+	 *                                       internally by the \wp_insert_attachment(), and even more internally by the \wp_insert_post().
 	 * @param string $desired_filename  Optional. If the file you are importing has a different (or no) file extension than the one
 	 *                                      you want the resulting attachment to have, you can specify it here. Make sure that it
 	 *                                      actually matches the file mime type.
@@ -154,7 +154,7 @@ class Attachments {
 		global $wpdb;
 
 		// Check if the file with same name exists in the DB.
-		$like = '%' . $wpdb->esc_like( $filename );
+		$like = '%' . $wpdb->esc_like( sanitize_file_name( $filename ) );
 
 		/*
 		 * Check if files with numeric suffix like `filename-1.jpg` exist in DB.
