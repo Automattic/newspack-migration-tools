@@ -260,12 +260,13 @@ class GutenbergBlockGenerator {
 			$size = 'full';
 		}
 
-		$caption_tag = ! empty( $attachment_post->post_excerpt ) ? '<figcaption class="wp-element-caption">' . $attachment_post->post_excerpt . '</figcaption>' : '';
-		$image_alt   = get_post_meta( $attachment_post->ID, '_wp_attachment_image_alt', true );
-		$image_url   = wp_get_attachment_image_src( $attachment_post->ID, $size )[0];
+		$caption_tag   = ! empty( $attachment_post->post_excerpt ) ? '<figcaption class="wp-element-caption">' . $attachment_post->post_excerpt . '</figcaption>' : '';
+		$image_alt     = get_post_meta( $attachment_post->ID, '_wp_attachment_image_alt', true );
+		$image_url     = wp_get_attachment_image_src( $attachment_post->ID, $size )[0];
+		$attachment_id = intval( $attachment_post->ID );
 
 		$attrs = [
-			'id'       => $attachment_post->ID,
+			'id'       => $attachment_id,
 			'sizeSlug' => $size,
 		];
 
@@ -287,7 +288,7 @@ class GutenbergBlockGenerator {
 
 		$figure_class = 'wp-block-image size-' . $size . ( $classname ? " $classname" : '' ) . ( $align ? " align$align" : '' );
 
-		$content = '<figure class="' . $figure_class . '">' . $a_opening_tag . '<img src="' . $image_url . '" alt="' . $image_alt . '" class="wp-image-' . $attachment_post->ID . '"/>' . $a_closing_tag . $caption_tag . '</figure>';
+		$content = '<figure class="' . $figure_class . '">' . $a_opening_tag . '<img src="' . $image_url . '" alt="' . $image_alt . '" class="wp-image-' . $attachment_id . '"/>' . $a_closing_tag . $caption_tag . '</figure>';
 
 		return [
 			'blockName'    => 'core/image',
@@ -306,8 +307,8 @@ class GutenbergBlockGenerator {
 	 * @return array
 	 */
 	public function get_video( WP_Post $attachment_post ): array {
-		$video_url   = wp_get_attachment_url( $attachment_post->ID);
-		$content = <<<VIDEO
+		$video_url = wp_get_attachment_url( $attachment_post->ID );
+		$content   = <<<VIDEO
 <figure class="wp-block-video"><video controls src="$video_url"></video></figure>
 VIDEO;
 		return [
@@ -674,6 +675,7 @@ VIDEO;
 	 *
 	 * @param array $inner_blocks   Inner blocks.
 	 * @param array $custom_classes Custom classes to be added to the group block.
+	 * @param array $attrs          Attributes to be added to the group block.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
@@ -979,7 +981,7 @@ VIDEO;
 	/**
 	 * Generate a Newspack Homepage Articles Block with specific posts.
 	 *
-	 * @param array $category_ids array of post IDs.
+	 * @param array $post_ids array of post IDs.
 	 * @param array $args args to pass to the block.
 	 *
 	 * @return array
