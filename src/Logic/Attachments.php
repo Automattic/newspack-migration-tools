@@ -98,6 +98,12 @@ class Attachments {
 			// Without the extension, the upload will fail because WP will not allow that "file type".
 			$mimetype           = mime_content_type( $tmpfname );
 			$probably_extension = array_search( $mimetype, wp_get_mime_types() );
+
+			// Sometimes the extension is in the format `jpg|jpeg|jpe`. In that case, we need to get the first one.
+			if ( str_contains( $probably_extension, '|' ) ) {
+				$probably_extension = explode( '|', $probably_extension )[0];
+			}
+
 			if ( ! empty( $probably_extension ) ) {
 				$file_array['name'] .= '.' . $probably_extension;
 			}
