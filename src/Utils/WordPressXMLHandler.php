@@ -67,6 +67,11 @@ class WordPressXMLHandler {
 		if ( false === $user ) {
 			// Try email.
 			$user = get_user_by( 'email', $author_data['user_email'] );
+
+			if ( false !== $user ) {
+				$user->user_login       = $author_data['user_login'];
+				$user->data->user_login = $author_data['user_login'];
+			}
 		}
 
 		if ( false === $user ) {
