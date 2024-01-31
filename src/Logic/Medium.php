@@ -98,14 +98,14 @@ class Medium {
 	const MISSING_POST_URL = "The original URL couldn't be found in exported file.";
 
 	/**
-	 * Array containing tags of all imported posts. Tag's slug will be used
+	 * Array containing categories of all imported posts. category's slug will be used
 	 * as array key, so we can use it to avoid adding duplicate elements.
 	 *
 	 * @access protected
 	 *
-	 * @var array $all_tags All tags that will be imported.
+	 * @var array $all_categories All categories that will be imported.
 	 */
-	protected $all_tags = array();
+	protected $all_categories = array();
 
 	/**
 	 * List of all posts extracted from export archive.
@@ -140,7 +140,7 @@ class Medium {
 	 * @return array Empty array.
 	 */
 	public function get_categories() {
-		return array();
+		return $this->all_categories;
 	}
 
 	/**
@@ -149,7 +149,7 @@ class Medium {
 	 * @return array $all_tags List of all tags for current import.
 	 */
 	public function get_tags() {
-		return $this->all_tags;
+		return array();
 	}
 
 	/**
@@ -346,33 +346,34 @@ class Medium {
 	}
 
 	/**
-	 * Returns all tags for provided post.
+	 * Returns all categories for provided post.
 	 *
 	 * @access private
 	 *
 	 * @param object $post_json JSON object of current post.
 	 *
-	 * @return array $post_tags Array containing all tags of provided post.
+	 * @return array $post_categories Array containing all categories of provided post.
 	 */
-	private function get_post_tags( $post_json ) {
-		$tags_from_json = $post_json->payload->value->virtuals->tags;
+	private function get_post_categories( $post_json ) {
+		// Categories are stored in tags field of JSON object.
+		$categories_from_json = $post_json->payload->value->virtuals->tags;
 
-		if ( ! is_array( $tags_from_json ) ) {
+		if ( ! is_array( $categories_from_json ) ) {
 			return array();
 		}
 
-		$post_tags = array();
+		$post_categories = array();
 
-		foreach ( $tags_from_json as $tag ) {
-			$new_tag = array(
-				'slug' => $tag->slug,
-				'name' => $tag->name,
+		foreach ( $categories_from_json as $category ) {
+			$new_category = array(
+				'slug' => $category->slug,
+				'name' => $category->name,
 			);
 
-			$post_tags[] = $this->create_new_tag( $new_tag );
+			$post_categories[] = $this->create_new_category( $new_category );
 		}
 
-		return $post_tags;
+		return $post_categories;
 	}
 
 	/**
@@ -478,18 +479,18 @@ class Medium {
 	}
 
 	/**
-	 * Adds provided tags to all tags list.
+	 * Adds provided categories to all categories list.
 	 *
-	 * If the tag is already present in the list it won't be duplicated.
+	 * If the category is already present in the list it won't be duplicated.
 	 *
 	 * @access private
 	 *
-	 * @param array $post_tags Array of tags for current post.
+	 * @param array $post_categories Array of categories for current post.
 	 */
-	private function add_tags( $post_tags ) {
-		// Use tag's slug as array key to avoid appending duplicates.
-		foreach ( $post_tags as $post_tag ) {
-			$this->all_tags[ $post_tag['slug'] ] = $post_tag;
+	private function add_categories( $post_categories ) {
+		// Use category's slug as array key to avoid appending duplicates.
+		foreach ( $post_categories as $post_category ) {
+			$this->all_categories[ $post_category['slug'] ] = $post_category;
 		}
 	}
 
@@ -976,19 +977,19 @@ class Medium {
 	}
 
 	/**
-	 * Create a new tag structure with all the keys prepopulated
+	 * Create a new category structure with all the keys prepopulated
 	 *
-	 * @param  array $tag An array of tag data to merge with the default values.
-	 * @return array   The merged array of tag data.
+	 * @param  array $category An array of category data to merge with the default values.
+	 * @return array   The merged array of category data.
 	 */
-	private function create_new_tag( $tag = array() ) {
+	private function create_new_category( $category = array() ) {
 		return array_merge(
 			array(
 				'slug'   => '',
 				'name'   => '',
-				'domain' => 'post_tag',
+				'domain' => 'category',
 			),
-			$tag
+			$category
 		);
 	}
 
@@ -1156,12 +1157,12 @@ class Medium {
 			$item['content']         = $this->get_post_content( $doc, $xpath );
 			$item['status']          = $this->get_post_status( $post_json );
 			$item['post_date_gmt']   = $this->get_post_date_gmt( $post_json );
-			$item['post_taxonomies'] = $this->get_post_tags( $post_json );
+			$item['post_taxonomies'] = $this->get_post_categories( $post_json );
 
 			// Add the newly created item to the list of items.
 			$this->items[] = $item;
-			// Add extracted tags to all tags list.
-			$this->add_tags( $item['post_taxonomies'] );
+			// Add extracted categories to all categories list.
+			$this->add_categories( $item['post_taxonomies'] );
 		}
 
 		// Set the value to what it was before we got a hold of it.
