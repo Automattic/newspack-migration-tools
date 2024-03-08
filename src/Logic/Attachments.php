@@ -385,4 +385,30 @@ class Attachments {
 
 		return $attachment_id;
 	}
+
+	/**
+	 * This helper wraps the `wp_get_attachment_image_src()` function to bypass Jetpack's Photon.
+	 *
+	 * We don't want the CDN urls in migration data because they are harder to replace later.
+	 *
+	 * @param int $attachment_id The attachment ID.
+	 * @param string $size The image size.
+	 * @param bool $icon Whether the image should be an icon.
+	 *
+	 * @return array|false
+	 */
+	public static function get_attachment_image_src( $attachment_id, $size = 'thumbnail', $icon = false ) {
+		static $filter_callback = null;
+		if ( null === $filter_callback ) {
+			$filter_callback = function ( $skip, $image_url, $args, $scheme ) {
+				return true;
+			};
+		}
+		add_filter( 'jetpack_photon_skip_for_url', $filter_callback, 10, 4 );
+		$src = wp_get_attachment_image_src( $attachment_id, $size, $icon );
+		remove_filter( 'jetpack_photon_skip_for_url', $filter_callback );
+
+		return $src;
+	}
+
 }
