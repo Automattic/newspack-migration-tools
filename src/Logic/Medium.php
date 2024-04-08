@@ -678,12 +678,10 @@ class Medium {
 		/*
 		 * First type of embeds is exported as divs with graf--mixtapeEmbed class.
 		 * For example, this is used for Flicker images (and possibly some other embedded images).
-		 * We need to use reverse loop when replacing multiple nodes.
 		 */
 		$div_embeds = $xpath->query( "//div[ contains( @class, 'graf--mixtapeEmbed' ) ]" );
 
-		for ( $i = $div_embeds->length - 1; $i >= 0; $i-- ) {
-			$div_embed  = $div_embeds->item( $i );
+		foreach ( $div_embeds as $div_embed ) {
 			$embed_link = $xpath->query( "//a[ contains( @class, 'markup--mixtapeEmbed-anchor' ) ]", $div_embed );
 
 			if ( empty( $embed_link->item( 0 ) ) ) {
@@ -734,7 +732,7 @@ class Medium {
 
 			$media_resource_id = '';
 			foreach ( $paragraphs as $paragraph ) {
-				if ( $paragraph['name'] === $embed_id ) {
+				if ( isset( $paragraph['name'] ) && $paragraph['name'] === $embed_id ) {
 					// Locate `mediaResourceId` for given embed.
 					$media_resource_id = $paragraph['iframe']['mediaResourceId'];
 					break;
