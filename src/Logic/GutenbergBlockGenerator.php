@@ -340,6 +340,7 @@ VIDEO;
 			'href'           => $attachment_url,
 			'displayPreview' => true,
 			'previewHeight'  => $height,
+			'showDownloadButton'   => $show_download_button,
 		];
 
 		$download_button = $show_download_button ? '<a href="' . $attachment_url . '" class="wp-block-file__button wp-element-button" download aria-describedby="wp-block-file--media-' . $uuid . '">Download</a>' : '';
