@@ -19,13 +19,6 @@ use WP_CLI;
 class GutenbergBlockTransformer {
 
 	/**
-	 * GutenbergBlockGenerator instance.
-	 *
-	 * @var GutenbergBlockGenerator
-	 */
-	private GutenbergBlockGenerator $block_generator;
-
-	/**
 	 * Constructor private to ensure singleton.
 	 */
 	private function __construct() {
@@ -54,6 +47,10 @@ class GutenbergBlockTransformer {
 	 * @return string The post content with all blocks base64 encoded.
 	 */
 	public function encode_post_content( string $post_content ): string {
+		if ( ! str_contains( $post_content, '<!-- ' ) ) {
+			return $post_content;
+		}
+
 		$blocks        = parse_blocks( $post_content );
 		$actual_blocks = array_filter( $blocks, fn( $block ) => ! empty( $block['blockName'] ) && ! str_contains( $block['innerHTML'], '[BLOCK-TRANSFORMER:' ) );
 
@@ -79,9 +76,16 @@ class GutenbergBlockTransformer {
 	public function encode_block( array $block ): array {
 		$as_string = serialize_block( $block );
 
-		$anchor = '[BLOCK-TRANSFORMER:' . base64_encode( $as_string ) . ']';
+		$anchor  = '[BLOCK-TRANSFORMER:' . base64_encode( $as_string ) . ']';
+		$content = '<pre class="wp-block-preformatted">' . $anchor . '</pre>' . str_repeat( PHP_EOL, 2 );
 
-		return $this->block_generator->get_paragraph( $anchor );// Can't use class names - NCC strips them.
+		return [
+			'blockName'    => null, // On purpose.
+			'attrs'        => [],
+			'innerBlocks'  => [],
+			'innerHTML'    => $content,
+			'innerContent' => [ $content ],
+		];
 	}
 
 	/**
@@ -92,6 +96,9 @@ class GutenbergBlockTransformer {
 	 * @return string The post content with all blocks decoded.
 	 */
 	public function decode_post_content( string $post_content ): string {
+		if ( ! str_contains( $post_content, '[BLOCK-TRANSFORMER:' ) ) {
+			return $post_content;
+		}
 		$blocks         = parse_blocks( $post_content );
 		$encoded_blocks = array_filter( $blocks, fn( $block ) => str_contains( $block['innerHTML'], '[BLOCK-TRANSFORMER:' ) );
 
