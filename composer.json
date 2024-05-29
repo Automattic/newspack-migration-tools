@@ -1,0 +1,22 @@
+{
+    "name": "automattic/newspack-migration-tools",
+    "description": "A set of tools to help migration to WordPress.",
+    "license": "GPL-3.0-or-later",
+    "autoload": {
+        "psr-4": {
+            "Newspack\\MigrationTools\\": "src/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    },
+    "require-dev": {
+        "wp-coding-standards/wpcs": "^3.0",
+        "automattic/vipwpcs": "^3.0",
+        "phpcompatibility/phpcompatibility-wp": "*",
+        "phpunit/phpunit": "^9.6",
+        "yoast/phpunit-polyfills": "^2.0"
+    }
+}
