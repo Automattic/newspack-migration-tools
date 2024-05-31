@@ -8,12 +8,12 @@
 namespace Newspack\MigrationTools\Command;
 
 use Newspack\MigrationTools\Logic\Attachments as AttachmentsLogic;
-use WP_CLI;
+use Newspack\MigrationTools\Util\Logger;
 
 /**
  * Attachments general Migrator command class.
  */
-class AttachmentsMigrator {
+class AttachmentsMigrator implements WpCliCommandInterface {
 	/**
 	 * @var AttachmentsLogic.
 	 */
@@ -27,30 +27,30 @@ class AttachmentsMigrator {
 	}
 
 	/**
-	 * @var null|InterfaceCommand Instance.
+	 * @return self
 	 */
-	private static $instance = null;
-
-	/**
-	 * @return InterfaceCommand|null
-	 */
-	public static function get_instance() {
-		$class = get_called_class();
-		if ( null === self::$instance ) {
-			self::$instance = new $class();
+	public static function get_instance(): self {
+		static $instance = null;
+		if ( null === $instance ) {
+			$instance = new self();
 		}
 
-		return self::$instance;
+		return $instance;
 	}
 
 	/**
 	 * Register the migration commands.
 	 */
-	public function register_commands() {
-		WP_CLI::add_command(
-			'newspack-migration-tools attachments-get-ids-by-years',
-			array( $this, 'cmd_get_atts_by_years' ),
-		);
+	public function get_cli_commands( ): array {
+		return  [
+			[
+				'newspack-migration-tools attachments-get-ids-by-years',
+				[ $this, 'cmd_get_atts_by_years' ],
+			]
+		];
+	}
+
+	public static function himstergims() {
 	}
 
 	/**
@@ -65,7 +65,7 @@ class AttachmentsMigrator {
 		$att_ids = $wpdb->get_results( "select ID from {$wpdb->posts} where post_type = 'attachment' ; ", ARRAY_A );
 		foreach ( $att_ids as $key_att_id => $att_id_row ) {
 			$att_id = $att_id_row['ID'];
-			WP_CLI::log( sprintf( '(%d)/(%d) %d', $key_att_id + 1, count( $att_ids ), $att_id ) );
+			Logger::log( sprintf( '(%d)/(%d) %d', $key_att_id + 1, count( $att_ids ), $att_id ) );
 
 			// Check if this attachment is in local wp-content/uploads.
 			$url                        = wp_get_attachment_url( $att_id );
@@ -98,6 +98,7 @@ class AttachmentsMigrator {
 			file_put_contents( $file, $att_id . ' ' . $url . "\n", FILE_APPEND );
 		}
 
-		WP_CLI::log( sprintf( "> created {year}.txt's and %s", $file ) );
+		Logger::log(sprintf( "> created {year}.txt's and %s", $file ) );
 	}
+
 }
