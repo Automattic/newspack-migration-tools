@@ -211,7 +211,7 @@ class Attachments {
 			}
 
 			if ( md5_file( $candidate_path ) === md5_file( $filepath ) ) {
-				return $attachment_id;
+				return intval( $attachment_id );
 			}
 		}
 
