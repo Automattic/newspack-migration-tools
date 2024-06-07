@@ -27,4 +27,26 @@ use Newspack\MigrationTools\Logic\Attachments as AttachmentsLogic;
 new Attachments_Logic();
 ```
 
-To use the WP commands that from this repository, you can load it as a plugin.
+## Registering the WP CLI commands in this package
+If you want to use the WP CLI commands in this package, you can do so by adding the following code to your plugin:
+```php
+
+// All commands in the package can be gotten with:
+$cli_commands = WpCliCommands::get_classes_with_cli_commands();
+// If you only need a specific command or two, you can also just add them like this:
+$cli_commands = [ Newspack\MigrationTools\Commands\MyCommand::class ];
+
+foreach ( $cli_commands as $command_class ) {
+    $class = $command_class::get_instance();
+    if ( is_a( $class, WpCliCommandInterface::class ) ) {
+        array_map( function ( $command ) {
+            WP_CLI::add_command( ...$command );
+        }, $class->get_cli_commands() );
+    }
+}
+```
+
+## Tests
+To get started with tests, run `./bin/install-wp-tests.sh`. If you are using Local.app, then the args could look something like this: `./bin/install-wp-tests.sh local root root "localhost:/Users/<your-username>/Library/Application Support/Local/run/<some-id>/mysql/mysqld.sock"` You can find the part to put after "socket:" on the Database tab in the local app for the site.
+
+To run the tests, run `./vendor/bin/phpunit`.
