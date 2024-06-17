@@ -22,5 +22,4 @@ interface WpCliCommandInterface {
 	 * @return array
 	 */
 	public function get_cli_commands(): array;
-
 }

@@ -15,12 +15,15 @@ use Newspack\MigrationTools\Util\Logger;
 class AttachmentsMigrator implements WpCliCommandInterface {
 
 
+	/**
+	 * Private constructor.
+	 */
 	private function __construct() {
 		// I don't do anything right now.
 	}
 
 	/**
-	 * @inheritDoc
+	 * {@inheritDoc}
 	 */
 	public static function get_instance(): self {
 		static $instance = null;
@@ -32,14 +35,14 @@ class AttachmentsMigrator implements WpCliCommandInterface {
 	}
 
 	/**
-	 * @inheritDoc
+	 * {@inheritDoc}
 	 */
 	public function get_cli_commands(): array {
 		return [
 			[
 				'newspack-migration-tools attachments-get-ids-by-years',
 				[ $this, 'cmd_get_atts_by_years' ],
-			]
+			],
 		];
 	}
 
@@ -52,6 +55,7 @@ class AttachmentsMigrator implements WpCliCommandInterface {
 		$ids_failed = [];
 		$logfile    = __FUNCTION__ . '.log';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$att_ids = $wpdb->get_results( "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'attachment' ; ", ARRAY_A );
 		foreach ( $att_ids as $key_att_id => $att_id_row ) {
 			$att_id = $att_id_row['ID'];
@@ -90,5 +94,4 @@ class AttachmentsMigrator implements WpCliCommandInterface {
 
 		Logger::log( $logfile, sprintf( "> created {year}.txt's and %s", $file ) );
 	}
-
 }

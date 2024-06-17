@@ -18,15 +18,15 @@ class SampleTest extends WP_UnitTestCase {
 	public function test_attachment_years() {
 		$post_id = self::factory()->post->create(
 			[
-				'post_title'    => 'My post',
-				'post_content'  => 'This is my post.',
-				'post_status'   => 'publish',
+				'post_title'   => 'My post',
+				'post_content' => 'This is my post.',
+				'post_status'  => 'publish',
 			]
 		);
 		// Create an attachment, so there is something to test.
 		self::factory()->attachment->create_object(
 			[
-				'file' => 'tests/fixtures/koi.jpg',
+				'file'        => 'tests/fixtures/koi.jpg',
 				'post_parent' => $post_id,
 			]
 		);
