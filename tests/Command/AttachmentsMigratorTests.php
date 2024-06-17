@@ -2,17 +2,13 @@
 
 namespace Newspack\MigrationTools\Tests\Command;
 
-/**
- * Class SampleTest
- *
- * @package AttachmentsMigratorTests
- */
-
 use Newspack\MigrationTools\Command\AttachmentsMigrator;
 use WP_UnitTestCase;
 
 /**
- * Sample test case.
+ * Class AttachmentsMigratorTests
+ *
+ * @package newspack-migration-tools
  */
 class AttachmentsMigratorTests extends WP_UnitTestCase {
 
