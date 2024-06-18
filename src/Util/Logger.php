@@ -65,7 +65,8 @@ class Logger {
 		}
 
 		file_put_contents( $file_path, "{$message}\n", FILE_APPEND );
+		// Also output to CLI.
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		echo "{$message}\n";
 	}
-
 }
