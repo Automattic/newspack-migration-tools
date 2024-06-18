@@ -21,7 +21,6 @@ Thumbs.db
 /vendor/
 /node_modules/
 /dist/
-.DS_Store
 release
 .cache
 

@@ -7,65 +7,59 @@
 
 namespace Newspack\MigrationTools\Command;
 
-use Newspack\MigrationTools\Logic\Attachments as AttachmentsLogic;
-use WP_CLI;
+use Newspack\MigrationTools\Util\Logger;
 
 /**
  * Attachments general Migrator command class.
  */
-class AttachmentsMigrator {
-	/**
-	 * @var AttachmentsLogic.
-	 */
-	private $attachment_logic;
+class AttachmentsMigrator implements WpCliCommandInterface {
+
 
 	/**
-	 * Constructor.
+	 * Private constructor.
 	 */
 	private function __construct() {
-		$this->attachment_logic = new AttachmentsLogic();
+		// I don't do anything right now.
 	}
 
 	/**
-	 * @var null|InterfaceCommand Instance.
+	 * {@inheritDoc}
 	 */
-	private static $instance = null;
-
-	/**
-	 * @return InterfaceCommand|null
-	 */
-	public static function get_instance() {
-		$class = get_called_class();
-		if ( null === self::$instance ) {
-			self::$instance = new $class();
+	public static function get_instance(): self {
+		static $instance = null;
+		if ( null === $instance ) {
+			$instance = new self();
 		}
 
-		return self::$instance;
+		return $instance;
 	}
 
 	/**
-	 * Register the migration commands.
+	 * {@inheritDoc}
 	 */
-	public function register_commands() {
-		WP_CLI::add_command(
-			'newspack-migration-tools attachments-get-ids-by-years',
-			array( $this, 'cmd_get_atts_by_years' ),
-		);
+	public function get_cli_commands(): array {
+		return [
+			[
+				'newspack-migration-tools attachments-get-ids-by-years',
+				[ $this, 'cmd_get_atts_by_years' ],
+			],
+		];
 	}
 
 	/**
 	 * Gets a list of attachment IDs by years for those attachments which have files on local in (/wp-content/uploads).
 	 */
-	public function cmd_get_atts_by_years() {
+	public function cmd_get_atts_by_years( array $pos_args, array $assoc_args ): void {
 		global $wpdb;
-		$ids_years  = array();
-		$ids_failed = array();
+		$ids_years  = [];
+		$ids_failed = [];
+		$logfile    = __FUNCTION__ . '.log';
 
-		// phpcs:ignore
-		$att_ids = $wpdb->get_results( "select ID from {$wpdb->posts} where post_type = 'attachment' ; ", ARRAY_A );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$att_ids = $wpdb->get_results( "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'attachment' ; ", ARRAY_A );
 		foreach ( $att_ids as $key_att_id => $att_id_row ) {
 			$att_id = $att_id_row['ID'];
-			WP_CLI::log( sprintf( '(%d)/(%d) %d', $key_att_id + 1, count( $att_ids ), $att_id ) );
+			Logger::log( $logfile, sprintf( '(%d)/(%d) %d', $key_att_id + 1, count( $att_ids ), $att_id ) );
 
 			// Check if this attachment is in local wp-content/uploads.
 			$url                        = wp_get_attachment_url( $att_id );
@@ -98,6 +92,6 @@ class AttachmentsMigrator {
 			file_put_contents( $file, $att_id . ' ' . $url . "\n", FILE_APPEND );
 		}
 
-		WP_CLI::log( sprintf( "> created {year}.txt's and %s", $file ) );
+		Logger::log( $logfile, sprintf( "> created {year}.txt's and %s", $file ) );
 	}
 }

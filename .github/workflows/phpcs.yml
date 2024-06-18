@@ -1,0 +1,19 @@
+name: PHP CodeSniffer
+
+on:
+  pull_request:
+    branches: [ trunk ]
+
+jobs:
+  phpcs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: composer install
+
+      - name: Run PHP CodeSniffer
+        run: composer run phpcs

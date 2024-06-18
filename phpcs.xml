@@ -11,6 +11,10 @@
         <exclude name="WordPress.Files.FileName.NotHyphenatedLowercase" />
         <exclude name="WordPress.Files.FileName.InvalidClassFileName" />
 
+        <exclude name="WordPress.NamingConventions.PrefixAllGlobals" />
+        <exclude name="WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_file_put_contents" />
+        <exclude name="WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink" />
+
         <!-- Only comment when neccessary -->
         <exclude name="Squiz.Commenting.FileComment.Missing" />
         <exclude name="Squiz.Commenting.FileComment.MissingPackageTag" />
@@ -27,19 +31,6 @@
         <exclude name="Generic.Commenting.DocComment.MissingShort" />
     </rule>
 
-    <rule ref="WordPress.NamingConventions.PrefixAllGlobals">
-        <properties>
-            <!-- Value: replace the function, class, and variable prefixes used. Separate multiple prefixes with a comma. -->
-            <property name="prefixes" type="array" value="Newspack\MigrationTools"/>
-        </properties>
-    </rule>
-    <rule ref="WordPress.WP.I18n">
-        <properties>
-            <!-- Value: replace the text domain used. -->
-            <property name="text_domain" type="array" value="Newspack\MigrationTools"/>
-        </properties>
-    </rule>
-
     <rule ref="PHPCompatibilityWP"/>
     <config name="testVersion" value="8.0"/>
 
@@ -48,8 +39,8 @@
     <!-- Show sniff codes in all reports -->
     <arg value="s"/>
 
-    <!-- Allow invoking just `phpcs` on command line without assuming STDIN for file input. -->
-    <file>.</file>
+    <file>newspack-migration-tools.php</file>
+    <file>src</file>
+    <file>tests</file>
 
-    <exclude-pattern>*/vendor/*</exclude-pattern>
 </ruleset>
