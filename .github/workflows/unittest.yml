@@ -33,7 +33,7 @@ jobs:
         run: composer install --prefer-dist --no-progress --no-suggest --no-interaction
 
       - name: Download WordPress for unit tests
-        run: bash bin/install-wp-tests.sh wordpress_test root root 127.0.0.1:3306 latest true
+        run: bash bin/install-wp-tests.sh ${{ env.DB_DATABASE }} ${{ env.DB_USER }} ${{ env.DB_USER }} 127.0.0.1:3306 latest true
 
       - name: Run phpunit
-        run: composer run-script phpunit
+        run: composer run phpunit
