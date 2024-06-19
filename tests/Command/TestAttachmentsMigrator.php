@@ -10,7 +10,7 @@ use WP_UnitTestCase;
  *
  * @package newspack-migration-tools
  */
-class AttachmentsMigratorTests extends WP_UnitTestCase {
+class TestAttachmentsMigrator extends WP_UnitTestCase {
 
 	/**
 	 * A single example test.
