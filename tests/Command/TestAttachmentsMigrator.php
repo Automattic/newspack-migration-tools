@@ -16,13 +16,10 @@ class TestAttachmentsMigrator extends WP_UnitTestCase {
 	 * A single example test.
 	 */
 	public function test_attachment_years() {
-		$post_id = self::factory()->post->create(
-			[
-				'post_title'   => 'My post',
-				'post_content' => 'This is my post.',
-				'post_status'  => 'publish',
-			]
-		);
+		add_filter( 'newspack_migration_tools_log_file_logger_disable', '__return_true' );
+		add_filter( 'newspack_migration_tools_log_clilog_disable', '__return_true' );
+
+		$post_id = self::factory()->post->create();
 		// Create an attachment, so there is something to test.
 		self::factory()->attachment->create_object(
 			[

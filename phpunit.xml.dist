@@ -5,4 +5,15 @@
 			<directory suffix=".php">./tests/</directory>
 		</testsuite>
 	</testsuites>
+
+	<coverage>
+		<include>
+			<directory>./src/</directory>
+		</include>
+		<report>
+			<clover outputFile="coverage/logs/clover.xml"/>
+			<html outputDirectory="coverage"/>
+			<text outputFile="coverage/logs/coverage.txt"/>
+		</report>
+	</coverage>
 </phpunit>

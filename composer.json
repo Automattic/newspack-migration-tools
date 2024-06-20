@@ -20,11 +20,19 @@
         "automattic/vipwpcs": "^3.0",
         "phpcompatibility/phpcompatibility-wp": "*",
         "phpunit/phpunit": "^9.6",
-        "yoast/phpunit-polyfills": "^2.0"
+        "yoast/phpunit-polyfills": "^2.0",
+        "php-coveralls/php-coveralls": "^2.7"
     },
     "scripts": {
         "phpcs": "./vendor/bin/phpcs",
         "phpcbf": "./vendor/bin/phpcbf",
-        "phpunit": "./vendor/bin/phpunit"
+        "phpunit": "./vendor/bin/phpunit",
+        "code-coverage": "export XDEBUG_MODE=coverage && ./vendor/bin/phpunit --coverage-clover build/logs/clover.xml",
+        "build-release": [
+            "rm -rf vendor",
+            "rm -rf release",
+            "composer install --no-dev --optimize-autoloader",
+            "composer archive --format=zip --dir=release --file=newspack-migration-tools"
+        ]
     }
 }
