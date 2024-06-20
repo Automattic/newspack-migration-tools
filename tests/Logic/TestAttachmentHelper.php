@@ -49,7 +49,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 		$found_attachment_id = AttachmentHelper::get_attachment_id_by_filename( $desired_file_name );
 		$this->assertEquals( $attachment_id, $found_attachment_id, 'Found attachment ID matches' );
 		$should_not_find_attachment_id = AttachmentHelper::get_attachment_id_by_filename( uniqid() . 'nonexistent.jpg' );
-		$this->assertNotEquals( $attachment_id, $should_not_find_attachment_id, 'Nonexistent attachment ID does not match' );
+		$this->assertEmpty( $should_not_find_attachment_id );
 	}
 
 
