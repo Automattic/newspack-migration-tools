@@ -2,7 +2,9 @@
 
 This package is a set of migration tools used to make it easy to migrate content to WordPress.
 
-The repository contains a set of WP commands to migrate different data to WordPress, and a set of "Logic" classes that can be used to develop your own migrators.
+The repository contains a set of WP commands to migrate different data to WordPress, and helper classes that can be used to develop your own migrators.
+
+Minimum PHP version required is 8.1.
 
 ## Development
 
@@ -22,9 +24,10 @@ _composer.json_
 _my-plugin-file.php_
 
 ```
-// Loading the attachments logic class.
-use Newspack\MigrationTools\Logic\Attachments as AttachmentsLogic;
-new Attachments_Logic();
+// Loading the attachments helper class.
+use Newspack\MigrationTools\Logic\AttachmentHelper;
+// Example call.
+$attachment_id = AttachmentHelper::import_attachment_for_post( ... your arguments here ... );
 ```
 
 ## Registering the WP CLI commands in this package
@@ -49,4 +52,4 @@ foreach ( $cli_commands as $command_class ) {
 ## Tests
 To get started with tests, run `./bin/install-wp-tests.sh`. If you are using Local.app, then the args could look something like this: `./bin/install-wp-tests.sh local root root "localhost:/Users/<your-username>/Library/Application Support/Local/run/<some-id>/mysql/mysqld.sock"` You can find the part to put after "socket:" on the Database tab in the local app for the site.
 
-To run the tests, run `./vendor/bin/phpunit`.
+To run the tests, run `composer run phpunit`.
