@@ -15,7 +15,7 @@
 
 namespace NewspackCustomContentMigrator\Logic;
 
-use \NewspackCustomContentMigrator\Utils\Logger;
+use NewspackCustomContentMigrator\Utils\Logger;
 use WP_Post;
 
 /**
@@ -71,7 +71,7 @@ class GutenbergBlockGenerator {
 			' ',
 			array_filter(
 				array_map(
-					function( $index, $attachment_id ) use ( &$tile_sizes, &$non_existing_attachment_indexes, $tile_sizes_list ) {
+					function ( $index, $attachment_id ) use ( &$tile_sizes, &$non_existing_attachment_indexes, $tile_sizes_list ) {
 						$attachment_url = wp_get_attachment_url( $attachment_id );
 
 						if ( ! $attachment_url ) {
@@ -336,11 +336,11 @@ VIDEO;
 		$title          = empty( $title ) ? $attachment_post->post_title : $title;
 
 		$attrs = [
-			'id'             => $attachment_post->ID,
-			'href'           => $attachment_url,
-			'displayPreview' => true,
-			'previewHeight'  => $height,
-			'showDownloadButton'   => $show_download_button,
+			'id'                 => $attachment_post->ID,
+			'href'               => $attachment_url,
+			'displayPreview'     => true,
+			'previewHeight'      => $height,
+			'showDownloadButton' => $show_download_button,
 		];
 
 		$download_button = $show_download_button ? '<a href="' . $attachment_url . '" class="wp-block-file__button wp-element-button" download aria-describedby="wp-block-file--media-' . $uuid . '">Download</a>' : '';
@@ -766,6 +766,9 @@ VIDEO;
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
 	private function youtube_block_from_src( $youtube_video_url ) {
+		// Clean the URL from query params as they break the block.
+		$youtube_video_url = strtok( $youtube_video_url, '?' );
+
 		$inner_html = '<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper">
 		' . $youtube_video_url . '
 		</div></figure>';
@@ -820,7 +823,7 @@ HTML;
 				'type'             => 'rich',
 				'providerNameSlug' => 'twitter',
 				'responsive'       => true,
-				'className'        => $class_names
+				'className'        => $class_names,
 			],
 			'innerBlocks'  => [],
 			'innerHTML'    => $block_content,
@@ -1043,5 +1046,4 @@ HTML;
 			'innerContent' => [],
 		];
 	}
-
 }
