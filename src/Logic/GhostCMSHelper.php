@@ -17,6 +17,7 @@ class GhostCMSHelper {
 
 	public static function go(): int|WP_Error {
 
+		
 		return 0;
 
 	}
