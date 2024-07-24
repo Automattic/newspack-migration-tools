@@ -11,7 +11,7 @@ use Newspack\MigrationTools\Log\FileLogger;
 use Newspack\MigrationTools\Log\Log;
 
 /**
- * Ghost CMS general Migrator command class.
+ * GhostCMS general Migrator command class.
  */
 class GhostCMSMigrator implements WpCliCommandInterface {
 
@@ -41,16 +41,16 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 	public function get_cli_commands(): array {
 		return [
 			[
-				'newspack-migration-tools ghost-cms-migrator',
-				[ $this, 'cmd_ghost_cms_migrator' ],
+				'newspack-migration-tools ghostcms-migrator',
+				[ $this, 'cmd_ghostcms_migrator' ],
 			],
 		];
 	}
 
 	/**
-	 * Ghost CMS Migrator command.
+	 * GhostCMS Migrator command.
 	 */
-	public function cmd_ghost_cms_migrator( array $pos_args, array $assoc_args ): void {
+	public function cmd_ghostcms_migrator( array $pos_args, array $assoc_args ): void {
 
 		$logfile = __FUNCTION__ . '.log';
 

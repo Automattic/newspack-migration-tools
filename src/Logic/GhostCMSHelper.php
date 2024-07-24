@@ -1,6 +1,6 @@
 <?php
 /**
- * Ghost CMS Migration Logic.
+ * GhostCMS Migration Logic.
  *
  * @package newspack-migration-tools
  */
