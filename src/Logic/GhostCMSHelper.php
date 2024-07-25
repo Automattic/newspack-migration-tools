@@ -12,25 +12,17 @@ namespace Newspack\MigrationTools\Logic;
 use Newspack\MigrationTools\Log\CliLogger;
 use Newspack\MigrationTools\Log\FileLogger;
 use Newspack\MigrationTools\Log\Log;
+use Newspack\MigrationTools\Logic\AttachmentHelper;
 use WP_Error;
 
-// use NewspackCustomContentMigrator\Logic\Attachments as AttachmentsLogic;
+
 // use NewspackCustomContentMigrator\Logic\CoAuthorPlus as CoAuthorPlusLogic;
-// use WP_CLI;
-// use WP_Error;
 
 
 /**
  * GhostCMS Helper.
  */
 class GhostCMSHelper {
-
-	/**
-	 * AttachmentsLogic
-	 * 
-	 * @var AttachmentsLogic 
-	 */
-	private $attachments_logic;
 
 	/**
 	 * Lookup to convert json authors to wp objects (WP Users and/or CAP GAs).
@@ -89,7 +81,6 @@ class GhostCMSHelper {
 	 * Constructor.
 	 */
 	private function __construct() {
-		// $this->attachments_logic   = new AttachmentsLogic();
 		// $this->coauthorsplus_logic = new CoAuthorPlusLogic();
 	}
 
@@ -116,17 +107,12 @@ class GhostCMSHelper {
 	 */
 	public function ghostcms_import( array $pos_args, array $assoc_args, bool|string $logger = true ): void {
 
+		// Set logger from args.
 		$this->logger = $logger;
 
-		$this->log( 'Co-Authors Plus plugin not found. Install and activate it before using this command.', Log::ERROR, true );
-
-		return;
-
-
 		// Plugin dependencies.
-
 		if ( ! $this->coauthorsplus_logic->validate_co_authors_plus_dependencies() ) {
-			WP_CLI::error( 'Co-Authors Plus plugin not found. Install and activate it before using this command.' );
+			$this->log( 'Co-Authors Plus plugin not found. Install and activate it before using this command.', Log::ERROR, true );
 		}
 
 		// Argument parsing.
@@ -136,30 +122,30 @@ class GhostCMSHelper {
 		if ( isset( $assoc_args['created-after'] ) ) {
 			$created_after = strtotime( $assoc_args['created-after'] );
 			if ( false === $created_after ) {
-				WP_CLI::error( '--created-after date was not parseable by strtotime().' );
+				$this->log( '--created-after date was not parseable by strtotime().', Log::ERROR, true );
 			}
 		}
 
 		// --default-user-id.
 
 		if ( ! isset( $assoc_args['default-user-id'] ) || ! is_numeric( $assoc_args['default-user-id'] ) ) {
-			WP_CLI::error( 'Default user id must be integer.' );
+			$this->log( 'Default user id must be integer.', Log::ERROR, true );
 		}
 
 		$default_user = get_user_by( 'ID', $assoc_args['default-user-id'] );
 
 		if ( ! is_a( $default_user, 'WP_User' ) ) {
-			WP_CLI::error( 'Default user id does not match a wp user.' );
+			$this->log( 'Default user id does not match a wp user.', Log::ERROR, true );
 		}
 
 		if ( ! $default_user->has_cap( 'publish_posts' ) ) {
-			WP_CLI::error( 'Default user found, but does not have publish posts capability.' );
+			$this->log( 'Default user found, but does not have publish posts capability.', Log::ERROR, true );
 		}
 		
 		// --ghost-url.
 
 		if ( ! isset( $assoc_args['ghost-url'] ) || ! preg_match( '#^https?://[^/]+/?$#i', $assoc_args['ghost-url'] ) ) {
-			WP_CLI::error( 'Ghost URL does not match regex: ^https?://[^/]+/?$' );
+			$this->log( 'Ghost URL does not match regex: ^https?://[^/]+/?$', Log::ERROR, true );
 		}
 
 		$this->ghost_url = preg_replace( '#/$#', '', $assoc_args['ghost-url'] );
@@ -167,17 +153,17 @@ class GhostCMSHelper {
 		// --json-file.
 
 		if ( ! isset( $assoc_args['json-file'] ) || ! file_exists( $assoc_args['json-file'] ) ) {
-			WP_CLI::error( 'JSON file not found.' );
+			$this->log( 'JSON file not found.', Log::ERROR, true );
 		}
 
 		$this->json = json_decode( file_get_contents( $assoc_args['json-file'] ), null, 2147483647 );
 		
 		if ( 0 != json_last_error() || 'No error' != json_last_error_msg() ) {
-			WP_CLI::error( 'JSON file could not be parsed.' );
+			$this->log( 'JSON file could not be parsed.', Log::ERROR, true );
 		}
 		
 		if ( empty( $this->json->db[0]->data->posts ) ) {
-			WP_CLI::error( 'JSON file contained no posts.' );
+			$this->log( 'JSON file contained no posts.', Log::ERROR, true );
 		}
 
 		// Start processing.
@@ -369,7 +355,7 @@ class GhostCMSHelper {
 		}
 
 		// this function will check if existing, but only after re-downloading.
-		return $this->attachments_logic->import_external_file( $path, $title, $caption, $description, $alt, $post_id );
+		return AttachmentHelper::import_external_file( $path, $title, $caption, $description, $alt, $post_id );
 	}
 
 	/**
