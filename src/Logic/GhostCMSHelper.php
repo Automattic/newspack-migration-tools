@@ -9,12 +9,13 @@
 
 namespace Newspack\MigrationTools\Logic;
 
-// use Newspack\MigrationTools\Log\CliLogger;
+use Newspack\MigrationTools\Log\CliLogger;
+use Newspack\MigrationTools\Log\FileLogger;
+use Newspack\MigrationTools\Log\Log;
 use WP_Error;
 
 // use NewspackCustomContentMigrator\Logic\Attachments as AttachmentsLogic;
 // use NewspackCustomContentMigrator\Logic\CoAuthorPlus as CoAuthorPlusLogic;
-// use NewspackCustomContentMigrator\Utils\Logger;
 // use WP_CLI;
 // use WP_Error;
 
@@ -69,18 +70,11 @@ class GhostCMSHelper {
 	private object $json;
 
 	/**
-	 * Log (file path)
+	 * Logger (bool: true or false) or string (file path). Initialized as false.
 	 *
-	 * @var string $log
+	 * @var bool|string $logger
 	 */
-	private string $log;
-
-	/**
-	 * Logger
-	 * 
-	 * @var Logger
-	 */
-	private $logger;
+	private bool|string $logger = false;
 
 	/**
 	 * Lookup to convert json tags to wp categories.
@@ -97,7 +91,6 @@ class GhostCMSHelper {
 	private function __construct() {
 		// $this->attachments_logic   = new AttachmentsLogic();
 		// $this->coauthorsplus_logic = new CoAuthorPlusLogic();
-		// $this->logger              = new Logger();
 	}
 
 	/**
@@ -119,15 +112,17 @@ class GhostCMSHelper {
 	 * 
 	 * @param array $pos_args Positional arguments.
 	 * @param array $assoc_args Associative arguments.
+	 * @param bool|string $logger CLI logger (true (default) or false) or string filename for file (and cli) output.
 	 */
-	public function ghostcms_import( array $pos_args, array $assoc_args ): void {
+	public function ghostcms_import( array $pos_args, array $assoc_args, bool|string $logger = true ): void {
 
-		echo "bye";
+		$this->logger = $logger;
+
+		$this->log( 'Co-Authors Plus plugin not found. Install and activate it before using this command.', Log::ERROR, true );
+
 		return;
-		
 
-		global $wpdb;
-		
+
 		// Plugin dependencies.
 
 		if ( ! $this->coauthorsplus_logic->validate_co_authors_plus_dependencies() ) {
@@ -186,30 +181,27 @@ class GhostCMSHelper {
 		}
 
 		// Start processing.
-
-		$this->log = str_replace( __NAMESPACE__ . '\\', '', __CLASS__ ) . '_' . __FUNCTION__ . '.log';
-
-		$this->logger->log( $this->log, 'Doing migration.' );
-		$this->logger->log( $this->log, '--json-file: ' . $assoc_args['json-file'] );
-		$this->logger->log( $this->log, '--ghost-url: ' . $this->ghost_url );
-		$this->logger->log( $this->log, '--default-user-id: ' . $default_user->ID );
+		$this->log( 'Doing migration.' );
+		$this->log( '--json-file: ' . $assoc_args['json-file'] );
+		$this->log( '--ghost-url: ' . $this->ghost_url );
+		$this->log( '--default-user-id: ' . $default_user->ID );
 		
 		if ( $created_after ) {
 			// phpcs:ignore WordPress.DateTime.RestrictedFunctions.date_date
-			$this->logger->log( $this->log, '--created-after: ' . date( 'Y-m-d H:i:s', $created_after ) );
+			$this->log( '--created-after: ' . date( 'Y-m-d H:i:s', $created_after ) );
 		}
 		
 		// Insert posts.
 		foreach ( $this->json->db[0]->data->posts as $json_post ) {
 
-			$this->logger->log( $this->log, '---- json id: ' . $json_post->id );
-			$this->logger->log( $this->log, 'Title/Slug: ' . $json_post->title . ' / ' . $json_post->slug );
-			$this->logger->log( $this->log, 'Created/Published: ' . $json_post->created_at . ' / ' . $json_post->published_at );
+			$this->log( '---- json id: ' . $json_post->id );
+			$this->log( 'Title/Slug: ' . $json_post->title . ' / ' . $json_post->slug );
+			$this->log( 'Created/Published: ' . $json_post->created_at . ' / ' . $json_post->published_at );
 
 			// Date cut-off.
 			if ( $created_after && strtotime( $json_post->created_at ) <= $created_after ) {
 
-				$this->logger->log( $this->log, 'Created before cut-off date.', $this->logger::WARNING );
+				$this->log( 'Created before cut-off date.', Log::WARNING );
 				continue;
 
 			}
@@ -218,11 +210,11 @@ class GhostCMSHelper {
 			$skip_reason = $this->skip( $json_post );
 			if ( ! empty( $skip_reason ) ) {
 			
-				$this->logger->log( $this->log, 'Skip JSON post (review by hand -skips.log): ' . $skip_reason, $this->logger::WARNING );
+				$this->log( 'Skip JSON post (review by hand -skips.log): ' . $skip_reason, Log::WARNING );
 
 				// Save to skips file, and do not write to console.
 				// phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
-				$this->logger->log( $this->log . '-skips.log', json_encode( array( $skip_reason, $json_post ) ), false );
+				$this->log_additional_file( '-skips.log', json_encode( array( $skip_reason, $json_post ) ), false );
 
 				continue;
 
@@ -242,14 +234,14 @@ class GhostCMSHelper {
 			$wp_post_id = wp_insert_post( $args, true );
 
 			if ( is_wp_error( $wp_post_id ) || ! is_numeric( $wp_post_id ) || ! ( $wp_post_id > 0 ) ) {
-				$this->logger->log( $this->log, 'Could not insert post.', $this->logger::ERROR, false );
+				$this->log( 'Could not insert post.', Log::ERROR, false );
 				if ( is_wp_error( $wp_post_id ) ) {
-					$this->logger->log( $this->log, 'Insert Post Error: ' . $wp_post_id->get_error_message(), $this->logger::ERROR, false );
+					$this->log( 'Insert Post Error: ' . $wp_post_id->get_error_message(), Log::ERROR, false );
 				}
 				continue;
 			}
 
-			$this->logger->log( $this->log, 'Inserted new post: ' . $wp_post_id );
+			$this->log( 'Inserted new post: ' . $wp_post_id );
 
 			// Post meta.
 			update_post_meta( $wp_post_id, 'newspack_ghostcms_id', $json_post->id );
@@ -262,7 +254,7 @@ class GhostCMSHelper {
 			// Featured image (with alt and caption).
 			// Note: json value does not contain "d": feature(d)_image.
 			if ( empty( $json_post->feature_image ) ) {
-				$this->logger->log( $this->log, 'No featured image.' );
+				$this->log( 'No featured image.' );
 			} else {
 				$this->set_post_featured_image( $wp_post_id, $json_post->id, $json_post->feature_image );
 			}
@@ -275,7 +267,7 @@ class GhostCMSHelper {
 
 		}
 
-		$this->logger->log( $this->log, 'Done.', $this->logger::SUCCESS );
+		$this->log( 'Done.', Log::SUCCESS );
 	}
 
 	/**
@@ -370,7 +362,7 @@ class GhostCMSHelper {
 
 		if ( is_numeric( $attachment_id ) && $attachment_id > 0 ) {
 			
-			$this->logger->log( $this->log, 'Image already exists: ' . $attachment_id );
+			$this->log( 'Image already exists: ' . $attachment_id );
 
 			return $attachment_id;
 
@@ -391,7 +383,7 @@ class GhostCMSHelper {
 		// Must have visibility property with value of 'public'.
 		if ( empty( $json_author_user->visibility ) || 'public' != $json_author_user->visibility ) {
 
-			$this->logger->log( $this->log, 'JSON user not visible. Could not be inserted.', $this->logger::WARNING );
+			$this->log( 'JSON user not visible. Could not be inserted.', Log::WARNING );
 
 			return 0;
 
@@ -405,14 +397,14 @@ class GhostCMSHelper {
 		
 		$user_login = sanitize_title( urldecode( $json_author_user->name ) );
 
-		$this->logger->log( $this->log, 'Get or insert author: ' . $user_login );
+		$this->log( 'Get or insert author: ' . $user_login );
 
 		$ga = $this->coauthorsplus_logic->get_guest_author_by_user_login( $user_login );
 
 		// GA Exists.
 		if ( is_object( $ga ) ) {
 
-			$this->logger->log( $this->log, 'Found existing GA.' );
+			$this->log( 'Found existing GA.' );
 
 			// Save old slug for possible redirect.
 			update_post_meta( $ga->ID, 'newspack_ghostcms_slug', $json_author_user->slug );
@@ -431,7 +423,7 @@ class GhostCMSHelper {
 
 		foreach ( $user_query->get_results() as $wp_user ) {
 
-			$this->logger->log( $this->log, 'Found existing WP User.' );
+			$this->log( 'Found existing WP User.' );
 
 			// Save old slug for possible redirect.
 			update_user_meta( $wp_user->ID, 'newspack_ghostcms_slug', $json_author_user->slug );
@@ -446,13 +438,13 @@ class GhostCMSHelper {
 
 		if ( is_wp_error( $ga_id ) || ! is_numeric( $ga_id ) || ! ( $ga_id > 0 ) ) {
 
-			$this->logger->log( $this->log, 'GA create failed: ' . $json_author_user->name, $this->logger::WARNING );
+			$this->log( 'GA create failed: ' . $json_author_user->name, Log::WARNING );
 
 			return 0;
 
 		}
 
-		$this->logger->log( $this->log, 'Created new GA.' );
+		$this->log( 'Created new GA.' );
 
 		$ga = $this->coauthorsplus_logic->get_guest_author_by_id( $ga_id );
 	
@@ -473,7 +465,7 @@ class GhostCMSHelper {
 		// Must have visibility property with value of 'public'.
 		if ( empty( $json_tag->visibility ) || 'public' != $json_tag->visibility ) {
 			
-			$this->logger->log( $this->log, 'JSON tag not visible. Could not be inserted.', $this->logger::WARNING );
+			$this->log( 'JSON tag not visible. Could not be inserted.', Log::WARNING );
 
 			return 0;
 
@@ -492,11 +484,11 @@ class GhostCMSHelper {
 
 			// Log and return 0 if insert failed.
 			if ( is_wp_error( $term_arr ) ) {
-				$this->logger->log( $this->log, 'Insert term failed (' . $json_tag->slug . ') ' . $term_arr->get_error_message(), $this->logger::WARNING );
+				$this->log( 'Insert term failed (' . $json_tag->slug . ') ' . $term_arr->get_error_message(), Log::WARNING );
 				return 0;
 			}
 
-			$this->logger->log( $this->log, 'Inserted category term: ' . $term_arr['term_id'] );
+			$this->log( 'Inserted category term: ' . $term_arr['term_id'] );
 
 		}
 		
@@ -504,6 +496,42 @@ class GhostCMSHelper {
 		update_term_meta( $term_arr['term_id'], 'newspack_ghostcms_slug', $json_tag->slug );
 
 		return $term_arr['term_id'];
+	}
+
+	private function log( string $message, string|bool $level = 'line', bool $exit_on_error = false ) : void {
+
+		$maybe_bool = filter_var( $this->logger, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE );
+
+		if( is_bool( $maybe_bool ) ) {
+
+			if( false == $maybe_bool || false == $level  ) return;
+			
+			CLIlogger::log( $message, $level, $exit_on_error );
+
+			return;
+
+		}
+
+		if( is_string( $this->logger ) ) {
+
+			Filelogger::log( $this->logger, $message, $level, $exit_on_error );
+
+			return;
+		}
+		
+	}
+
+	private function log_additional_file( string $filename_append, string $message, string|bool $level = 'line', bool $exit_on_error = false ) : void {
+
+		// Must not be bool. String only.
+		if( is_bool( filter_var( $this->logger, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE ) ) || ! is_string( $this->logger ) ) return;
+
+		// Write to appended filename file.
+		$original_logger = $this->logger;
+		$this->logger = $this->logger . $filename_append;
+		$this->log( $message, $level, $exit_on_error );
+		$this->logger = $original_logger;
+
 	}
 
 	/**
@@ -517,7 +545,7 @@ class GhostCMSHelper {
 
 		if ( empty( $this->json->db[0]->data->posts_authors ) ) {
 			
-			$this->logger->log( $this->log, 'JSON has no post author relationships.', $this->logger::WARNING );
+			$this->log( 'JSON has no post author relationships.', Log::WARNING );
 
 			return;
 
@@ -533,7 +561,7 @@ class GhostCMSHelper {
 				continue;
 			}
 
-			$this->logger->log( $this->log, 'Relationship found for author: ' . $json_post_author->author_id );
+			$this->log( 'Relationship found for author: ' . $json_post_author->author_id );
 
 			// If author_id wasn't already processed.
 			if ( ! isset( $this->authors_to_wp_objects[ $json_post_author->author_id ] ) ) {
@@ -544,7 +572,7 @@ class GhostCMSHelper {
 				// Verify related author (user) was found in json.
 				if ( empty( $json_author_user ) ) {
 
-					$this->logger->log( $this->log, 'JSON author (user) not found: ' . $json_post_author->author_id, $this->logger::WARNING );
+					$this->log( 'JSON author (user) not found: ' . $json_post_author->author_id, Log::WARNING );
 
 					continue;
 
@@ -565,7 +593,7 @@ class GhostCMSHelper {
 
 		if ( empty( $wp_objects ) ) {
 
-			$this->logger->log( $this->log, 'No authors.' );
+			$this->log( 'No authors.' );
 
 			return;
 		
@@ -574,7 +602,7 @@ class GhostCMSHelper {
 		// WP Users and/or CAP GAs.
 		$this->coauthorsplus_logic->assign_authors_to_post( $wp_objects, $wp_post_id );
 
-		$this->logger->log( $this->log, 'Assigned authors (wp users and/or cap gas). Count: ' . count( $wp_objects ) );
+		$this->log( 'Assigned authors (wp users and/or cap gas). Count: ' . count( $wp_objects ) );
 	}
 
 	/**
@@ -593,7 +621,7 @@ class GhostCMSHelper {
 		// But if not, replace the placeholder ( __GHOST_URL__/.../image.jpg ).
 		$old_image_url = preg_replace( '#^__GHOST_URL__#', $this->ghost_url, $old_image_url );
 
-		$this->logger->log( $this->log, 'Featured image fetch url: ' . $old_image_url );
+		$this->log( 'Featured image fetch url: ' . $old_image_url );
 
 		// Get alt and caption if exists in json meta node.
 		$json_meta = $this->get_json_post_meta( $json_post_id );
@@ -606,11 +634,11 @@ class GhostCMSHelper {
 
 		if ( ! is_numeric( $featured_image_id ) || ! ( $featured_image_id > 0 ) ) {
 			
-			$this->logger->log( $this->log, 'Featured image import failed for: ' . $old_image_url, $this->logger::WARNING );
+			$this->log( 'Featured image import failed for: ' . $old_image_url, Log::WARNING );
 
 			if ( is_wp_error( $featured_image_id ) ) {
 
-				$this->logger->log( $this->log, 'Featured image import wp error: ' . $featured_image_id->get_error_message(), $this->logger::WARNING );
+				$this->log( 'Featured image import wp error: ' . $featured_image_id->get_error_message(), Log::WARNING );
 
 			}
 			
@@ -619,7 +647,7 @@ class GhostCMSHelper {
 
 		update_post_meta( $wp_post_id, '_thumbnail_id', $featured_image_id );
 
-		$this->logger->log( $this->log, 'Set _thumbnail_id: ' . $featured_image_id );
+		$this->log( 'Set _thumbnail_id: ' . $featured_image_id );
 	}
 
 	/**
@@ -633,7 +661,7 @@ class GhostCMSHelper {
 
 		if ( empty( $this->json->db[0]->data->posts_tags ) ) {
 			
-			$this->logger->log( $this->log, 'JSON has no post tags (category) relationships.', $this->logger::WARNING );
+			$this->log( 'JSON has no post tags (category) relationships.', Log::WARNING );
 
 			return;
 		
@@ -649,7 +677,7 @@ class GhostCMSHelper {
 				continue;
 			}
 
-			$this->logger->log( $this->log, 'Relationship found for tag: ' . $json_post_tag->tag_id );
+			$this->log( 'Relationship found for tag: ' . $json_post_tag->tag_id );
 
 			// If tag_id wasn't already processed.
 			if ( ! isset( $this->tags_to_categories[ $json_post_tag->tag_id ] ) ) {
@@ -660,7 +688,7 @@ class GhostCMSHelper {
 				// Verify related tag was found in json.
 				if ( empty( $json_tag ) ) {
 				
-					$this->logger->log( $this->log, 'JSON tag not found: ' . $json_post_tag->tag_id, $this->logger::WARNING );
+					$this->log( 'JSON tag not found: ' . $json_post_tag->tag_id, Log::WARNING );
 
 					continue;
 				
@@ -681,7 +709,7 @@ class GhostCMSHelper {
 
 		if ( empty( $category_ids ) ) {
 		
-			$this->logger->log( $this->log, 'No categories.' );
+			$this->log( 'No categories.' );
 
 			return;
 		
@@ -689,7 +717,7 @@ class GhostCMSHelper {
 		
 		wp_set_post_categories( $wp_post_id, $category_ids );
 
-		$this->logger->log( $this->log, 'Set post categories. Count: ' . count( $category_ids ) );
+		$this->log( 'Set post categories. Count: ' . count( $category_ids ) );
 	}
 
 	/**

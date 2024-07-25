@@ -35,7 +35,7 @@ class CliLogger extends Log {
 	 * @return void
 	 */
 	public static function error( string $message, bool $exit_on_error = false ): void {
-		self::log( $message, self::ERROR, true );
+		self::log( $message, self::ERROR, $exit_on_error );
 	}
 
 	/**

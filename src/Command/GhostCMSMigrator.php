@@ -11,12 +11,12 @@ namespace Newspack\MigrationTools\Command;
 
 use Newspack\MigrationTools\Log\FileLogger;
 use Newspack\MigrationTools\Log\Log;
+use Newspack\MigrationTools\Logic\GhostCMSHelper;
 
 /**
  * GhostCMS general Migrator command class.
  */
 class GhostCMSMigrator implements WpCliCommandInterface {
-
 
 	/**
 	 * Private constructor.
@@ -90,12 +90,9 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 
 		$logfile = str_replace( __NAMESPACE__ . '\\', '', __CLASS__ ) . '_' . __FUNCTION__ . '.log';
 
-		FileLogger::log( $logfile, "Import" );
+		FileLogger::log( $logfile, "Starting CLI - GhostCMS Import...", Log::INFO );
 
-		$helper = \Newspack\MigrationTools\Logic\GhostCMSHelper::get_instance();
-
-		$helper->ghostcms_import( $pos_args, $assoc_args );
-
+		GhostCMSHelper::get_instance()->ghostcms_import( $pos_args, $assoc_args, $logfile );
 
 	}
 
