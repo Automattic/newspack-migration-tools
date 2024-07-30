@@ -78,7 +78,7 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 							'repeating'   => false,
 						),
 					),
-				]
+				],
 			],
 		];
 	}
@@ -90,10 +90,8 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 
 		$logfile = str_replace( __NAMESPACE__ . '\\', '', __CLASS__ ) . '_' . __FUNCTION__ . '.log';
 
-		FileLogger::log( $logfile, "Starting CLI - GhostCMS Import...", Log::INFO );
+		FileLogger::log( $logfile, 'Starting CLI - GhostCMS Import...', Log::INFO );
 
 		GhostCMSHelper::get_instance()->ghostcms_import( $pos_args, $assoc_args, $logfile );
-
 	}
-
 }

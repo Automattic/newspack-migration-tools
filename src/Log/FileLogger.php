@@ -51,8 +51,9 @@ class FileLogger extends Log {
 		// Write to log file.
 		file_put_contents( $file_path, self::get_formatted_message( $message, $level, false ), FILE_APPEND );
 		
-		// Also log to CLI.
-		if( false !== $level ) CliLogger::log( $message, $level, $exit_on_error );
-
+		// Also log to CLI if not level is not bool false.
+		if ( false !== $level ) {
+			CliLogger::log( $message, $level, $exit_on_error );
+		}
 	}
 }

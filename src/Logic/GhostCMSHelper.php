@@ -101,8 +101,8 @@ class GhostCMSHelper {
 	/**
 	 * Import GhostCMS Content from JSON file.
 	 * 
-	 * @param array $pos_args Positional arguments.
-	 * @param array $assoc_args Associative arguments.
+	 * @param array       $pos_args Positional arguments.
+	 * @param array       $assoc_args Associative arguments.
 	 * @param bool|string $logger CLI logger (true (default) or false) or string filename for file (and cli) output.
 	 */
 	public function ghostcms_import( array $pos_args, array $assoc_args, bool|string $logger = true ): void {
@@ -484,40 +484,41 @@ class GhostCMSHelper {
 		return $term_arr['term_id'];
 	}
 
-	private function log( string $message, string|bool $level = 'line', bool $exit_on_error = false ) : void {
+	private function log( string $message, string|bool $level = 'line', bool $exit_on_error = false ): void {
 
 		$maybe_bool = filter_var( $this->logger, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE );
 
-		if( is_bool( $maybe_bool ) ) {
+		if ( is_bool( $maybe_bool ) ) {
 
-			if( false == $maybe_bool || false == $level  ) return;
+			if ( false == $maybe_bool || false == $level ) {
+				return;
+			}
 			
 			CLIlogger::log( $message, $level, $exit_on_error );
 
 			return;
-
 		}
 
-		if( is_string( $this->logger ) ) {
+		if ( is_string( $this->logger ) ) {
 
 			Filelogger::log( $this->logger, $message, $level, $exit_on_error );
 
 			return;
 		}
-		
 	}
 
-	private function log_additional_file( string $filename_append, string $message, string|bool $level = 'line', bool $exit_on_error = false ) : void {
+	private function log_additional_file( string $filename_append, string $message, string|bool $level = 'line', bool $exit_on_error = false ): void {
 
 		// Must not be bool. String only.
-		if( is_bool( filter_var( $this->logger, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE ) ) || ! is_string( $this->logger ) ) return;
+		if ( is_bool( filter_var( $this->logger, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE ) ) || ! is_string( $this->logger ) ) {
+			return;
+		}
 
 		// Write to appended filename file.
 		$original_logger = $this->logger;
-		$this->logger = $this->logger . $filename_append;
+		$this->logger    = $this->logger . $filename_append;
 		$this->log( $message, $level, $exit_on_error );
 		$this->logger = $original_logger;
-
 	}
 
 	/**
@@ -771,5 +772,3 @@ class GhostCMSHelper {
 		return null;
 	}
 }
-
-
