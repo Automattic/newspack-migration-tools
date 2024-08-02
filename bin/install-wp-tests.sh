@@ -185,3 +185,8 @@ install_db() {
 install_wp
 install_test_suite
 install_db
+
+# Download and install plugins we depend on.
+if [ ! -d "$WP_CORE_DIR/wp-content/plugins/co-authors-plus" ]; then
+  wp plugin install co-authors-plus --version=latest --activate --path=$WP_CORE_DIR
+fi
