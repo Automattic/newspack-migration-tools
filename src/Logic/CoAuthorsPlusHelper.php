@@ -157,10 +157,10 @@ class CoAuthorsPlusHelper {
 		global $wpdb;
 
 		// Return this $user_login if it doesn't exist as WP_User.user_login or CAP postmeta 'cap-user_login'.
-		// phpcs:disable -- Allow querying users table.
-		$wpuser_login_exists = $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM $wpdb->users WHERE user_login = %s", $user_login ) );
-		// phpcs:enable
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPressVIPMinimum.Variables.RestrictedVariables.user_meta__wpdb__users
+		$wpuser_login_exists  = $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM $wpdb->users WHERE user_login = %s", $user_login ) );
 		$capuser_login_exists = $wpdb->get_var( $wpdb->prepare( "SELECT meta_value FROM $wpdb->postmeta WHERE meta_key = 'cap-user_login' AND meta_value = %s", $user_login ) );
+		// phpcs:enable
 		if ( ! $wpuser_login_exists && ! $capuser_login_exists ) {
 			return $user_login;
 		}
@@ -584,7 +584,6 @@ class CoAuthorsPlusHelper {
 	 */
 	public function get_guest_author_by_display_name( $display_name ) {
 
-		// phpcs:disable
 		/**
 		 * These two don't work as expected:
 		 *
@@ -592,10 +591,10 @@ class CoAuthorsPlusHelper {
 		 *
 		 *      return $this->coauthors_guest_authors->get_guest_author_by( 'post_title', $display_name );
 		 */
-		// phpcs:enable
 
 		// Manually querying ID from DB.
 		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$post_ids_results = $wpdb->get_results( $wpdb->prepare( "SELECT ID FROM $wpdb->posts WHERE post_title = %s AND post_type = 'guest-author';", $display_name ), ARRAY_A );
 
 		$gas = [];
@@ -798,7 +797,7 @@ class CoAuthorsPlusHelper {
 		'future',
 		'private',
 		'inherit',
-		'trash'
+		'trash',
 	] ): array {
 		global $wpdb;
 
@@ -898,6 +897,7 @@ class CoAuthorsPlusHelper {
 	public function get_all_posts_by_guest_author( int $ga_id, bool $get_post_objects = false ) {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$records = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT
@@ -957,6 +957,7 @@ class CoAuthorsPlusHelper {
 		global $wpdb;
 
 		// This query was taken directly from \CoAuthors_Guest_Authors::get_guest_author_by.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$post_ids = $wpdb->get_col( "SELECT ID FROM $wpdb->posts WHERE post_type = 'guest-author';" );
 
 		$all_gas = [];
