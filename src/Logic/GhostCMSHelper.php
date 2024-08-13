@@ -13,11 +13,8 @@ use Newspack\MigrationTools\Log\CliLogger;
 use Newspack\MigrationTools\Log\FileLogger;
 use Newspack\MigrationTools\Log\Log;
 use Newspack\MigrationTools\Logic\AttachmentHelper;
+use Newspack\MigrationTools\Logic\CoAuthorsPlusHelper;
 use WP_Error;
-
-
-// use NewspackCustomContentMigrator\Logic\CoAuthorPlus as CoAuthorPlusLogic;
-
 
 /**
  * GhostCMS Helper.
@@ -34,11 +31,11 @@ class GhostCMSHelper {
 	private array $authors_to_wp_objects;
 
 	/**
-	 * CoAuthorPlusLogic
+	 * CoAuthorsPlusHelper
 	 * 
-	 * @var CoAuthorPlusLogic 
+	 * @var CoAuthorsPlusHelper 
 	 */
-	private $coauthorsplus_logic;
+	private $coauthorsplus_helper;
 
 	/**
 	 * Ghost URL for image downloads.
@@ -81,7 +78,7 @@ class GhostCMSHelper {
 	 * Constructor.
 	 */
 	private function __construct() {
-		// $this->coauthorsplus_logic = new CoAuthorPlusLogic();
+		$this->coauthorsplus_helper = new CoAuthorsPlusHelper();
 	}
 
 	/**
@@ -111,7 +108,7 @@ class GhostCMSHelper {
 		$this->logger = $logger;
 
 		// Plugin dependencies.
-		if ( ! $this->coauthorsplus_logic->validate_co_authors_plus_dependencies() ) {
+		if ( ! $this->coauthorsplus_helper->validate_co_authors_plus_dependencies() ) {
 			$this->log( 'Co-Authors Plus plugin not found. Install and activate it before using this command.', Log::ERROR, true );
 		}
 
@@ -376,7 +373,7 @@ class GhostCMSHelper {
 		} 
 		
 		// Get existing GA if exists.
-		// As of 2024-03-19 the use of 'coauthorsplus_logic->create_guest_author()' to return existing match
+		// As of 2024-03-19 the use of 'coauthorsplus_helper->create_guest_author()' to return existing match
 		// may return an error. WP Error occures if existing database GA is "Jon A. Doe" but new GA is "Jon A Doe".
 		// New GA will not match on display name, but will fail on create when existing sanitized slug is found.
 		// Use a more direct approach here.
@@ -385,7 +382,7 @@ class GhostCMSHelper {
 
 		$this->log( 'Get or insert author: ' . $user_login );
 
-		$ga = $this->coauthorsplus_logic->get_guest_author_by_user_login( $user_login );
+		$ga = $this->coauthorsplus_helper->get_guest_author_by_user_login( $user_login );
 
 		// GA Exists.
 		if ( is_object( $ga ) ) {
@@ -420,7 +417,7 @@ class GhostCMSHelper {
 		}
 
 		// Create a GA.
-		$ga_id = $this->coauthorsplus_logic->create_guest_author( array( 'display_name' => $json_author_user->name ) );
+		$ga_id = $this->coauthorsplus_helper->create_guest_author( array( 'display_name' => $json_author_user->name ) );
 
 		if ( is_wp_error( $ga_id ) || ! is_numeric( $ga_id ) || ! ( $ga_id > 0 ) ) {
 
@@ -432,7 +429,7 @@ class GhostCMSHelper {
 
 		$this->log( 'Created new GA.' );
 
-		$ga = $this->coauthorsplus_logic->get_guest_author_by_id( $ga_id );
+		$ga = $this->coauthorsplus_helper->get_guest_author_by_id( $ga_id );
 	
 		// Save old slug for possible redirect.
 		update_post_meta( $ga->ID, 'newspack_ghostcms_slug', $json_author_user->slug );
@@ -587,7 +584,7 @@ class GhostCMSHelper {
 		}
 
 		// WP Users and/or CAP GAs.
-		$this->coauthorsplus_logic->assign_authors_to_post( $wp_objects, $wp_post_id );
+		$this->coauthorsplus_helper->assign_authors_to_post( $wp_objects, $wp_post_id );
 
 		$this->log( 'Assigned authors (wp users and/or cap gas). Count: ' . count( $wp_objects ) );
 	}
