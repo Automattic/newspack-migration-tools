@@ -6,11 +6,11 @@ The repository contains a set of WP commands to migrate different data to WordPr
 
 Minimum PHP version required is 8.1.
 
-## Documentation for Individual Migrators and Helpers
+### Documentation for Individual Migrators
 
 * Attachments (todo)
 * [GhostCMS](docs/GhostCMS.md)
-* CoAuthorsPlus (todo)
+
 
 ## Development
 

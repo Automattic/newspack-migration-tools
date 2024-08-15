@@ -13,5 +13,5 @@ Optional arguments:
 * `--created-after=` Cut off date to only import newer posts.  Ex: "2024-01-01 10:50:30"
 
 Output log files: 
-* `GhostCMSMigrator_cmd_ghost_cms_import.log` - Be sure to review for warning and error lines.
-* `GhostCMSMigrator_cmd_ghost_cms_import.log-skips.log` - Be sure to review for any posts that should have been added but were skipped.
+* `GhostCMSMigrator_cmd_ghostcms_import.log` - Be sure to review for warning and error lines.
+* `GhostCMSMigrator_cmd_ghostcms_import.log-skips.log` - Be sure to review for any posts that should have been added but were skipped.
