@@ -14,8 +14,9 @@ class FileLogger extends Log {
 	 * @param string $message       Log message.
 	 * @param string $level         Log level. See constants in this class.
 	 * @param bool   $exit_on_error Whether to exit on error.
+	 * @param bool   $also_log_cli  Whether to also log to CLI.
 	 */
-	public static function log( string $file, string $message, string $level = 'line', bool $exit_on_error = false ): void {
+	public static function log( string $file, string $message, string $level = 'line', bool $exit_on_error = false, bool $also_log_cli = true ): void {
 		/**
 		 * Filter the file path for the log file.
 		 *
@@ -34,8 +35,9 @@ class FileLogger extends Log {
 		 * @param string $message       Log message.
 		 * @param string $level         Log level. See constants in parent class.
 		 * @param bool   $exit_on_error Whether to exit on error.
+		 * @param bool   $also_log_cli  Whether to also log to CLI.
 		 */
-		do_action( 'newspack_migration_tools_logger_log', $file, $message, $level, $exit_on_error );
+		do_action( 'newspack_migration_tools_logger_log', $file, $message, $level, $exit_on_error, $also_log_cli );
 
 		/**
 		 * Filter to disable file logging.
@@ -50,7 +52,10 @@ class FileLogger extends Log {
 
 		// Write to log file.
 		file_put_contents( $file_path, self::get_formatted_message( $message, $level, false ), FILE_APPEND );
+
 		// Also log to CLI.
-		CliLogger::log( $message, $level, $exit_on_error );
+		if ( $also_log_cli ) {
+			CliLogger::log( $message, $level, $exit_on_error );
+		}
 	}
 }
