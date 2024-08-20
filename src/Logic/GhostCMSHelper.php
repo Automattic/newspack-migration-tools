@@ -9,7 +9,6 @@
 
 namespace Newspack\MigrationTools\Logic;
 
-use Newspack\MigrationTools\Log\CliLogger;
 use Newspack\MigrationTools\Log\FileLogger;
 use Newspack\MigrationTools\Log\Log;
 use Newspack\MigrationTools\Logic\AttachmentHelper;
@@ -59,11 +58,11 @@ class GhostCMSHelper {
 	private object $json;
 
 	/**
-	 * Logger (bool: true or false) or string (file path). Initialized as false.
+	 * Log file.
 	 *
-	 * @var bool|string $logger
+	 * @var string $log_file
 	 */
-	private bool|string $logger = false;
+	private string $log_file;
 
 	/**
 	 * Lookup to convert json tags to wp categories.
@@ -98,14 +97,14 @@ class GhostCMSHelper {
 	/**
 	 * Import GhostCMS Content from JSON file.
 	 * 
-	 * @param array       $pos_args Positional arguments.
-	 * @param array       $assoc_args Associative arguments.
-	 * @param bool|string $logger CLI logger (true (default) or false) or string filename for file (and cli) output.
+	 * @param array  $pos_args Positional arguments.
+	 * @param array  $assoc_args Associative arguments.
+	 * @param string $log_file Filename for logging.
 	 */
-	public function ghostcms_import( array $pos_args, array $assoc_args, bool|string $logger = true ): void {
+	public function ghostcms_import( array $pos_args, array $assoc_args, string $log_file ): void {
 
-		// Set logger from args.
-		$this->logger = $logger;
+		// Set log file from args.
+		$this->log_file = $log_file;
 
 		// Plugin dependencies.
 		if ( ! $this->coauthorsplus_helper->validate_co_authors_plus_dependencies() ) {
@@ -195,9 +194,14 @@ class GhostCMSHelper {
 			
 				$this->log( 'Skip JSON post (review by hand -skips.log): ' . $skip_reason, Log::WARNING );
 
-				// Save to skips file, and do not write to console.
+				// Save to skips file, but do not write to CLI console.
+				add_filter( 'newspack_migration_tools_log_clilog_disable', '__return_true' );
+
 				// phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
-				$this->log_additional_file( '-skips.log', json_encode( array( $skip_reason, $json_post ) ), false );
+				Filelogger::log( $this->log_file . '-skips.log', json_encode( array( $skip_reason, $json_post ) ) );
+
+				// turn CLI logging back on.
+				remove_filter( 'newspack_migration_tools_log_clilog_disable', '__return_true' );
 
 				continue;
 
@@ -481,41 +485,16 @@ class GhostCMSHelper {
 		return $term_arr['term_id'];
 	}
 
-	private function log( string $message, string|bool $level = 'line', bool $exit_on_error = false ): void {
-
-		$maybe_bool = filter_var( $this->logger, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE );
-
-		if ( is_bool( $maybe_bool ) ) {
-
-			if ( false == $maybe_bool || false == $level ) {
-				return;
-			}
-			
-			CLIlogger::log( $message, $level, $exit_on_error );
-
-			return;
-		}
-
-		if ( is_string( $this->logger ) ) {
-
-			Filelogger::log( $this->logger, $message, $level, $exit_on_error );
-
-			return;
-		}
-	}
-
-	private function log_additional_file( string $filename_append, string $message, string|bool $level = 'line', bool $exit_on_error = false ): void {
-
-		// Must not be bool. String only.
-		if ( is_bool( filter_var( $this->logger, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE ) ) || ! is_string( $this->logger ) ) {
-			return;
-		}
-
-		// Write to appended filename file.
-		$original_logger = $this->logger;
-		$this->logger    = $this->logger . $filename_append;
-		$this->log( $message, $level, $exit_on_error );
-		$this->logger = $original_logger;
+	/**
+	 * Log wrapper function incase logging needs to be updated in future it can be changed here.
+	 *
+	 * @param string  $message The message to log.
+	 * @param string  $level See Newspack\MigrationTools\Log\Log constants.
+	 * @param boolean $exit_on_error For error messages if desired.
+	 * @return void
+	 */
+	private function log( string $message, string $level = 'line', bool $exit_on_error = false ): void {
+		Filelogger::log( $this->log_file, $message, $level, $exit_on_error );
 	}
 
 	/**
