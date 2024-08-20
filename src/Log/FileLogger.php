@@ -10,12 +10,12 @@ class FileLogger extends Log {
 	 * If you want fancier logging, use the `newspack_migration_tools_log` action. You can disable the simple
 	 * logging by using the `newspack_migration_tools_log_disable_default` filter.
 	 *
-	 * @param string      $file          File name or path.
-	 * @param string      $message       Log message.
-	 * @param string|bool $level         Log level. See constants in this class. Boolean false will log to file only (no cli).
-	 * @param bool        $exit_on_error Whether to exit on error.
+	 * @param string $file          File name or path.
+	 * @param string $message       Log message.
+	 * @param string $level         Log level. See constants in this class.
+	 * @param bool   $exit_on_error Whether to exit on error.
 	 */
-	public static function log( string $file, string $message, string|bool $level = 'line', bool $exit_on_error = false ): void {
+	public static function log( string $file, string $message, string $level = 'line', bool $exit_on_error = false ): void {
 		/**
 		 * Filter the file path for the log file.
 		 *
@@ -50,10 +50,7 @@ class FileLogger extends Log {
 
 		// Write to log file.
 		file_put_contents( $file_path, self::get_formatted_message( $message, $level, false ), FILE_APPEND );
-		
-		// Also log to CLI if not level is not bool false.
-		if ( false !== $level ) {
-			CliLogger::log( $message, $level, $exit_on_error );
-		}
+		// Also log to CLI.
+		CliLogger::log( $message, $level, $exit_on_error );
 	}
 }
