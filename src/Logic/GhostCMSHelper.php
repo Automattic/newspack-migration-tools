@@ -44,13 +44,6 @@ class GhostCMSHelper {
 	private string $ghost_url;
 
 	/**
-	 * Instance
-	 * 
-	 * @var null|InterfaceCommand Instance.
-	 */
-	private static $instance = null;
-
-	/**
 	 * JSON from file
 	 *
 	 * @var object $json
@@ -76,22 +69,8 @@ class GhostCMSHelper {
 	/**
 	 * Constructor.
 	 */
-	private function __construct() {
+	public function __construct() {
 		$this->coauthorsplus_helper = new CoAuthorsPlusHelper();
-	}
-
-	/**
-	 * Singleton get_instance().
-	 *
-	 * @return InterfaceCommand|null
-	 */
-	public static function get_instance() {
-		$class = get_called_class();
-		if ( null === self::$instance ) {
-			self::$instance = new $class();
-		}
-
-		return self::$instance;
 	}
 
 	/**
