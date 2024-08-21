@@ -93,6 +93,5 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 		FileLogger::log( $log_file, 'Starting CLI - GhostCMS Import...', Log::INFO );
 
 		( new GhostCMSHelper() )->ghostcms_import( $pos_args, $assoc_args, $log_file );
-
 	}
 }
