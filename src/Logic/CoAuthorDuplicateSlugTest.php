@@ -3,10 +3,11 @@ namespace NewspackCustomContentMigrator\Logic;
 
 use \CoAuthors_Plus;
 use \CoAuthors_Guest_Authors;
+use Newspack\MigrationTools\Logic\CoAuthorsPlusHelper;
 use \WP_CLI;
 use WP_User;
 
-class CoAuthorDuplicateSlugTest extends CoAuthorPlus {
+class CoAuthorDuplicateSlugTest extends CoAuthorsPlusHelper {
 
 	protected $authorsWithoutUniqueSlugs = array(
 		array(
