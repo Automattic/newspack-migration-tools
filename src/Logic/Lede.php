@@ -2,7 +2,7 @@
 
 namespace NewspackCustomContentMigrator\Logic;
 
-use \NewspackCustomContentMigrator\Logic\CoAuthorPlus;
+use Newspack\MigrationTools\Logic\CoAuthorsPlusHelper;
 use \NewspackCustomContentMigrator\Logic\Posts;
 use \NewspackCustomContentMigrator\Utils\Logger;
 
@@ -44,7 +44,7 @@ class Lede {
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->cap    = new CoAuthorPlus();
+		$this->cap    = new CoAuthorsPlusHelper();
 		$this->posts  = new Posts();
 		$this->logger = new Logger();
 	}
