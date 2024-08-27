@@ -12,6 +12,6 @@ $testGhostCMSHelper->ghostcms_import(
         'ghost-url'       => 'https://newspack.com/',
         'default-user-id' => 1,
     ],
-    WP_CONTENT_DIR . 'test-ghostcms.log'
+    WP_CONTENT_DIR . '/test-ghostcms.log'
 );
 
