@@ -27,16 +27,19 @@ if [ ! -d $WP_CORE_DIR ]; then
 fi
 
 # Install files and config.
-wp --path=$WP_CORE_DIR core download --version=$WP_VERSION
-wp --path=$WP_CORE_DIR config create --dbname=$DB_NAME --dbuser=$DB_USER --dbpass=$DB_PASS --dbhost=$DB_HOST
-wp --path=$WP_CORE_DIR config set DISABLE_WP_CRON true --raw
-wp --path=$WP_CORE_DIR config set WP_DEBUG true --raw
-wp --path=$WP_CORE_DIR config set WP_DEBUG_LOG true --raw
-wp --path=$WP_CORE_DIR config set WP_DEBUG_DISPLAY false --raw
+# wp --path=$WP_CORE_DIR core download --version=$WP_VERSION
+# wp --path=$WP_CORE_DIR config create --dbname=$DB_NAME --dbuser=$DB_USER --dbpass=$DB_PASS --dbhost=$DB_HOST
+# wp --path=$WP_CORE_DIR config set DISABLE_WP_CRON true --raw
+# wp --path=$WP_CORE_DIR config set WP_DEBUG true --raw
+# wp --path=$WP_CORE_DIR config set WP_DEBUG_LOG true --raw
+# wp --path=$WP_CORE_DIR config set WP_DEBUG_DISPLAY false --raw
 
 # Install db and site.
-wp --path=$WP_CORE_DIR db create
-wp --path=$WP_CORE_DIR core install --url=localhost --title=test --admin_user=test --admin_email=no-reply-no-user-nope@newspack.com --skip-email
+# wp --path=$WP_CORE_DIR db create
+# wp --path=$WP_CORE_DIR core install --url=localhost --title=test --admin_user=test --admin_email=no-reply-no-user-nope@newspack.com --skip-email
 
 # Install plugin:
-wp --path=$WP_CORE_DIR plugin install --activate co-authors-plus
+# wp --path=$WP_CORE_DIR plugin install --activate co-authors-plus
+
+# Run test:
+wp --path=$WP_CORE_DIR eval-file bin/test-ghostcms.php
