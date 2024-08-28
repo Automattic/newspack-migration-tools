@@ -8,7 +8,7 @@ $testGhostCMSHelper = new \Newspack\MigrationTools\Logic\GhostCMSHelper();
 $testGhostCMSHelper->ghostcms_import( 
     [], 
     [
-        'json-file'       => 'tests/fixtures/ghostcms.json',
+        'json-file'       => 'bin/test-ghostcms.json',
         'ghost-url'       => 'https://newspack.com/',
         'default-user-id' => 1,
     ],
