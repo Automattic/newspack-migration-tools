@@ -15,7 +15,7 @@ class FileLogger extends Log {
 	 * @param string $level         Log level. See constants in this class.
 	 * @param bool   $exit_on_error Whether to exit on error.
 	 */
-	public static function log( string $file, string $message, string $level = 'line', bool $exit_on_error = false ): void {
+	public static function log( string $file, string $message, string $level = self::LINE, bool $exit_on_error = false ): void {
 		/**
 		 * Filter the file path for the log file.
 		 *

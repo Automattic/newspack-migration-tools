@@ -8,32 +8,13 @@
 namespace Newspack\MigrationTools\Command;
 
 use Newspack\MigrationTools\Log\FileLogger;
-use Newspack\MigrationTools\Log\Log;
 
 /**
  * Attachments general Migrator command class.
  */
 class AttachmentsMigrator implements WpCliCommandInterface {
 
-
-	/**
-	 * Private constructor.
-	 */
-	private function __construct() {
-		// I don't do anything right now.
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public static function get_instance(): self {
-		static $instance = null;
-		if ( null === $instance ) {
-			$instance = new self();
-		}
-
-		return $instance;
-	}
+	use WpCliCommandTrait;
 
 	/**
 	 * {@inheritDoc}
