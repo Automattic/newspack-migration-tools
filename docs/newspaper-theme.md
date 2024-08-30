@@ -6,11 +6,11 @@ There is a [Helper class](./src/Logic/NewspaperThemeHelper.php) and [commands fo
 ### List theme settings set on post metadata
 Handy for exploring the data saved on posts by the theme (in the `td_post_theme_settings`). You can see how many posts use each.
 ```bash
-newspack-migration-tools newspaper-theme-list-post-settings
+wp newspack-migration-tools newspaper-theme-list-post-settings
 ```
 
 ### Migrate theme settings set on post metadata
 Migrates the fields to the relevant fields in Newspack.
 ```bash
-newspack-migration-tools newspaper-theme-migrate-post-fields
+wp newspack-migration-tools newspaper-theme-migrate-post-fields
 ```
