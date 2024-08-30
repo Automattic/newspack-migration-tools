@@ -24,7 +24,7 @@ class NewspaperThemeCommand implements WpCliCommandInterface {
 					'cmd_list_post_settings',
 				],
 				[
-					'shortdesc' => 'Lists all keys from `td_post_theme_settings` and how many posts have each key.', // TODO. Explain better.
+					'shortdesc' => 'Lists all keys from `td_post_theme_settings` and how many posts have each key. Handy for identifying fields in use.',
 				],
 			],
 			[
@@ -34,7 +34,7 @@ class NewspaperThemeCommand implements WpCliCommandInterface {
 					'cmd_migrate_post_fields',
 				],
 				[
-					'shortdesc' => 'Migrates the fields specified from the `td_post_theme_settings` meta to relevant Newspack fields',
+					'shortdesc' => 'Migrates the `td_post_theme_settings` meta to relevant Newspack fields',
 					'synopsis'  => [
 						[
 							'type'        => 'flag',
