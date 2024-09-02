@@ -4,6 +4,8 @@ namespace Newspack\MigrationTools\Logic;
 
 use CoAuthors_Guest_Authors;
 use CoAuthors_Plus;
+use Exception;
+use WP_Error;
 
 class CoAuthorsPlusHelper {
 
@@ -17,12 +19,14 @@ class CoAuthorsPlusHelper {
 	/**
 	 * CoAuthors_Guest_Authors.
 	 *
-	 * @var null|CoAuthors_Guest_Authors
+	 * @var CoAuthors_Guest_Authors
 	 */
 	public $coauthors_guest_authors;
 
 	/**
 	 * CoAuthorPlus constructor.
+	 *
+	 * @throws Exception If CoAuthors Plus is not installed or active.
 	 */
 	public function __construct() {
 		// Set Co-Authors Plus dependencies.
@@ -37,11 +41,11 @@ class CoAuthorsPlusHelper {
 
 		if ( is_null( $coauthors_plus ) || ( false === $included_1 ) || ( false === $included_2 ) || ( ! $coauthors_plus instanceof CoAuthors_Plus ) ) {
 			// CoAuthors Plus is a dependency, and will have to be installed before the public functions/commands can be used.
-			return;
+			throw new Exception( 'CoAuthors Plus is not installed or active.' );
 		}
 
 		$this->coauthors_plus          = $coauthors_plus;
-		$this->coauthors_guest_authors = new CoAuthors_Guest_Authors();
+		$this->coauthors_guest_authors = new \CoAuthors_Guest_Authors();
 	}
 
 	/**
@@ -93,12 +97,12 @@ class CoAuthorsPlusHelper {
 	 * @type int    $avatar       Attachment ID for the Avatar image.
 	 *                            }
 	 *
-	 * @return int|array|WP_Error Created Guest Author ID, or an array of created Guest Author IDs, or WP_Error.
+	 * @return int|WP_Error Created Guest Author ID, or WP_Error.
 	 *
 	 * @throws \UnexpectedValueException In case mandatory argument values aren't provided.
 	 */
 	public function create_guest_author( array $args ) {
-		if ( ! isset( $args['display_name'] ) ) {
+		if ( empty( $args['display_name'] ) ) {
 			throw new \UnexpectedValueException( 'The `display_name` param is mandatory for Guest Author creation.' );
 		}
 
