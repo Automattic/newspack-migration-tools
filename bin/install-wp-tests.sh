@@ -97,7 +97,7 @@ install_wp() {
 
 install_plugins() {
   wget -nv -O /tmp/co-authors-plus.zip https://downloads.wordpress.org/plugin/co-authors-plus.zip
-  unzip -q /tmp/co-authors-plus.zip -d $WP_CORE_DIR/wp-content/plugins/
+  unzip -q -o /tmp/co-authors-plus.zip -d $WP_CORE_DIR/wp-content/plugins/
 }
 
 install_test_suite() {
