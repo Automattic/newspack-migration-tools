@@ -47,7 +47,7 @@ class CliLogger extends Log {
 	 *
 	 * @return void
 	 */
-	public static function log( string $message, string $level, bool $exit_on_error ): void {
+	public static function log( string $message, string $level = self::INFO, bool $exit_on_error = false ): void {
 		/**
 		 * Fires before default logging to CLI.
 		 *
