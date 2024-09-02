@@ -9,6 +9,7 @@
 
 namespace Newspack\MigrationTools\Logic;
 
+use Exception;
 use Newspack\MigrationTools\Log\FileLogger;
 use Newspack\MigrationTools\Log\Log;
 use Newspack\MigrationTools\Logic\AttachmentHelper;
@@ -70,7 +71,7 @@ class GhostCMSHelper {
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->coauthorsplus_helper = new CoAuthorsPlusHelper();
+		// Nothing for now.
 	}
 
 	/**
@@ -85,9 +86,18 @@ class GhostCMSHelper {
 		// Set log file from args.
 		$this->log_file = $log_file;
 
-		// Plugin dependencies.
+		// CoAuthorsPlus is required.
+		try {
+			// Verify code plugin is included.
+			$this->coauthorsplus_helper = new CoAuthorsPlusHelper();
+		}
+		catch ( Exception $e ) {
+			$this->log( 'CoAuthorsPlus Helper construct threw exception: ' . $e->getMessage(), Log::ERROR, true );
+		}
+
+		// CoAuthorsPlus plugin must be activated.
 		if ( ! $this->coauthorsplus_helper->validate_co_authors_plus_dependencies() ) {
-			$this->log( 'Co-Authors Plus plugin not found. Install and activate it before using this command.', Log::ERROR, true );
+			$this->log( 'CoAuthorsPlus plugin not found. Install and activate it before using this command.', Log::ERROR, true );
 		}
 
 		// Argument parsing.
