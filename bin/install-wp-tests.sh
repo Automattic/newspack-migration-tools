@@ -95,6 +95,11 @@ install_wp() {
 	download https://raw.githubusercontent.com/markoheijnen/wp-mysqli/master/db.php $WP_CORE_DIR/wp-content/db.php
 }
 
+install_plugins() {
+  wget -nv -O /tmp/co-authors-plus.zip https://downloads.wordpress.org/plugin/co-authors-plus.zip
+  unzip -q /tmp/co-authors-plus.zip -d $WP_CORE_DIR/wp-content/plugins/
+}
+
 install_test_suite() {
 	# portable in-place argument for both GNU sed and Mac OSX sed
 	if [[ $(uname -s) == 'Darwin' ]]; then
@@ -158,12 +163,12 @@ install_db() {
 	local DB_SOCK_OR_PORT=${PARTS[1]};
 	local EXTRA=""
 
-	if ! [ -z $DB_HOSTNAME ] ; then
-		if [ $(echo $DB_SOCK_OR_PORT | grep -e '^[0-9]\{1,\}$') ]; then
+	if ! [ -z "$DB_HOSTNAME" ] ; then
+		if [ "$(echo $DB_SOCK_OR_PORT | grep -e '^[0-9]\{1,\}$')" ]; then
 			EXTRA=" --host=$DB_HOSTNAME --port=$DB_SOCK_OR_PORT --protocol=tcp"
 		elif ! [ -z $DB_SOCK_OR_PORT ] ; then
 			EXTRA=" --socket=\"$DB_SOCK_OR_PORT\""
-		elif ! [ -z $DB_HOSTNAME ] ; then
+		elif ! [ -z "$DB_HOSTNAME" ] ; then
 			EXTRA=" --host=$DB_HOSTNAME --protocol=tcp"
 		fi
 	fi
@@ -183,5 +188,6 @@ install_db() {
 }
 
 install_wp
+install_plugins
 install_test_suite
 install_db

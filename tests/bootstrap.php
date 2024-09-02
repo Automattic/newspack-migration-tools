@@ -32,7 +32,17 @@ function _manually_load_plugin() {
 	require dirname( __DIR__ ) . '/newspack-migration-tools.php';
 }
 
+/**
+ * Manually load the 3rd-party plugins we use.
+ */
+function _manually_load_contrib_plugins() {
+	$plugins_dir = rtrim( sys_get_temp_dir(), '/\\' ) . '/wordpress/wp-content/plugins';
+	// The CAP plugin is used so much in our code that it is hard to test without it.
+	require "$plugins_dir/co-authors-plus/co-authors-plus.php";
+}
+
 tests_add_filter( 'muplugins_loaded', '_manually_load_plugin' );
+tests_add_filter( 'muplugins_loaded', '_manually_load_contrib_plugins', 20 );
 
 // Start up the WP testing environment.
 require "{$_tests_dir}/includes/bootstrap.php";
