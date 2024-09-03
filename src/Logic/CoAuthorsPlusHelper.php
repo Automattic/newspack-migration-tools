@@ -231,6 +231,8 @@ class CoAuthorsPlusHelper {
 			'user_email',
 			'website',
 			'description',
+			'job_title',
+			'role',
 			'avatar',
 		];
 		foreach ( $args as $key => $value ) {
@@ -280,6 +282,16 @@ class CoAuthorsPlusHelper {
 		// Update description.
 		if ( isset( $args_sanitized['description'] ) && ! empty( $args_sanitized['description'] ) ) {
 			update_post_meta( $ga_id, 'cap-description', $args_sanitized['description'] );
+		}
+
+		// Update job title.
+		if ( ! empty( $args_sanitized['job_title'] ) ) {
+			update_post_meta( $ga_id, 'cap-newspack_job_title', $args_sanitized['job_title'] );
+		}
+
+		// Update role.
+		if ( ! empty( $args_sanitized['role'] ) ) {
+			update_post_meta( $ga_id, 'cap-newspack_role', $args_sanitized['role'] );
 		}
 
 		// Update avatar attachment ID.
