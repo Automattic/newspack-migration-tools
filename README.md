@@ -6,6 +6,11 @@ The repository contains a set of WP commands to migrate different data to WordPr
 
 Minimum PHP version required is 8.1.
 
+### Documentation for Individual Migrators
+
+* Attachments (todo)
+* [Newspaper Theme](./docs/newspaper-theme.md)
+
 ## Development
 
 You can load this package in your PHP project as follows:
