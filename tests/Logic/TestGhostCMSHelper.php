@@ -15,6 +15,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 	public function test_ghostcms_import(): void {
 
 		// Activation of CAP is required for it's internal "init" actions.
+		// phpunit can get by without activating CAP plugin, but real-world
+		// tests will fail if not activated.  So just activate to be safe.
 		activate_plugin( 'co-authors-plus/co-authors-plus.php' );
 		
 		// Set path to log file.
@@ -51,25 +53,12 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		// Test that output.
 		$this->assertStringContainsString( 'Doing migration.', $output );
-
-// +--json-file: tests/fixtures/ghostcms.json\r\n
-// +--ghost-url: https://newspack.com\r\n
-// +--default-user-id: 1\r\n
-// +---- json id: 65ea49ad7b6cf900014e661c\r\n
-// +Title/Slug: The Title / the-title\r\n
-// +Created/Published: 2024-04-07T23:11:41.000Z / 2024-04-07T23:12:17.000Z\r\n
-// +Inserted new post: 4\r\n
-// +Featured image fetch url: https://newspack.com/content/images/2024/04/image.jpeg\r\n
-// +WARNING: Featured image import failed for: https://newspack.com/content/images/2024/04/image.jpeg\r\n
-// +WARNING: Featured image import wp error: Not Found\r\n
-// +Relationship found for author: 6387a43e354f5f003ddbe55f\r\n
-// +Get or insert author: some-user\r\n
-// +Created new GA.\r\n
-// +Assigned authors (wp users and/or cap gas). Count: 1\r\n
-// +Relationship found for tag: 6387a43f354f5f003ddbe565\r\n
-// +Inserted category term: 4\r\n
-// +Set post categories. Count: 1\r\n
-
+		$this->assertStringContainsString( 'Inserted new post:', $output );
+		$this->assertStringContainsString( 'Created new GA.', $output );
+		$this->assertStringContainsString( 'Assigned authors (wp users and/or cap gas).', $output );
+		$this->assertStringContainsString( 'Inserted category term:', $output );
+		$this->assertStringContainsString( 'Set post categories.', $output );
+		$this->assertStringContainsString( 'SUCCESS: Done.', $output );
 
 		// Remove log file.
 		if ( file_exists( $log_file ) ) {

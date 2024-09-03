@@ -62,22 +62,3 @@ To run the tests, run `composer run phpunit`.
 
 ### Code coverage
 To get a code coverage report, run `composer run code-coverage`. The report will be generated in the `coverage` directory. Open the [coverage/index.html](coverage/index.html) file in that dir in your browser to see the report.
-
-### Integration Tests
-To run integration tests, follow these steps:
-
-#### GhostCMS
-```
-# Run test:
-
-sh bin/test-ghostcms.sh <temp-db-name> <temp-db-user> <temp-db-pass> [temp-db-host(localhost)] [wp-version(latest)]
-
-# Remove temp folder:
-
-rm -rf /tmp/wp-test-ghostcms
-
-# Remove temp db:
-
-DROP DATABASE <temp-db-name>;
-
-```
