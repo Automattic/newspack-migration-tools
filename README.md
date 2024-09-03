@@ -9,8 +9,7 @@ Minimum PHP version required is 8.1.
 ### Documentation for Individual Migrators
 
 * Attachments (todo)
-* [GhostCMS](docs/GhostCMS.md)
-
+* [Newspaper Theme](./docs/newspaper-theme.md)
 
 ## Development
 
