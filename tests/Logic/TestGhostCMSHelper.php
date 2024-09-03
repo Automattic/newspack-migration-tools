@@ -31,8 +31,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		ob_start();
 
 		// Run test.
-		$testGhostCMSHelper = new GhostCMSHelper();
-		$testGhostCMSHelper->ghostcms_import( 
+		$test_ghostcms_helper = new GhostCMSHelper();
+		$test_ghostcms_helper->ghostcms_import( 
 			[], 
 			[
 				'json-file'       => 'tests/fixtures/ghostcms.json',
@@ -43,13 +43,14 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		);
 
 		// Get output CLI buffer without color codes.
-		$output = preg_replace('/\033\[[0-9;]+m/', '', ob_get_clean() );
+		$output = preg_replace( '/\033\[[0-9;]+m/', '', ob_get_clean() );
 
 		// Test that log exists.
 		$this->assertFileExists( $log_file );
 
 		// Test that log file matches 
-		$this->assertEquals( $output, file_get_contents( $log_file) );
+		// phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+		$this->assertEquals( $output, file_get_contents( $log_file ) );
 
 		// Test that output.
 		$this->assertStringContainsString( 'Doing migration.', $output );

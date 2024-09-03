@@ -90,8 +90,7 @@ class GhostCMSHelper {
 		try {
 			// Verify code plugin is included.
 			$this->coauthorsplus_helper = new CoAuthorsPlusHelper();
-		}
-		catch ( Exception $e ) {
+		} catch ( Exception $e ) {
 			$this->log( 'CoAuthorsPlusHelper construct threw exception: ' . $e->getMessage(), Log::ERROR, true );
 		}
 
