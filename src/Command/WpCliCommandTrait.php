@@ -17,5 +17,4 @@ trait WpCliCommandTrait {
 	private function __construct() {
 		// Nothing.
 	}
-
 }
