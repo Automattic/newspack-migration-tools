@@ -14,6 +14,9 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 	 */
 	public function test_ghostcms_import(): void {
 
+		// Activation of CAP is required for it's internal "init" actions.
+		activate_plugin( 'co-authors-plus/co-authors-plus.php' );
+		
 		// Set path to log file.
 		$log_file = get_temp_dir() . str_replace( __NAMESPACE__ . '\\', '', __CLASS__ ) . '_' . __FUNCTION__ . '.log';
 
