@@ -28,8 +28,7 @@ class TestAttachmentsMigrator extends WP_UnitTestCase {
 			]
 		);
 
-		$attachments_migrator = AttachmentsMigrator::get_instance();
-		$attachments_migrator->cmd_get_atts_by_years( [], [] );
+		AttachmentsMigrator::cmd_get_atts_by_years( [], [] );
 
 		$this->assertFileExists( '0_failed_ids.txt' );
 		unlink( '0_failed_ids.txt' );

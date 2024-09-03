@@ -15,12 +15,12 @@ class NewspaperThemeCommand implements WpCliCommandInterface {
 	/**
 	 * {@inheritDoc}
 	 */
-	public function get_cli_commands(): array {
+	public static function get_cli_commands(): array {
 		return [
 			[
 				'newspack-migration-tools newspaper-theme-list-post-settings',
 				[
-					$this,
+					__CLASS__,
 					'cmd_list_post_settings',
 				],
 				[
@@ -30,7 +30,7 @@ class NewspaperThemeCommand implements WpCliCommandInterface {
 			[
 				'newspack-migration-tools newspaper-theme-migrate-post-fields',
 				[
-					$this,
+					__CLASS__,
 					'cmd_migrate_post_fields',
 				],
 				[
