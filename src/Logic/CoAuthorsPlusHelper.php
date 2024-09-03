@@ -285,12 +285,12 @@ class CoAuthorsPlusHelper {
 		}
 
 		// Update job title.
-		if ( isset( $args_sanitized['job_title'] ) && ! empty( $args_sanitized['job_title'] ) ) {
+		if ( ! empty( $args_sanitized['job_title'] ) ) {
 			update_post_meta( $ga_id, 'cap-newspack_job_title', $args_sanitized['job_title'] );
 		}
 
 		// Update role.
-		if ( isset( $args_sanitized['role'] ) && ! empty( $args_sanitized['role'] ) ) {
+		if ( ! empty( $args_sanitized['role'] ) ) {
 			update_post_meta( $ga_id, 'cap-newspack_role', $args_sanitized['role'] );
 		}
 
