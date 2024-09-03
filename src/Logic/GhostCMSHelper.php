@@ -92,12 +92,12 @@ class GhostCMSHelper {
 			$this->coauthorsplus_helper = new CoAuthorsPlusHelper();
 		}
 		catch ( Exception $e ) {
-			$this->log( 'CoAuthorsPlus Helper construct threw exception: ' . $e->getMessage(), Log::ERROR, true );
+			$this->log( 'CoAuthorsPlusHelper construct threw exception: ' . $e->getMessage(), Log::ERROR, true );
 		}
 
 		// CoAuthorsPlus plugin must be activated.
 		if ( ! $this->coauthorsplus_helper->validate_co_authors_plus_dependencies() ) {
-			$this->log( 'CoAuthorsPlus plugin not found. Install and activate it before using this command.', Log::ERROR, true );
+			$this->log( 'CoAuthorsPlus plugin must be active before running this command.', Log::ERROR, true );
 		}
 
 		// Argument parsing.
