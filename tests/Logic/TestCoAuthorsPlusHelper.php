@@ -62,14 +62,13 @@ class TestCoAuthorsPlusHelper extends WP_UnitTestCase {
 
 		// Create a GA.
 		$helper = new CoAuthorsPlusHelper();
-		$ga_id = $helper->create_guest_author( array( 'display_name' => 'Test User' ) );
-		$ga = $helper->get_guest_author_by_id( $ga_id );
+		$ga_id  = $helper->create_guest_author( array( 'display_name' => 'Test User' ) );
+		$ga     = $helper->get_guest_author_by_id( $ga_id );
 
 		// Try to assign author to post.
 		// assign_authors_to_post will throw exception on failure.
 		// if no exception, assert success.
 		$helper->assign_authors_to_post( array( $ga ), $post_id );
 		$this->assertTrue( true );
-
 	}
 }
