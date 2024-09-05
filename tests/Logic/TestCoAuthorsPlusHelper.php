@@ -60,8 +60,13 @@ class TestCoAuthorsPlusHelper extends WP_UnitTestCase {
 		// Get the Helper.
 		$helper = new CoAuthorsPlusHelper();
 
-		// Verify the CAP plugin is not activated.
-		$this->assertFalse( $helper->is_coauthors_active() );
+		// Verify the CAP plugin is not properly activated.
+		$this->assertFalse( $helper->validate_co_authors_plus_dependencies() );
+
+		// So, the CAP plugin is not active.  
+		// If the plugin is not active, then the following 
+		// test below should fail?  But PHPUnit is "activating" the plugin somehow,
+		// and the test below will pass.
 
 		// Create a post.
 		$post_id = self::factory()->post->create();
@@ -74,6 +79,31 @@ class TestCoAuthorsPlusHelper extends WP_UnitTestCase {
 		// assign_authors_to_post will throw exception on failure.
 		// if no exception, assert success.
 		$helper->assign_authors_to_post( array( $ga ), $post_id );
-		$this->assertTrue( true );
+
+		// For extra carity, call the validate again (it was called before in the assign_to_posts above)
+		// but let's be extra specific for this test.
+		$this->assertTrue( $helper->validate_authors_for_post(  $post_id, array( $ga ) ) );
+
+	}
+
+	/**
+	 * Test that the CAP plugin is not active, but PHPUNIT will still "activated" it.
+	 */
+	public function test_cap_not_active_but_phpunit_still_activated_it() {
+
+		// Get the Helper.
+		$helper = new CoAuthorsPlusHelper();
+
+		// Verify the CAP plugin is not activated.
+		$this->assertFalse( $helper->validate_co_authors_plus_dependencies() );
+
+		// Verify there are no must use plugins.
+		$this->assertEmpty( get_mu_plugins() );
+		
+		// Assert PHPUnit is still activated the plugin.
+		$this->assertTrue( $helper->validate_co_authors_plus_cpt_tax_loaded() );
+		
+
+
 	}
 }

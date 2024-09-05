@@ -82,6 +82,22 @@ class CoAuthorsPlusHelper {
 	}
 
 	/**
+	 * Validates whether Co-Author Plus plugin's Custom Post Type and Taxonomy are loaded.
+	 *
+	 * @return bool Custom Post Type and Taxonomy are loaded.
+	 */
+	public function validate_co_authors_plus_cpt_tax_loaded() {
+		
+		global $wp_post_types, $wp_taxonomies;
+
+		if ( empty( $wp_post_types['guest-author'] ) ) return false;
+		
+		if ( empty( $wp_taxonomies['author'] ) ) return false;
+
+		return true;
+	}
+
+	/**
 	 * Gets existing GA by display_name, or creates a new Guest Author if it doesn't exist.
 	 *
 	 * @param array $args         {
