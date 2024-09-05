@@ -19,7 +19,6 @@ wp --path=$WP_CORE_DIR config set WP_DEBUG_DISPLAY false --raw
 
 # Install db and site.
 wp --path=$WP_CORE_DIR db create
-wp --path=$WP_CORE_DIR core install --url=localhost --title=test --admin_user=test --admin_email=no-reply-no-user-nope@newspack.com --skip-email
 
-# Install plugin.
+# Install plugin (but do not activate).
 wp --path=$WP_CORE_DIR plugin install co-authors-plus

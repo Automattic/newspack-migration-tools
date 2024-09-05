@@ -7,12 +7,9 @@ require( __DIR__ . '/../../newspack-migration-tools.php' );
 
 use Newspack\MigrationTools\Logic\CoAuthorsPlusHelper;
 
-// Create a post.
+// Create a post. Must have title or no post is created.
 $post_id = wp_insert_post( array(
-    // 'post_author'  => '1',
-    // 'post_content' => 'my content',
-    // 'post_status'  => 'publish',
-    // 'post_title'   => 'my title',
+    'post_title'   => 'my title',
 ));
 
 // Create a GA.
@@ -23,4 +20,3 @@ $ga = $helper->get_guest_author_by_id( $ga_id );
 // Try to assign author to post.
 // assign_authors_to_post will throw exception on failure.
 $helper->assign_authors_to_post( array( $ga ), $post_id );
-

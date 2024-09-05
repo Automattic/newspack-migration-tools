@@ -57,11 +57,16 @@ class TestCoAuthorsPlusHelper extends WP_UnitTestCase {
 	 */
 	public function test_assign_authors_to_post() {
 
+		// Get the Helper.
+		$helper = new CoAuthorsPlusHelper();
+
+		// Verify the CAP plugin is not activated.
+		$this->assertFalse( $helper->is_coauthors_active() );
+
 		// Create a post.
 		$post_id = self::factory()->post->create();
 
-		// Create a GA.
-		$helper = new CoAuthorsPlusHelper();
+		// Create Ga.
 		$ga_id  = $helper->create_guest_author( array( 'display_name' => 'Test User' ) );
 		$ga     = $helper->get_guest_author_by_id( $ga_id );
 
