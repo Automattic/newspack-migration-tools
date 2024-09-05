@@ -38,23 +38,27 @@ function set_up_contrib_plugins(): void {
 		'co-authors-plus' => 'co-authors-plus/co-authors-plus.php',
 	];
 
-	$plugins_dir = rtrim( sys_get_temp_dir(), '/\\' ) . '/wordpress/wp-content/plugins';
+	$wordpress_dir = rtrim( sys_get_temp_dir(), '/\\' ) . '/wordpress';
 	foreach ( $plugins_active_in_tests as $plugin ) {
-		if ( ! file_exists( "$plugins_dir/$plugin" ) ) {
+		$plugin_file = "$wordpress_dir/wp-content/plugins/$plugin";
+
+		if ( ! file_exists( $plugin_file ) ) {
 			// Be very, very specific about what is wrong to save hours of error finding.
+			// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped, WordPress.Security.EscapeOutput.HeredocOutputNotEscaped
 			echo <<<MESSAGE
-----------------------------------------------
-👋
-This is an error message from your friendly function set_up_contrib_plugins() in bootstrap.php:
-Could not find the plugin file: $plugins_dir/$plugin 
-Make sure the plugin gets downloaded in the install_contrib_plugins() function in bin/install-wp-tests.sh.
-Make sure you have run ./bin/install-wp-tests.sh.
-Sometimes deleting the wordpress directory and running ./bin/install-wp-tests.sh again helps.\n
-----------------------------------------------
-MESSAGE;
+			----------------------------------------------
+			👋
+			This is an error message from your friendly function set_up_contrib_plugins() in bootstrap.php:
+			Could not find the plugin file: $plugin_file 
+			Make sure the plugin gets downloaded in the install_contrib_plugins() function in bin/install-wp-tests.sh.
+			Make sure you have run ./bin/install-wp-tests.sh.
+			Sometimes deleting the WordPress test directory $wordpress_dir and then running ./bin/install-wp-tests.sh again helps.\n
+			----------------------------------------------
+			MESSAGE;
+			// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped, WordPress.Security.EscapeOutput.HeredocOutputNotEscaped
 			exit( 1 );
 		}
-		tests_add_filter( 'muplugins_loaded', fn() => require "$plugins_dir/$plugin" );
+		tests_add_filter( 'muplugins_loaded', fn() => require $plugin_file );
 	}
 
 	// This will activate the plugins in the test suite.
@@ -69,4 +73,3 @@ set_up_contrib_plugins();
 
 // Start up the WP testing environment.
 require "{$_tests_dir}/includes/bootstrap.php";
-
