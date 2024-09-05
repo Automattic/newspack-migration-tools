@@ -103,7 +103,5 @@ class TestCoAuthorsPlusHelper extends WP_UnitTestCase {
 		// Assert PHPUnit is still activated the plugin.
 		$this->assertTrue( $helper->validate_co_authors_plus_cpt_tax_loaded() );
 		
-
-
 	}
 }

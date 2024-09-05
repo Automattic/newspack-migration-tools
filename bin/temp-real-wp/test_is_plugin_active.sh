@@ -10,4 +10,4 @@ wp --path=$WP_CORE_DIR core install --url=localhost --title=test --admin_user=te
 # wp --path=$WP_CORE_DIR plugin activate co-authors-plus
 
 # Run test:
-wp --path=$WP_CORE_DIR eval-file bin/temp-real-wp/eval.php
+wp --path=$WP_CORE_DIR eval-file bin/temp-real-wp/eval_is_plugin_active.php
