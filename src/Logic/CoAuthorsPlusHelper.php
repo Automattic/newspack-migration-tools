@@ -88,16 +88,25 @@ class CoAuthorsPlusHelper {
 	 */
 	public function validate_co_authors_plus_cpt_tax_loaded() {
 		
-		global $wp_post_types, $wp_taxonomies;
+		global $coauthors_plus, $wp_post_types, $wp_taxonomies;
 
+		// Verify 'init' method isn't false.
+		if( false !== has_filter( 'init', array( $coauthors_plus, 'action_init_late' ) ) ) {
+			return false;
+		}
+
+		// Verify CPT.
 		if ( empty( $wp_post_types['guest-author'] ) ) {
 			return false;
 		}
 		
+		// This is the only one that really matters...
+		
+		// Verify Custom Taxonomy.
 		if ( empty( $wp_taxonomies['author'] ) ) {
 			return false;
 		}
-
+		
 		return true;
 	}
 
