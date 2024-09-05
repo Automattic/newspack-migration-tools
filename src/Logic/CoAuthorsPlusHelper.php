@@ -90,8 +90,8 @@ class CoAuthorsPlusHelper {
 		
 		global $coauthors_plus, $wp_post_types, $wp_taxonomies;
 
-		// Verify 'init' method isn't false.
-		if ( false !== has_filter( 'init', array( $coauthors_plus, 'action_init_late' ) ) ) {
+		// Init function must exist.
+		if ( false === has_filter( 'init', array( $coauthors_plus, 'action_init_late' ) ) ) {
 			return false;
 		}
 
