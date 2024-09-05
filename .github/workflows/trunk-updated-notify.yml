@@ -1,4 +1,4 @@
-name: Trigger NCCM Update on trunk updates
+name: Trigger NCCM Update on trunk updates.
 
 on:
   push:
