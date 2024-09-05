@@ -1,5 +1,7 @@
 <?php
 
+// activate_plugin( 'co-authors-plus/co-authors-plus.php' );
+
 // Load this project.
 require( __DIR__ . '/../../newspack-migration-tools.php' );
 
