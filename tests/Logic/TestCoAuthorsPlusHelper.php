@@ -14,6 +14,17 @@ use WP_UnitTestCase;
 class TestCoAuthorsPlusHelper extends WP_UnitTestCase {
 
 	/**
+	 * This mostly tests that the plugin is installed and activated correctly in the test.
+	 *
+	 * The reason this test is here is that the CoAuthorsPlusHelper makes a lot of assumptions about
+	 * code inclusion, so think of this test as a canary.
+	 */
+	public function test_plugin_activated() {
+		$helper = new CoAuthorsPlusHelper();
+		$this->assertTrue( $helper->validate_co_authors_plus_dependencies() );
+	}
+
+	/**
 	 * Test that creating a guest author from a user works.
 	 */
 	public function test_ga_create_from_user() {
