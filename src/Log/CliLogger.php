@@ -73,8 +73,16 @@ class CliLogger extends Log {
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		echo self::get_formatted_message( $message, $level, true );
 
-		if ( $exit_on_error ) {
-			exit( 1 );
-		}
+		// TODO: fix
+
+		// exit( 1 );
+		// change to wp_die so PHPUnit can capture exits.
+		// also set message to blank array or object so CLI exit won't show a blank "Error:" line.
+		// blank array: []
+		// blank: new stdClass()
+		// blank: new class {}
+
+		if ( $exit_on_error ) wp_die( [] );
+
 	}
 }

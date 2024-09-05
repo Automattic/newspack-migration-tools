@@ -17,6 +17,7 @@ class TestGhostCMSMigrator extends WP_UnitTestCase {
 	 */
 	public function test_cmd_ghostcms_import() {
 
+		// Turn off logging.
 		add_filter( 'newspack_migration_tools_log_file_logger_disable', '__return_true' );
 		add_filter( 'newspack_migration_tools_log_clilog_disable', '__return_true' );
 

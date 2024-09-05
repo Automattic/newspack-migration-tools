@@ -483,6 +483,14 @@ class GhostCMSHelper {
 	 */
 	private function log( string $message, string $level = 'line', bool $exit_on_error = false ): void {
 		Filelogger::log( $this->log_file, $message, $level, $exit_on_error );
+
+		// TODO: remove
+
+		// for PHPUnit, when logging is off, the $exit_on_error will not fire.  So force it here.
+		// Use wp_die for a more gracefull exit.
+		
+		if( $exit_on_error ) wp_die( [] );
+
 	}
 
 	/**
