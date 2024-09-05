@@ -72,8 +72,8 @@ class TestCoAuthorsPlusHelper extends WP_UnitTestCase {
 		$post_id = self::factory()->post->create();
 
 		// Create Ga.
-		$ga_id  = $helper->create_guest_author( array( 'display_name' => 'Test User' ) );
-		$ga     = $helper->get_guest_author_by_id( $ga_id );
+		$ga_id = $helper->create_guest_author( array( 'display_name' => 'Test User' ) );
+		$ga    = $helper->get_guest_author_by_id( $ga_id );
 
 		// Try to assign author to post.
 		// assign_authors_to_post will throw exception on failure.
@@ -82,8 +82,7 @@ class TestCoAuthorsPlusHelper extends WP_UnitTestCase {
 
 		// For extra carity, call the validate again (it was called before in the assign_to_posts above)
 		// but let's be extra specific for this test.
-		$this->assertTrue( $helper->validate_authors_for_post(  $post_id, array( $ga ) ) );
-
+		$this->assertTrue( $helper->validate_authors_for_post( $post_id, array( $ga ) ) );
 	}
 
 	/**
@@ -102,6 +101,5 @@ class TestCoAuthorsPlusHelper extends WP_UnitTestCase {
 		
 		// Assert PHPUnit is still activated the plugin.
 		$this->assertTrue( $helper->validate_co_authors_plus_cpt_tax_loaded() );
-		
 	}
 }

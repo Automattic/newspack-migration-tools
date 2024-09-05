@@ -90,9 +90,13 @@ class CoAuthorsPlusHelper {
 		
 		global $wp_post_types, $wp_taxonomies;
 
-		if ( empty( $wp_post_types['guest-author'] ) ) return false;
+		if ( empty( $wp_post_types['guest-author'] ) ) {
+			return false;
+		}
 		
-		if ( empty( $wp_taxonomies['author'] ) ) return false;
+		if ( empty( $wp_taxonomies['author'] ) ) {
+			return false;
+		}
 
 		return true;
 	}
