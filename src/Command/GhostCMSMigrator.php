@@ -18,25 +18,8 @@ use Newspack\MigrationTools\Logic\GhostCMSHelper;
  */
 class GhostCMSMigrator implements WpCliCommandInterface {
 
-	/**
-	 * Private constructor.
-	 */
-	private function __construct() {
-		// I don't do anything right now.
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public static function get_instance(): self {
-		static $instance = null;
-		if ( null === $instance ) {
-			$instance = new self();
-		}
-
-		return $instance;
-	}
-
+	use WpCliCommandTrait;
+	
 	/**
 	 * {@inheritDoc}
 	 */
@@ -49,10 +32,12 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 				[
 					'shortdesc' => 'Import content from Ghost JSON export.',
 					'synopsis'  => array(
+
+						// required:
 						array(
 							'type'        => 'assoc',
-							'name'        => 'json-file',
-							'description' => 'Path to Ghost JSON export file.',
+							'name'        => 'default-user-id',
+							'description' => 'User ID for default "post_author" for wp_insert_post(). Integer.',
 							'optional'    => false,
 							'repeating'   => false,
 						),
@@ -65,11 +50,13 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 						),
 						array(
 							'type'        => 'assoc',
-							'name'        => 'default-user-id',
-							'description' => 'User ID for default "post_author" for wp_insert_post(). Integer.',
+							'name'        => 'json-file',
+							'description' => 'Path to Ghost JSON export file.',
 							'optional'    => false,
 							'repeating'   => false,
 						),
+
+						// optional:
 						array(
 							'type'        => 'assoc',
 							'name'        => 'created-after',
@@ -77,6 +64,7 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 							'optional'    => true,
 							'repeating'   => false,
 						),
+
 					),
 				],
 			],
@@ -92,6 +80,7 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 
 		FileLogger::log( $log_file, 'Starting CLI - GhostCMS Import...', Log::INFO );
 
-		( new GhostCMSHelper() )->ghostcms_import( $pos_args, $assoc_args, $log_file );
+		$helper = new GhostCMSHelper();
+		$helper->ghostcms_import( $pos_args, $assoc_args, $log_file );
 	}
 }
