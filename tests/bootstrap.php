@@ -26,23 +26,47 @@ if ( ! file_exists( "{$_tests_dir}/includes/functions.php" ) ) {
 require_once "{$_tests_dir}/includes/functions.php";
 
 /**
- * Manually load the plugin being tested.
+ * Include and activate the 3rd-party plugins we use.
+ *
+ * See install_contrib_plugins in bin/install-wp-tests.sh for the list of plugins we download.
  */
-function _manually_load_plugin() {
-	require dirname( __DIR__ ) . '/newspack-migration-tools.php';
-}
+function set_up_contrib_plugins(): void {
+	// Add plugins to this array to have them loaded by the test suite.
+	// Note that it would load and activate the plugin in all tests, so use sparingly.
+	$plugins_active_in_tests = [
+		// The CAP plugin is used so much in our code that it is hard to test without it.
+		'co-authors-plus' => 'co-authors-plus/co-authors-plus.php',
+	];
 
-/**
- * Manually load the 3rd-party plugins we use.
- */
-function _manually_load_contrib_plugins() {
 	$plugins_dir = rtrim( sys_get_temp_dir(), '/\\' ) . '/wordpress/wp-content/plugins';
-	// The CAP plugin is used so much in our code that it is hard to test without it.
-	require "$plugins_dir/co-authors-plus/co-authors-plus.php";
+	foreach ( $plugins_active_in_tests as $plugin ) {
+		if ( ! file_exists( "$plugins_dir/$plugin" ) ) {
+			// Be very, very specific about what is wrong to save hours of error finding.
+			echo <<<MESSAGE
+----------------------------------------------
+👋
+This is an error message from your friendly function set_up_contrib_plugins() in bootstrap.php:
+Could not find the plugin file: $plugins_dir/$plugin 
+Make sure the plugin gets downloaded in the install_contrib_plugins() function in bin/install-wp-tests.sh.
+Make sure you have run ./bin/install-wp-tests.sh.
+Sometimes deleting the wordpress directory and running ./bin/install-wp-tests.sh again helps.\n
+----------------------------------------------
+MESSAGE;
+			exit( 1 );
+		}
+		tests_add_filter( 'muplugins_loaded', fn() => require "$plugins_dir/$plugin" );
+	}
+
+	// This will activate the plugins in the test suite.
+	$GLOBALS['wp_tests_options']['active_plugins'] = $plugins_active_in_tests;
 }
 
-tests_add_filter( 'muplugins_loaded', '_manually_load_plugin' );
-tests_add_filter( 'muplugins_loaded', '_manually_load_contrib_plugins', 20 );
+// Include Newspack Migration Tools.
+tests_add_filter( 'muplugins_loaded', fn() => require dirname( __DIR__ ) . '/newspack-migration-tools.php' );
+
+// Include and "activate" plugins needed.
+set_up_contrib_plugins();
 
 // Start up the WP testing environment.
 require "{$_tests_dir}/includes/bootstrap.php";
+

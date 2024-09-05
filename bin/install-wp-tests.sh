@@ -95,7 +95,9 @@ install_wp() {
 	download https://raw.githubusercontent.com/markoheijnen/wp-mysqli/master/db.php $WP_CORE_DIR/wp-content/db.php
 }
 
-install_plugins() {
+# Install plugins needed for the test suite.
+install_contrib_plugins() {
+  # Also see set_up_contrib_plugins() in ./bootstrap.php in this repo for how to activate plugins in the test suite.
   wget -nv -O /tmp/co-authors-plus.zip https://downloads.wordpress.org/plugin/co-authors-plus.zip
   unzip -q -o /tmp/co-authors-plus.zip -d $WP_CORE_DIR/wp-content/plugins/
 }
@@ -188,6 +190,6 @@ install_db() {
 }
 
 install_wp
-install_plugins
+install_contrib_plugins
 install_test_suite
 install_db
