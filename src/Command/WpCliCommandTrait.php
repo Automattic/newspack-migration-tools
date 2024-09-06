@@ -15,7 +15,7 @@ trait WpCliCommandTrait {
 	/**
 	 * Constructor.
 	 *
-	 * I don't do anything at all and that is on purpose. You probably don't want to override this.
+	 * I don't do anything at all and that is on purpose.
 	 */
 	private function __construct() {
 		// Nothing.
