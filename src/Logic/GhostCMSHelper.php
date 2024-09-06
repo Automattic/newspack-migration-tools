@@ -482,14 +482,28 @@ class GhostCMSHelper {
 	 * @return void
 	 */
 	private function log( string $message, string $level = 'line', bool $exit_on_error = false ): void {
-		Filelogger::log( $this->log_file, $message, $level, $exit_on_error );
-
-		// TODO: remove
-
-		// for PHPUnit, when logging is off, the $exit_on_error will not fire.  So force it here.
-		// Use wp_die for a more gracefull exit.
 		
-		if( $exit_on_error ) wp_die( [] );
+		// Don't use $exit_on_error with logger. It will not fire when doing PHPUnit (with logging off).
+		Filelogger::log( $this->log_file, $message, $level );
+
+		// Handle exiting gracefully with wp_die. Pass in blank array or object to wp_die
+		// in order to hide extra "Error:" line in CLI.
+		if ( $exit_on_error ) {
+			
+			// normal wp-cli command outputs to CLI and Log File
+			// use: wp_die( [] ); since error was already sent to CLI and Log, don't show again
+			if ( defined( 'WP_CLI' ) ) wp_die( [] );
+
+			// phpunit with normal logging
+			// dont do this...need ob_start if doing this...
+			// but just in case: wp_die( $message );
+
+			// phpunit with logging filter false
+			// use: wp_die( $message );
+
+			wp_die( $message );
+
+		}
 
 	}
 
