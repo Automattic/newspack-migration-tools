@@ -3,7 +3,7 @@
 namespace Newspack\MigrationTools\Command;
 
 use Closure;
-use Newspack\MigrationTools\Log\CliLogger;
+use ErrorException;
 
 /**
  * Utility trait for ensuring singleton instances of WP CLI commands.
@@ -43,7 +43,8 @@ trait WpCliCommandTrait {
 	 *
 	 * @param string $command_function_name The function name of the command to run when the command is invoked.
 	 *
-	 * @return Closure
+	 * @return Closure The closure wrapping the command function
+	 * @throws ErrorException If the command function is static, does not exist, or takes the wrong number of params.
 	 */
 	protected static function get_command_closure( string $command_function_name ): Closure {
 		$class = get_class( self::get_instance() );
@@ -51,25 +52,33 @@ trait WpCliCommandTrait {
 		// If is_callable returns true on the classname string as the first argument, it's a static method.
 		// Warn that using the closure is overkill for static and just using the method directly is better.
 		if ( is_callable( [ $class, $command_function_name ] ) ) {
-			CliLogger::error(
+			throw new ErrorException(
 				sprintf(
 					"The command function '%s' in %s is static.\n Instead of using get_command_closure(), just use [__CLASS__, 'command_function_name'] directly.",
+					// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 					$command_function_name,
+					// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 					$class
-				),
-				true
+				)
 			);
 		}
-
 
 		if ( ! method_exists( self::get_instance(), $command_function_name ) ) {
-			CliLogger::error(
-				sprintf( 'Command "%s" does not exist in %s', $command_function_name, $class ),
-				true
+			throw new ErrorException(
+				// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+				sprintf( 'Command "%s" does not exist in %s', $command_function_name, $class )
 			);
 		}
 
-		return function ( array $pos_args, array $assoc_args ) use ( $command_function_name ) {
+		return function ( array $pos_args, array $assoc_args ) use ( $class, $command_function_name ) {
+			$reflection = new \ReflectionMethod( $class, $command_function_name );
+			if ( $reflection->getNumberOfParameters() !== 2 ) {
+				throw new ErrorException(
+					// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+					sprintf( 'Command "%s" in %s should take exactly 2 arrays as arguments:', $command_function_name, $class )
+				);
+			}
+
 			return self::get_instance()->{$command_function_name}( $pos_args, $assoc_args );
 		};
 	}
