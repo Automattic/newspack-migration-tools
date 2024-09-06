@@ -2,9 +2,7 @@
 
 namespace Newspack\MigrationTools\Command;
 
-use Exception;
 use Newspack\MigrationTools\Log\CliLogger;
-use Newspack\MigrationTools\Log\FileLogger;
 use Newspack\MigrationTools\Logic\NewspaperThemeHelper;
 use Newspack\MigrationTools\Util\MigrationMetaForCommand;
 
