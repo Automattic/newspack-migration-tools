@@ -37,7 +37,8 @@ class TestWpCliCommandTrait extends WP_UnitTestCase {
 	 */
 	public function test_static_warn() {
 		$this->expectException( \ErrorException::class );
-		ClassThatUsesWpCliCommandTrait::get_static_closure();
+		$closure = ClassThatUsesWpCliCommandTrait::get_static_closure();
+		$closure( [], [] );
 	}
 }
 

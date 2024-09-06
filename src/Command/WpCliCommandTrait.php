@@ -47,30 +47,31 @@ trait WpCliCommandTrait {
 	 * @throws ErrorException If the command function is static, does not exist, or takes the wrong number of params.
 	 */
 	protected static function get_command_closure( string $command_function_name ): Closure {
-		$class = get_class( self::get_instance() );
 
-		// If is_callable returns true on the classname string as the first argument, it's a static method.
-		// Warn that using the closure is overkill for static and just using the method directly is better.
-		if ( is_callable( [ $class, $command_function_name ] ) ) {
-			throw new ErrorException(
-				sprintf(
-					"The command function '%s' in %s is static.\n Instead of using get_command_closure(), just use [__CLASS__, 'command_function_name'] directly.",
-					// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
-					$command_function_name,
-					// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
-					$class
-				)
-			);
-		}
+		return function ( array $pos_args, array $assoc_args ) use ( $command_function_name ) {
+			$class = get_class( self::get_instance() );
 
-		if ( ! method_exists( self::get_instance(), $command_function_name ) ) {
-			throw new ErrorException(
+			// If is_callable returns true on the classname string as the first argument, it's a static method.
+			// Warn that using the closure is overkill for static and just using the method directly is better.
+			if ( is_callable( [ $class, $command_function_name ] ) ) {
+				throw new ErrorException(
+					sprintf(
+						"The command function '%s' in %s is static.\n Instead of using get_command_closure(), just use [__CLASS__, 'command_function_name'] directly.",
+						// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+						$command_function_name,
+						// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+						$class
+					)
+				);
+			}
+
+			if ( ! method_exists( self::get_instance(), $command_function_name ) ) {
+				throw new ErrorException(
 				// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
-				sprintf( 'Command "%s" does not exist in %s', $command_function_name, $class )
-			);
-		}
+					sprintf( 'Command "%s" does not exist in %s', $command_function_name, $class )
+				);
+			}
 
-		return function ( array $pos_args, array $assoc_args ) use ( $class, $command_function_name ) {
 			$reflection = new \ReflectionMethod( $class, $command_function_name );
 			if ( $reflection->getNumberOfParameters() !== 2 ) {
 				throw new ErrorException(
