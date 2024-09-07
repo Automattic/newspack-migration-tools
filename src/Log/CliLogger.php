@@ -35,7 +35,7 @@ class CliLogger extends Log {
 	 * @return void
 	 */
 	public static function error( string $message, bool $exit_on_error = false ): void {
-		self::log( $message, self::ERROR, true );
+		self::log( $message, self::ERROR, $exit_on_error );
 	}
 
 	/**
@@ -74,7 +74,12 @@ class CliLogger extends Log {
 		echo self::get_formatted_message( $message, $level, true );
 
 		if ( $exit_on_error ) {
-			exit( 1 );
+
+			// Use wp_die so WP_CLI and PHPUnit can exit more gracefully.
+			// Using wp_die will allow PHPUnit to show call stack and continue running other tests too.
+			// Set argument to empty array/object so WP_CLI exit doesn't show a blank "Error:" line.
+			wp_die( [] );
+
 		}
 	}
 }
