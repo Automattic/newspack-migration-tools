@@ -72,14 +72,6 @@ trait WpCliCommandTrait {
 				);
 			}
 
-			$reflection = new \ReflectionMethod( $class, $command_function_name );
-			if ( $reflection->getNumberOfParameters() !== 2 ) {
-				throw new ErrorException(
-					// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
-					sprintf( 'Command "%s" in %s should take exactly 2 arrays as arguments:', $command_function_name, $class )
-				);
-			}
-
 			return self::get_instance()->{$command_function_name}( $pos_args, $assoc_args );
 		};
 	}
