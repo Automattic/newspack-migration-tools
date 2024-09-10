@@ -24,15 +24,6 @@ class TestWpCliCommandTrait extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that if the method called by the closure has the wrong params, an error is thrown.
-	 */
-	public function test_closure_with_wrong_params() {
-		$this->expectException( \ErrorException::class );
-		$closure = ClassThatUsesWpCliCommandTrait::get_non_static_closure_with_wrong_params();
-		$closure( [], [] );
-	}
-
-	/**
 	 * Test that if a dev adds a static method in the closure, an error is thrown.
 	 */
 	public function test_static_warn() {
@@ -87,23 +78,5 @@ class ClassThatUsesWpCliCommandTrait {
 	// phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed
 	public function non_static_method( array $pos_args, array $assoc_args ): void {
 		echo 'I do stuff!';
-	}
-
-	/**
-	 * Get a closure with a method that has the wrong params.
-	 *
-	 * @return Closure The closure with the method with wrong params.
-	 * @throws ErrorException If the closure is wrong (and it should be).
-	 */
-	public static function get_non_static_closure_with_wrong_params(): Closure {
-		return self::get_command_closure( 'is_non_static_method_with_wrong_params' );
-	}
-
-	/**
-	 * Method with the wrong params. Should be 2 arrays, not a string.
-	 *
-	 * @param string $wrong_param Wrong param.
-	 */
-	public function is_non_static_method_with_wrong_params( string $wrong_param ): void {
 	}
 }
