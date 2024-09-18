@@ -47,7 +47,7 @@ class CliLogger extends Log {
 	 *
 	 * @return void
 	 * 
-	 * @throws \Exception If logging is disabled, but $exit_on_error is true. Primary used by PHPUnit.
+	 * @throws \Exception If logging is disabled, but $exit_on_error is true. Primarily used by PHPUnit.
 	 */
 	public static function log( string $message, string $level = self::INFO, bool $exit_on_error = false ): void {
 		/**

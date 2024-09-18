@@ -15,7 +15,7 @@ class FileLogger extends Log {
 	 * @param string $level         Log level. See constants in this class.
 	 * @param bool   $exit_on_error Whether to exit on error.
 	 * 
-	 * @throws \Exception If logging is disabled, but $exit_on_error is true. Primary used by PHPUnit.
+	 * @throws \Exception If logging is disabled, but $exit_on_error is true. Primarily used by PHPUnit.
 	 */
 	public static function log( string $file, string $message, string $level = self::LINE, bool $exit_on_error = false ): void {
 		/**
