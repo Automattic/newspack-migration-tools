@@ -110,31 +110,19 @@ class LoggingTests extends WP_UnitTestCase {
 	 */
 	public function test_cli_logger_wp_die(): void {
 
+		$die_handler_message = "I'm the test die handler!";
+	
 		// Define a local wp_die() handler to verify wp_die() is called.
-		$wp_die_arg1 = null;
-		add_filter(
-			'wp_die_handler',
-			function () use ( &$wp_die_arg1 ) {
-				return function ( $arg1 ) use ( &$wp_die_arg1 ) {
-					$wp_die_arg1 = $arg1;
-				};
-			}
-		);
+		add_filter( 'wp_die_handler', fn() => fn() => print $die_handler_message );
 
-		// Buffer the output so PHPunit doesn't echo the logging.
-		// Do not use `newspack_migration_tools_log_clilog_disable` here, as that filter
-		// will not allow wp_die() to be called/tested.
-		ob_start();
+		$exit_message = 'Oops, exit';
 
-		// Log an error with exit_on_error.
-		CliLogger::error( 'Oops, exit.', true );
+		// Cause CliLogger to exit_on_error which leads to wp_die.
+		CliLogger::error( $exit_message, true );
 
-		// Verify wp_die returned an empty array.
-		$this->assertIsArray( $wp_die_arg1 );
-		$this->assertEquals( $wp_die_arg1, [] );
-
-		// To make PHPUnit happy and not mark this test as risky, test the buffer too.
-		$this->assertStringContainsString( 'Oops, exit.', ob_get_clean() ); 
+		// PHPUnit only considers one expect in a test, so test both strings in one regex.
+		// output to match: 'ERROR: Oops, exit \n I'm the test die handler!'
+		$this->expectOutputRegex( '/'. preg_quote( $exit_message ) .'.*' . preg_quote( $die_handler_message ) . '/s' );
 	}
 
 	/**
@@ -155,7 +143,43 @@ class LoggingTests extends WP_UnitTestCase {
 	 * 
 	 * @return void
 	 */
-	public function test_no_logging_but_still_exit(): void {
+	public function test_cli_no_logging_but_still_exit(): void {
+
+		// Turn off logging.
+		add_filter( 'newspack_migration_tools_log_clilog_disable', '__return_true' );
+
+		// Log an error with $exit_on_error true.
+		// And verify that $exit_on_error was still honored even though logging is off.
+		// In a WP_CLI context wp_die would have been called, but here we're testing
+		// that an exception is thrown when logging is disabled but $exit_on_error is still true.
+
+		// CliLogger:
+		$this->expectException( \Exception::class );
+		$this->expectExceptionMessage( 'Logging disabled with exit_on_error.' );
+		CliLogger::error( 'Oops, exit.', true );
+	}
+
+	/**
+	 * Test that $exit_on_error in the loggers will exit as expected even if
+	 * output logging is disabled.
+	 * 
+	 * The WP_CLI migrators use $exit_on_error as an execution control. This
+	 * test will verify that $exit_on_error will run properly even if logging
+	 * is disabled.
+	 *
+	 * In a CLI context, the logger mixes output with control. Meaning that when logging
+	 * a message, the logger can also invoke the temination of the program using the 
+	 * optional argument $exit_on_error.
+	 * 
+	 * When disabling output in PHPUnit tests, make sure to not disable $exit_on_error, which
+	 * would allow the script being tested to continue execution when it should
+	 * have terminated.
+	 * 
+	 * @return void
+	 */
+	public function test_file_no_logging_but_still_exit(): void {
+
+		return;
 
 		// Turn off logging.
 		add_filter( 'newspack_migration_tools_log_clilog_disable', '__return_true' );

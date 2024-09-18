@@ -2,8 +2,6 @@
 
 namespace Newspack\MigrationTools\Log;
 
-use stdClass;
-
 class CliLogger extends Log {
 
 	/**
