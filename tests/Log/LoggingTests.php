@@ -120,26 +120,21 @@ class LoggingTests extends WP_UnitTestCase {
 		// Cause CliLogger to exit_on_error which leads to wp_die.
 		CliLogger::error( $exit_message, true );
 
-		// PHPUnit only considers one expect in a test, so test both strings in one regex.
+		// PHPUnit will only consider one "expect" in a test, so test both strings in one regex.
 		// output to match: 'ERROR: Oops, exit \n I'm the test die handler!'
 		$this->expectOutputRegex( '/'. preg_quote( $exit_message ) .'.*' . preg_quote( $die_handler_message ) . '/s' );
 	}
 
 	/**
 	 * Test that $exit_on_error in the loggers will exit as expected even if
-	 * output logging is disabled.
+	 * output logging is disabled via a filter.
 	 * 
-	 * The WP_CLI migrators use $exit_on_error as an execution control. This
-	 * test will verify that $exit_on_error will run properly even if logging
+	 * The WP_CLI migrators use $exit_on_error as an execution control while doing output. 
+	 * This test will verify that $exit_on_error will still run properly even if output logging
 	 * is disabled.
-	 *
-	 * In a CLI context, the logger mixes output with control. Meaning that when logging
-	 * a message, the logger can also invoke the temination of the program using the 
-	 * optional argument $exit_on_error.
 	 * 
-	 * When disabling output in PHPUnit tests, make sure to not disable $exit_on_error, which
-	 * would allow the script being tested to continue execution when it should
-	 * have terminated.
+	 * Since the disable logging filter is primary used for PHPUnit, an exception is thrown
+	 * instead of wp_die.
 	 * 
 	 * @return void
 	 */
@@ -148,57 +143,32 @@ class LoggingTests extends WP_UnitTestCase {
 		// Turn off logging.
 		add_filter( 'newspack_migration_tools_log_clilog_disable', '__return_true' );
 
-		// Log an error with $exit_on_error true.
-		// And verify that $exit_on_error was still honored even though logging is off.
-		// In a WP_CLI context wp_die would have been called, but here we're testing
-		// that an exception is thrown when logging is disabled but $exit_on_error is still true.
-
-		// CliLogger:
-		$this->expectException( \Exception::class );
-		$this->expectExceptionMessage( 'Logging disabled with exit_on_error.' );
+		// Verify $exit_on_error still works even though logging is disabled via filter.
+		$this->expectExceptionMessage( 'CLI logging disabled with exit_on_error.' );
 		CliLogger::error( 'Oops, exit.', true );
 	}
 
 	/**
 	 * Test that $exit_on_error in the loggers will exit as expected even if
-	 * output logging is disabled.
+	 * output logging is disabled via a filter.
 	 * 
-	 * The WP_CLI migrators use $exit_on_error as an execution control. This
-	 * test will verify that $exit_on_error will run properly even if logging
+	 * The WP_CLI migrators use $exit_on_error as an execution control while doing output. 
+	 * This test will verify that $exit_on_error will still run properly even if output logging
 	 * is disabled.
-	 *
-	 * In a CLI context, the logger mixes output with control. Meaning that when logging
-	 * a message, the logger can also invoke the temination of the program using the 
-	 * optional argument $exit_on_error.
 	 * 
-	 * When disabling output in PHPUnit tests, make sure to not disable $exit_on_error, which
-	 * would allow the script being tested to continue execution when it should
-	 * have terminated.
+	 * Since the disable logging filter is primary used for PHPUnit, an exception is thrown
+	 * instead of wp_die.
 	 * 
 	 * @return void
 	 */
 	public function test_file_no_logging_but_still_exit(): void {
 
-		return;
-
 		// Turn off logging.
-		add_filter( 'newspack_migration_tools_log_clilog_disable', '__return_true' );
 		add_filter( 'newspack_migration_tools_log_file_logger_disable', '__return_true' );
 
-		// Log an error with $exit_on_error true.
-		// And verify that $exit_on_error was still honored even though logging is off.
-		// In a WP_CLI context wp_die would have been called, but here we're testing
-		// that an exception is thrown when logging is disabled but $exit_on_error is still true.
-
-		// CliLogger:
-		$this->expectException( \Exception::class );
-		$this->expectExceptionMessage( 'Logging disabled with exit_on_error.' );
-		CliLogger::error( 'Oops, exit.', true );
-        
-		// FileLogger:
-		$this->expectException( \Exception::class );
-		$this->expectExceptionMessage( 'Logging disabled with exit_on_error.' );
-		FileLogger::error( 'Oops, exit.', true );
+		// Verify $exit_on_error still works even though logging is disabled via filter.
+		$this->expectExceptionMessage( 'File logging disabled with exit_on_error.' );
+		FileLogger::log( $this->log_file, 'Oops, exit.', Log::ERROR, true );
 
 	}
 }

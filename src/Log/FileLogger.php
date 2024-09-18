@@ -48,7 +48,7 @@ class FileLogger extends Log {
 			if ( $exit_on_error ) {
 				// We still need to exit even if logging was disabled.
 				// Since this filter is generally used in testing, throw exception instead of wp_die.
-				throw new \Exception( 'Logging disabled with exit_on_error.' );
+				throw new \Exception( 'File logging disabled with exit_on_error.' );
 			}
 			return;
 		}
