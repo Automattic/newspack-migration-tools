@@ -113,6 +113,7 @@ class LoggingTests extends WP_UnitTestCase {
 		$die_handler_message = "I'm the test die handler!";
 	
 		// Define a local wp_die() handler to verify wp_die() is called.
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		add_filter( 'wp_die_handler', fn() => fn() => print $die_handler_message );
 
 		$exit_message = 'Oops, exit';
@@ -122,7 +123,7 @@ class LoggingTests extends WP_UnitTestCase {
 
 		// PHPUnit will only consider one "expect" in a test, so test both strings in one regex.
 		// output to match: 'ERROR: Oops, exit \n I'm the test die handler!'
-		$this->expectOutputRegex( '/'. preg_quote( $exit_message ) .'.*' . preg_quote( $die_handler_message ) . '/s' );
+		$this->expectOutputRegex( '/' . preg_quote( $exit_message, '/' ) . '.*' . preg_quote( $die_handler_message, '/' ) . '/s' );
 	}
 
 	/**
@@ -169,6 +170,5 @@ class LoggingTests extends WP_UnitTestCase {
 		// Verify $exit_on_error still works even though logging is disabled via filter.
 		$this->expectExceptionMessage( 'File logging disabled with exit_on_error.' );
 		FileLogger::log( $this->log_file, 'Oops, exit.', Log::ERROR, true );
-
 	}
 }
