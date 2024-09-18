@@ -45,6 +45,11 @@ class FileLogger extends Log {
 		 * @param bool $disable_default If not false then disable file logging.
 		 */
 		if ( apply_filters( 'newspack_migration_tools_log_file_logger_disable', false ) ) {
+			if ( $exit_on_error ) {
+				// We still need to exit even if logging was disabled.
+				// Since this filter is generally used in testing, throw exception instead of wp_die.
+				throw new \Exception( 'Logging disabled with exit_on_error.' );
+			}
 			return;
 		}
 

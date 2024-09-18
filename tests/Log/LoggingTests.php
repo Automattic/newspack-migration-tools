@@ -101,47 +101,80 @@ class LoggingTests extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that phpunit will detect Logger exit/wp_die.
+	 * Test that $exit_on_error / wp_die() in CliLogger will die as expected.
 	 * 
+	 * The WP_CLI migrators use $exit_on_error as an execution control. This
+	 * test will verify that $exit_on_error will run properly when called.
+	 *
+	 * @return void
+	 */
+	public function test_cli_logger_wp_die(): void {
+
+		// Define a local wp_die() handler to verify wp_die() is called.
+		$wp_die_arg1 = null;
+		add_filter(
+			'wp_die_handler',
+			function () use ( &$wp_die_arg1 ) {
+				return function ( $arg1 ) use ( &$wp_die_arg1 ) {
+					$wp_die_arg1 = $arg1;
+				};
+			}
+		);
+
+		// Buffer the output so PHPunit doesn't echo the logging.
+		// Do not use `newspack_migration_tools_log_clilog_disable` here, as that filter
+		// will not allow wp_die() to be called/tested.
+		ob_start();
+
+		// Log an error with exit_on_error.
+		CliLogger::error( 'Oops, exit.', true );
+
+		// Verify wp_die returned an empty array.
+		$this->assertIsArray( $wp_die_arg1 );
+		$this->assertEquals( $wp_die_arg1, [] );
+
+		// To make PHPUnit happy and not mark this test as risky, test the buffer too.
+		$this->assertStringContainsString( 'Oops, exit.', ob_get_clean() ); 
+	}
+
+	/**
+	 * Test that $exit_on_error in the loggers will exit as expected even if
+	 * output logging is disabled.
+	 * 
+	 * The WP_CLI migrators use $exit_on_error as an execution control. This
+	 * test will verify that $exit_on_error will run properly even if logging
+	 * is disabled.
+	 *
 	 * In a CLI context, the logger mixes output with control. Meaning that when logging
 	 * a message, the logger can also invoke the temination of the program using the 
 	 * optional argument $exit_on_error.
 	 * 
-	 * When disabling output in PHPUnit tests, this also disable $exit_on_error, which
-	 * will allow the running script to continue execution of the program when it should
+	 * When disabling output in PHPUnit tests, make sure to not disable $exit_on_error, which
+	 * would allow the script being tested to continue execution when it should
 	 * have terminated.
+	 * 
+	 * @return void
 	 */
-	public function test_phpunit_will_detect_logger_exit(): void {
+	public function test_no_logging_but_still_exit(): void {
 
-		// Create a sample migrator that uses $exit_on_error for execution control.
-		$sample_cli_migrator = new class() {
-
-			/**
-			 * Setup a sample cli command function.
-			 */
-			public function cmd_insert_a_post( array $pos_args, array $assoc_args ): void {
-
-				// Start the sample migration.
-				CliLogger::line( 'Starting the migration...' );
-
-				// Show an error and exit program execution.
-				CliLogger::error( 'Oops, somethng bad happened, exit the migration.', true );
-
-				// In WP_CLI this insert would not happen, but will in PHPUnit with logging off.
-				wp_insert_post( [ 'post_title' => 'My Test Post' ] );
-			}
-		};
-
-		// Turn off logging so we can focus on functionality only.
+		// Turn off logging.
 		add_filter( 'newspack_migration_tools_log_clilog_disable', '__return_true' );
+		add_filter( 'newspack_migration_tools_log_file_logger_disable', '__return_true' );
 
-		// Get the current post count.
-		$post_count = wp_count_posts();
+		// Log an error with $exit_on_error true.
+		// And verify that $exit_on_error was still honored even though logging is off.
+		// In a WP_CLI context wp_die would have been called, but here we're testing
+		// that an exception is thrown when logging is disabled but $exit_on_error is still true.
 
-		// Run our sample migrator
-		$sample_cli_migrator->cmd_insert_a_post( [], [] );
+		// CliLogger:
+		$this->expectException( \Exception::class );
+		$this->expectExceptionMessage( 'Logging disabled with exit_on_error.' );
+		CliLogger::error( 'Oops, exit.', true );
+        
+		// FileLogger:
+		$this->expectException( \Exception::class );
+		$this->expectExceptionMessage( 'Logging disabled with exit_on_error.' );
+		FileLogger::error( 'Oops, exit.', true );
 
-		// Verify the post count is the same since the migrator should have exited via $exit_on_error.
-		$this->assertEquals( $post_count, wp_count_posts() );
 	}
 }

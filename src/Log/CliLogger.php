@@ -2,6 +2,8 @@
 
 namespace Newspack\MigrationTools\Log;
 
+use stdClass;
+
 class CliLogger extends Log {
 
 	/**
@@ -67,6 +69,11 @@ class CliLogger extends Log {
 		 * @param bool $disable_default If not false then cli default logging.
 		 */
 		if ( apply_filters( 'newspack_migration_tools_log_clilog_disable', false ) ) {
+			if ( $exit_on_error ) {
+				// We still need to exit even if logging was disabled.
+				// Since this filter is generally used in testing, throw exception instead of wp_die.
+				throw new \Exception( 'Logging disabled with exit_on_error.' );
+			}
 			return;
 		}
 
@@ -74,12 +81,10 @@ class CliLogger extends Log {
 		echo self::get_formatted_message( $message, $level, true );
 
 		if ( $exit_on_error ) {
-
-			// Use wp_die so WP_CLI and PHPUnit can exit more gracefully.
+			// Use wp_die (instead of exit) so WP_CLI and PHPUnit can exit more gracefully.
 			// Using wp_die will allow PHPUnit to show call stack and continue running other tests too.
-			// Set argument to empty array/object so WP_CLI exit doesn't show a blank "Error:" line.
+			// Set argument to empty array/object so WP_CLI doesn't show a blank "Error:" line as last output.
 			wp_die( [] );
-
 		}
 	}
 }
