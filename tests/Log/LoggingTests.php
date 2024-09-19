@@ -121,6 +121,11 @@ class LoggingTests extends WP_UnitTestCase {
 		// Also capture the output so it doesn't clutter PHPUnit's output.
 		$this->expectOutputRegex( '/' . preg_quote( $exit_message, '/' ) . '/' );
 
+		// Note: PHPUnit does not allow multiple "expect" tests if they are of the same
+		// type. Doing a second "expectOutputRegex" test will not run, but since the
+		// two expect tests above are of different types (Exception vs Output) it is
+		// OK.  Both will be tested.
+
 		CliLogger::error( $exit_message, true );
 	}
 
