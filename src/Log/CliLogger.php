@@ -81,10 +81,30 @@ class CliLogger extends Log {
 		echo self::get_formatted_message( $message, $level, true );
 
 		if ( $exit_on_error ) {
+			
+			// We can't do exit because this will cause PHPUnit to stop running all subsequent tests.
+			// exit( 1 );
+
+			// we can't throw an exception because this will end up in debug.log when run from WP_CLI
+			// throw new \Exception( 'nope...' );
+			
 			// Use wp_die (instead of exit) so WP_CLI and PHPUnit can exit more gracefully.
 			// Using wp_die will allow PHPUnit to show call stack and continue running other tests too.
 			// Set argument to empty array/object so WP_CLI doesn't show a blank "Error:" line as last output.
-			wp_die( [] );
+			
+			// we can't use empty array because this will throw error when WP_CLI tries to trim() array
+			// wp_die( [] );
+
+			// we can't use empty () because WP_CLI will print a redundant blank "Error:" line in CLI
+			// wp_die();
+
+			// we have to use a string:
+			// wp_die( ' -- wp_cli has exited --');
+
+			// otherwise, if we don't want the redundent error message, we have to create our or own die hander...
+			add_filter( 'wp_die_handler', fn() => fn() => exit );
+			wp_die();
+			
 		}
 	}
 }

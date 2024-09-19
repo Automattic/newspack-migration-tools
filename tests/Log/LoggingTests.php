@@ -114,7 +114,7 @@ class LoggingTests extends WP_UnitTestCase {
 	
 		// Define a local wp_die() handler to verify wp_die() is called.
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-		add_filter( 'wp_die_handler', fn() => fn() => print $die_handler_message );
+		add_filter( 'wp_die_handler', fn() => fn() => print $die_handler_message, 99 );
 
 		$exit_message = 'Oops, exit';
 
