@@ -119,10 +119,9 @@ class LoggingTests extends WP_UnitTestCase {
 		$this->expectExceptionMessage( 'CLILogger exit_on_error.' );
 
 		// Also capture the output so it doesn't clutter PHPUnit's output.
-		$this->expectOutputRegex( '/'. preg_quote($exit_message) .'/' );
+		$this->expectOutputRegex( '/' . preg_quote( $exit_message, '/' ) . '/' );
 
 		CliLogger::error( $exit_message, true );
-
 	}
 
 	/**

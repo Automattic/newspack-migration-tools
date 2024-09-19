@@ -110,12 +110,12 @@ class CliLogger extends Log {
 			// both PHPUnit and WP_CLI.  So do differnet things based on context. 
 
 			// If PHPUnit throw an exception.
-			if( isset( $GLOBALS['phpunit_version'] ) ) {
+			if ( isset( $GLOBALS['phpunit_version'] ) ) {
 				throw new \Exception( 'CLILogger exit_on_error.' );
 			}
 
 			// Let WP_CLI do a normal exit.
-			exit ( 1 );
+			exit( 1 );
 		}
 	}
 }
