@@ -101,29 +101,28 @@ class LoggingTests extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that $exit_on_error / wp_die() in CliLogger will die as expected.
+	 * Test that $exit_on_error in CliLogger will end execution as expected.
 	 * 
 	 * The WP_CLI migrators use $exit_on_error as an execution control. This
-	 * test will verify that $exit_on_error will run properly when called.
+	 * test will verify that $exit_on_error will "exit" the program.
+	 * 
+	 * For PHPUnit, exit_on_error will throw an exception instead of doing "exit()"
+	 * which would stop PHPUnit itself and stop all subsequent tests too.
 	 *
 	 * @return void
 	 */
-	public function test_cli_logger_wp_die(): void {
-
-		$die_handler_message = "I'm the test die handler!";
-	
-		// Define a local wp_die() handler to verify wp_die() is called.
-		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-		add_filter( 'wp_die_handler', fn() => fn() => print $die_handler_message, 99 );
+	public function test_cli_logger_exit_on_error(): void {
 
 		$exit_message = 'Oops, exit';
 
-		// Cause CliLogger to exit_on_error which leads to wp_die.
+		// Catch the "exit_on_error" exception.
+		$this->expectExceptionMessage( 'CLILogger exit_on_error.' );
+
+		// Also capture the output so it doesn't clutter PHPUnit's output.
+		$this->expectOutputRegex( '/'. preg_quote($exit_message) .'/' );
+
 		CliLogger::error( $exit_message, true );
 
-		// PHPUnit will only consider one "expect" in a test, so test both strings in one regex.
-		// output to match: 'ERROR: Oops, exit \n I'm the test die handler!'
-		$this->expectOutputRegex( '/' . preg_quote( $exit_message, '/' ) . '.*' . preg_quote( $die_handler_message, '/' ) . '/s' );
 	}
 
 	/**

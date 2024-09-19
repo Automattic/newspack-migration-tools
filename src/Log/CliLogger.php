@@ -98,13 +98,24 @@ class CliLogger extends Log {
 			// we can't use empty () because WP_CLI will print a redundant blank "Error:" line in CLI
 			// wp_die();
 
-			// we have to use a string:
+			// we'd have to use a string:
 			// wp_die( ' -- wp_cli has exited --');
 
 			// otherwise, if we don't want the redundent error message, we have to create our or own die hander...
-			add_filter( 'wp_die_handler', fn() => fn() => exit );
-			wp_die();
-			
+			// actually this wont work in PHPUnit without an additional die_handler with a higher priority.
+			// add_filter( 'wp_die_handler', fn() => fn() => exit );
+			// wp_die();
+
+			// Nevermind about everything above...Ron can't find a way to have one command that works in
+			// both PHPUnit and WP_CLI.  So do differnet things based on context. 
+
+			// If PHPUnit throw an exception.
+			if( isset( $GLOBALS['phpunit_version'] ) ) {
+				throw new \Exception( 'CLILogger exit_on_error.' );
+			}
+
+			// Let WP_CLI do a normal exit.
+			exit ( 1 );
 		}
 	}
 }
