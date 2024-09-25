@@ -2,14 +2,16 @@
 
 namespace NewspackCustomContentMigrator\Command\General;
 
-use \NewspackCustomContentMigrator\Command\InterfaceCommand;
-use \NewspackCustomContentMigrator\Command\General\PostsMigrator;
+use Newspack\MigrationTools\Command\WpCliCommandTrait;
+use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
 use \WP_CLI;
 
 /**
  * Exports and imports menus and associated content.
  */
-class MenusMigrator implements InterfaceCommand {
+class MenusMigrator implements RegisterCommandInterface {
+
+	use WpCliCommandTrait;
 
 	/**
 	 * @var string Menu file name.
@@ -17,35 +19,10 @@ class MenusMigrator implements InterfaceCommand {
 	const MENU_EXPORT_FILE = 'newspack-menu-export.json';
 
 	/**
-	 * @var null|InterfaceCommand Instance.
+	 * {@inheritDoc}
 	 */
-	private static $instance = null;
-
-	/**
-	 * Constructor.
-	 */
-	private function __construct() {
-	}
-
-	/**
-	 * Singleton get_instance().
-	 *
-	 * @return InterfaceCommand|null
-	 */
-	public static function get_instance() {
-		$class = get_called_class();
-		if ( null === self::$instance ) {
-			self::$instance = new $class;
-		}
-
-		return self::$instance;
-	}
-
-	/**
-	 * See InterfaceCommand::register_commands.
-	 */
-	public function register_commands() {
-		WP_CLI::add_command( 'newspack-content-migrator export-menus', array( $this, 'cmd_export_menus' ), [
+	public static function register_commands(): void {
+		WP_CLI::add_command( 'newspack-content-migrator export-menus', self::get_command_closure( 'cmd_export_menus' ), [
 			'shortdesc' => 'Exports menu elements of the staging site and associated pages when needed.',
 			'synopsis'  => [
 				[
@@ -58,7 +35,7 @@ class MenusMigrator implements InterfaceCommand {
 			],
 		] );
 
-		WP_CLI::add_command( 'newspack-content-migrator import-menus', array( $this, 'cmd_import_menus' ), [
+		WP_CLI::add_command( 'newspack-content-migrator import-menus', self::get_command_closure( 'cmd_import_menus' ), [
 			'shortdesc' => 'Imports custom menus and new pages from the export JSON file.',
 			'synopsis'  => [
 				[
