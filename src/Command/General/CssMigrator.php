@@ -2,11 +2,13 @@
 
 namespace NewspackCustomContentMigrator\Command\General;
 
-use \NewspackCustomContentMigrator\Command\InterfaceCommand;
-use \NewspackCustomContentMigrator\Command\General\PostsMigrator;
+use Newspack\MigrationTools\Command\WpCliCommandTrait;
+use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
 use \WP_CLI;
 
-class CssMigrator implements InterfaceCommand {
+class CssMigrator implements RegisterCommandInterface {
+
+	use WpCliCommandTrait;
 
 	/**
 	 * @var string Current theme's export file name.
@@ -14,35 +16,13 @@ class CssMigrator implements InterfaceCommand {
 	const CSS_CURRENT_THEME_EXPORT_FILE = 'newspack-custom-css-current-theme.xml';
 
 	/**
-	 * @var null|InterfaceCommand Instance.
+	 * {@inheritDoc}
 	 */
-	private static $instance = null;
-
-	/**
-	 * Constructor.
-	 */
-	private function __construct() {
-	}
-
-	/**
-	 * Singleton get_instance().
-	 *
-	 * @return InterfaceCommand|null
-	 */
-	public static function get_instance() {
-		$class = get_called_class();
-		if ( null === self::$instance ) {
-			self::$instance = new $class;
-		}
-
-		return self::$instance;
-	}
-
-	/**
-	 * See InterfaceCommand::register_commands.
-	 */
-	public function register_commands() {
-		WP_CLI::add_command( 'newspack-content-migrator export-current-theme-custom-css', array( $this, 'cmd_export_current_theme_custom_css' ), [
+	public static function register_commands(): void {
+		WP_CLI::add_command(
+			'newspack-content-migrator export-current-theme-custom-css',
+			self::get_command_closure( 'cmd_export_current_theme_custom_css' ),
+			[
 			'shortdesc' => 'Exports custom CSS for current active Theme. Exits with code 0 on success or 1 otherwise.',
 			'synopsis'  => [
 				[
@@ -55,7 +35,10 @@ class CssMigrator implements InterfaceCommand {
 			],
 		] );
 
-		WP_CLI::add_command( 'newspack-content-migrator import-custom-css-file', array( $this, 'cmd_import_custom_css_file' ), [
+		WP_CLI::add_command(
+			'newspack-content-migrator import-custom-css-file',
+			self::get_command_closure( 'cmd_import_custom_css_file' ),
+			[
 			'shortdesc' => 'Imports custom CSS which was exported from the Staging site.',
 			'synopsis'  => [
 				[
