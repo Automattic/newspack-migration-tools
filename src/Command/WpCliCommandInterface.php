@@ -5,13 +5,6 @@ namespace Newspack\MigrationTools\Command;
 interface WpCliCommandInterface {
 
 	/**
-	 * Get the singleton instance.
-	 *
-	 * @return self
-	 */
-	public static function get_instance(): self;
-
-	/**
 	 * Get CLI commands for the class.
 	 *
 	 * The array should contain an array of arrays. Each entry is a command.
@@ -21,5 +14,5 @@ interface WpCliCommandInterface {
 	 *
 	 * @return array
 	 */
-	public function get_cli_commands(): array;
+	public static function get_cli_commands(): array;
 }

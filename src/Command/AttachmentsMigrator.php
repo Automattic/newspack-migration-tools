@@ -19,11 +19,11 @@ class AttachmentsMigrator implements WpCliCommandInterface {
 	/**
 	 * {@inheritDoc}
 	 */
-	public function get_cli_commands(): array {
+	public static function get_cli_commands(): array {
 		return [
 			[
 				'newspack-migration-tools attachments-get-ids-by-years',
-				[ $this, 'cmd_get_atts_by_years' ],
+				[ __CLASS__, 'cmd_get_atts_by_years' ],
 			],
 		];
 	}
@@ -31,7 +31,7 @@ class AttachmentsMigrator implements WpCliCommandInterface {
 	/**
 	 * Gets a list of attachment IDs by years for those attachments which have files on local in (/wp-content/uploads).
 	 */
-	public function cmd_get_atts_by_years( array $pos_args, array $assoc_args ): void {
+	public static function cmd_get_atts_by_years( array $pos_args, array $assoc_args ): void {
 		global $wpdb;
 		$ids_years  = [];
 		$ids_failed = [];
