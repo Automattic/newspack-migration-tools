@@ -9,15 +9,16 @@
 
 namespace NewspackCustomContentMigrator\Command\General;
 
-use NewspackContentConverter\Config;
-use NewspackContentConverter\Installer;
-use NewspackCustomContentMigrator\Command\InterfaceCommand;
+use Newspack\MigrationTools\Command\WpCliCommandTrait;
+use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
 use NewspackCustomContentMigrator\Logic\GutenbergBlockTransformer;
 use NewspackCustomContentMigrator\Utils\Logger;
 use WP_CLI;
 use WP_CLI\ExitException;
 
-class BlockTransformerCommand implements InterfaceCommand {
+class BlockTransformerCommand implements RegisterCommandInterface {
+
+	use WpCliCommandTrait;
 
 	private Logger $logger;
 
@@ -25,19 +26,10 @@ class BlockTransformerCommand implements InterfaceCommand {
 		$this->logger = new Logger();
 	}
 
-	public static function get_instance(): self {
-		static $instance;
-		if ( null === $instance ) {
-			$instance = new self();
-		}
-
-		return $instance;
-	}
-
 	/**
-	 * @throws \Exception
+	 * {@inheritDoc}
 	 */
-	public function register_commands(): void {
+	public static function register_commands(): void {
 		$generic_args = [
 			'post-id'     => [
 				'type'        => 'assoc',
@@ -78,7 +70,7 @@ class BlockTransformerCommand implements InterfaceCommand {
 
 		WP_CLI::add_command(
 			'newspack-content-migrator transform-blocks-encode',
-			[ $this, 'cmd_blocks_encode' ],
+			self::get_command_closure( 'cmd_blocks_encode' ),
 			[
 				'shortdesc' => '"Obfuscate" blocks in posts by encoding them as base64.',
 				'synopsis'  => [
@@ -88,7 +80,7 @@ class BlockTransformerCommand implements InterfaceCommand {
 		);
 		WP_CLI::add_command(
 			'newspack-content-migrator transform-blocks-decode',
-			[ $this, 'cmd_blocks_decode' ],
+			self::get_command_closure( 'cmd_blocks_decode' ),
 			[
 				'shortdesc' => '"Un-obfuscate" blocks in posts by decoding them.',
 				'synopsis'  => [
@@ -99,7 +91,7 @@ class BlockTransformerCommand implements InterfaceCommand {
 
 		WP_CLI::add_command(
 			'newspack-content-migrator transform-blocks-nudge',
-			[ $this, 'cmd_blocks_nudge' ],
+			self::get_command_closure( 'cmd_blocks_nudge' ),
 			[
 				'shortdesc' => '"Nudge" posts so NCC picks them up',
 				'synopsis'  => [
