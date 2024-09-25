@@ -2,25 +2,24 @@
 
 namespace NewspackCustomContentMigrator\Command\General;
 
-use \NewspackCustomContentMigrator\Command\InterfaceCommand;
+use Newspack\MigrationTools\Command\WpCliCommandTrait;
+use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
 use \NewspackCustomContentMigrator\Logic\Posts as PostsLogic;
 use \WP_CLI;
 
 /**
  * Custom migration scripts for Posts' content.
  */
-class ContentFixerMigrator implements InterfaceCommand {
+class ContentFixerMigrator implements RegisterCommandInterface {
+
+	use WpCliCommandTrait;
+
 	const POST_CONTENT_SHORTCODES_MIGRATION_LOG = 'POST_CONTENT_SHORTCODES_MIGRATION.log';
 
 	/**
 	 * @var PostsLogic.
 	 */
-	private $posts_logic = null;
-
-	/**
-	 * @var null|InterfaceCommand Instance.
-	 */
-	private static $instance = null;
+	private $posts_logic;
 
 	/**
 	 * Constructor.
@@ -30,26 +29,12 @@ class ContentFixerMigrator implements InterfaceCommand {
 	}
 
 	/**
-	 * Singleton get_instance().
-	 *
-	 * @return InterfaceCommand|null
+	 * {@inheritDoc}
 	 */
-	public static function get_instance() {
-		$class = get_called_class();
-		if ( null === self::$instance ) {
-			self::$instance = new $class();
-		}
-
-		return self::$instance;
-	}
-
-	/**
-	 * See InterfaceCommand::register_commands.
-	 */
-	public function register_commands() {
+	public static function register_commands(): void {
 		WP_CLI::add_command(
 			'newspack-content-migrator remove-first-image-from-post-body',
-			array( $this, 'remove_first_image_from_post_body' ),
+			self::get_command_closure( 'remove_first_image_from_post_body' ),
 			array(
 				'shortdesc' => 'Remove the first image from the post body, usefull to normalize the posts content in case some contains the featured image in their body and others not.',
 				'synopsis'  => array(),
@@ -58,7 +43,7 @@ class ContentFixerMigrator implements InterfaceCommand {
 
 		WP_CLI::add_command(
 			'newspack-content-migrator remove-shortcodes-from-post-body',
-			array( $this, 'remove_shortcodes_from_post_body' ),
+			self::get_command_closure( 'remove_shortcodes_from_post_body' ),
 			array(
 				'shortdesc' => 'Remove shortcodes from post body.',
 				'synopsis'  => array(
@@ -91,7 +76,7 @@ class ContentFixerMigrator implements InterfaceCommand {
 	/**
 	 * Callable for `newspack-content-migrator remove-first-image-from-post-body`.
 	 */
-	public function remove_first_image_from_post_body() {
+	public function remove_first_image_from_post_body( array $pos_args, array $assoc_args ) {
 		WP_CLI::confirm( "This will remove the first image from the post body if it's on a shortcode format ([caption ...]<img src=...>[/caption]), do you want to continue?" );
 
 		$this->posts_logic->throttled_posts_loop(
