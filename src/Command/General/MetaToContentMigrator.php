@@ -2,43 +2,21 @@
 
 namespace NewspackCustomContentMigrator\Command\General;
 
-use \NewspackCustomContentMigrator\Command\InterfaceCommand;
+use Newspack\MigrationTools\Command\WpCliCommandTrait;
+use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
 use \WP_CLI;
 
-class MetaToContentMigrator implements InterfaceCommand {
+class MetaToContentMigrator implements RegisterCommandInterface {
+
+	use WpCliCommandTrait;
 
 	/**
-	 * @var null|InterfaceCommand Instance.
+	 * {@inheritDoc}
 	 */
-	private static $instance = null;
-
-	/**
-	 * Constructor.
-	 */
-	private function __construct() {
-	}
-
-	/**
-	 * Singleton get_instance().
-	 *
-	 * @return InterfaceCommand|null
-	 */
-	public static function get_instance() {
-		$class = get_called_class();
-		if ( null === self::$instance ) {
-			self::$instance = new $class;
-		}
-
-		return self::$instance;
-	}
-
-	/**
-	 * See InterfaceCommand::register_commands.
-	 */
-	public function register_commands() {
+	public static function register_commands(): void {
 		WP_CLI::add_command(
 			'newspack-content-migrator migrate-meta-to-content',
-			[ $this, 'cmd_migrate_meta_to_content' ],
+			[ __CLASS__, 'cmd_migrate_meta_to_content' ],
 			[
 				'shortdesc' => 'Migrate content stored in post meta into post_content.',
 				'synopsis'  => [
@@ -79,7 +57,7 @@ class MetaToContentMigrator implements InterfaceCommand {
 	/**
 	 * Migrate content from custom fields to post_content
 	 */
-	public function cmd_migrate_meta_to_content( $args, $assoc_args ) {
+	public static function cmd_migrate_meta_to_content( $args, $assoc_args ) {
 
 		// Damage limitation and openness.
 		$dry_run = isset( $assoc_args['dry-run'] ) ? true : false;
