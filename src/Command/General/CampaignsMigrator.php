@@ -2,12 +2,14 @@
 
 namespace NewspackCustomContentMigrator\Command\General;
 
-use \NewspackCustomContentMigrator\Command\InterfaceCommand;
-use \NewspackCustomContentMigrator\Command\General\PostsMigrator;
+use Newspack\MigrationTools\Command\WpCliCommandTrait;
+use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
 use \NewspackCustomContentMigrator\Logic\Campaigns;
 use \WP_CLI;
 
-class CampaignsMigrator implements InterfaceCommand {
+class CampaignsMigrator implements RegisterCommandInterface {
+
+	use WpCliCommandTrait;
 
 	/**
 	 * @var string Campaigns.
@@ -15,14 +17,9 @@ class CampaignsMigrator implements InterfaceCommand {
 	const CAMPAIGNS_EXPORT_FILE = 'newspack-campaigns.xml';
 
 	/**
-	 * @var null|InterfaceCommand Instance.
-	 */
-	private static $instance = null;
-
-	/**
 	 * @var Campaigns
 	 */
-	private $campaigns_logic = null;
+	private Campaigns $campaigns_logic;
 
 	/**
 	 * Constructor.
@@ -32,24 +29,10 @@ class CampaignsMigrator implements InterfaceCommand {
 	}
 
 	/**
-	 * Singleton get_instance().
-	 *
-	 * @return InterfaceCommand|null
+	 * {@inheritDoc}
 	 */
-	public static function get_instance() {
-		$class = get_called_class();
-		if ( null === self::$instance ) {
-			self::$instance = new $class;
-		}
-
-		return self::$instance;
-	}
-
-	/**
-	 * See InterfaceCommand::register_commands.
-	 */
-	public function register_commands() {
-		WP_CLI::add_command( 'newspack-content-migrator export-campaigns', array( $this, 'cmd_export_campaigns' ), [
+	public static function register_commands(): void {
+		WP_CLI::add_command( 'newspack-content-migrator export-campaigns', self::get_command_closure( 'cmd_export_campaigns' ), [
 			'shortdesc' => 'Exports Newspack Campaigns.',
 			'synopsis'  => [
 				[
@@ -62,7 +45,7 @@ class CampaignsMigrator implements InterfaceCommand {
 			],
 		] );
 
-		WP_CLI::add_command( 'newspack-content-migrator import-campaigns', array( $this, 'cmd_import_campaigns' ), [
+		WP_CLI::add_command( 'newspack-content-migrator import-campaigns', self::get_command_closure( 'cmd_import_campaigns' ), [
 			'shortdesc' => 'Imports Newspack Campaigns.',
 			'synopsis'  => [
 				[
