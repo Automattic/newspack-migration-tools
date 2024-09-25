@@ -2,12 +2,14 @@
 
 namespace NewspackCustomContentMigrator\Command\General;
 
-use \NewspackCustomContentMigrator\Command\InterfaceCommand;
-use \NewspackCustomContentMigrator\Command\General\PostsMigrator;
+use Newspack\MigrationTools\Command\WpCliCommandTrait;
+use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
 use \NewspackCustomContentMigrator\Logic\Attachments;
 use \WP_CLI;
 
-class SettingsMigrator implements InterfaceCommand {
+class SettingsMigrator implements RegisterCommandInterface {
+
+	use WpCliCommandTrait;
 
 	/**
 	 * @var string Page settings exported data filename.
@@ -20,14 +22,9 @@ class SettingsMigrator implements InterfaceCommand {
 	const SITE_IDENTITY_EXPORTED_OPTIONS_FILENAME = 'newspack-site-identity-exported-options.json';
 
 	/**
-	 * @var null|InterfaceCommand Instance.
-	 */
-	private static $instance = null;
-
-	/**
 	 * @var Attachments $attachments_logic
 	 */
-	private $attachments_logic = null;
+	private Attachments $attachments_logic;
 
 	/**
 	 * Constructor.
@@ -37,24 +34,10 @@ class SettingsMigrator implements InterfaceCommand {
 	}
 
 	/**
-	 * Singleton get_instance().
-	 *
-	 * @return InterfaceCommand|null
+	 * {@inheritDoc}
 	 */
-	public static function get_instance() {
-		$class = get_called_class();
-		if ( null === self::$instance ) {
-			self::$instance = new $class;
-		}
-
-		return self::$instance;
-	}
-
-	/**
-	 * See InterfaceCommand::register_commands.
-	 */
-	public function register_commands() {
-		WP_CLI::add_command( 'newspack-content-migrator export-pages-settings', array( $this, 'cmd_export_pages_settings' ), [
+	public static function register_commands(): void {
+		WP_CLI::add_command( 'newspack-content-migrator export-pages-settings', self::get_command_closure( 'cmd_export_pages_settings' ), [
 			'shortdesc' => 'Exports settings for default Site Pages.',
 			'synopsis'  => [
 				[
@@ -67,7 +50,7 @@ class SettingsMigrator implements InterfaceCommand {
 			],
 		] );
 
-		WP_CLI::add_command( 'newspack-content-migrator import-pages-settings', array( $this, 'cmd_import_pages_settings' ), [
+		WP_CLI::add_command( 'newspack-content-migrator import-pages-settings', self::get_command_closure( 'cmd_import_pages_settings' ), [
 			'shortdesc' => 'Imports custom CSS from the export XML file.',
 			'synopsis'  => [
 				[
@@ -80,7 +63,7 @@ class SettingsMigrator implements InterfaceCommand {
 			],
 		] );
 
-		WP_CLI::add_command( 'newspack-content-migrator export-customize-site-identity-settings', array( $this, 'cmd_export_customize_site_identity_settings' ), [
+		WP_CLI::add_command( 'newspack-content-migrator export-customize-site-identity-settings', self::get_command_closure( 'cmd_export_customize_site_identity_settings' ), [
 			'shortdesc' => 'Exports Customizer site identity settings.',
 			'synopsis'  => [
 				[
@@ -93,7 +76,7 @@ class SettingsMigrator implements InterfaceCommand {
 			],
 		] );
 
-		WP_CLI::add_command( 'newspack-content-migrator import-customize-site-identity-settings', array( $this, 'cmd_import_customize_site_identity_settings' ), [
+		WP_CLI::add_command( 'newspack-content-migrator import-customize-site-identity-settings', self::get_command_closure( 'cmd_import_customize_site_identity_settings' ), [
 			'shortdesc' => 'Imports Customizer site identity settings from the Staging site.',
 			'synopsis'  => [
 				[
@@ -106,7 +89,7 @@ class SettingsMigrator implements InterfaceCommand {
 			],
 		] );
 
-		WP_CLI::add_command( 'newspack-content-migrator update-seo-settings', array( $this, 'cmd_update_seo_settings' ), [
+		WP_CLI::add_command( 'newspack-content-migrator update-seo-settings', self::get_command_closure( 'cmd_update_seo_settings' ), [
 			'shortdesc' => 'Checks and sets SEO settings.',
 		] );
 
