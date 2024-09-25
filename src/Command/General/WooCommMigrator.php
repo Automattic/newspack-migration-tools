@@ -2,43 +2,19 @@
 
 namespace NewspackCustomContentMigrator\Command\General;
 
-use \NewspackCustomContentMigrator\Command\InterfaceCommand;
-use \NewspackCustomContentMigrator\Command\General\PostsMigrator;
+use Newspack\MigrationTools\Command\WpCliCommandTrait;
+use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
 use \WP_CLI;
-use \WP_Error;
 
-class WooCommMigrator implements InterfaceCommand {
+class WooCommMigrator implements RegisterCommandInterface {
 
-	/**
-	 * @var null|InterfaceCommand Instance.
-	 */
-	private static $instance = null;
+	use WpCliCommandTrait;
 
 	/**
-	 * Constructor.
+	 * {@inheritDoc}
 	 */
-	private function __construct() {
-	}
-
-	/**
-	 * Singleton get_instance().
-	 *
-	 * @return InterfaceCommand|null
-	 */
-	public static function get_instance() {
-		$class = get_called_class();
-		if ( null === self::$instance ) {
-			self::$instance = new $class;
-		}
-
-		return self::$instance;
-	}
-
-	/**
-	 * See InterfaceCommand::register_commands.
-	 */
-	public function register_commands() {
-		WP_CLI::add_command( 'newspack-content-migrator woocomm-setup', array( $this, 'cmd_setup' ), [
+	public static function register_commands(): void {
+		WP_CLI::add_command( 'newspack-content-migrator woocomm-setup', self::get_command_closure( 'cmd_setup' ), [
 			'shortdesc' => 'Updates all the WooCommerce settings.',
 		] );
 	}
