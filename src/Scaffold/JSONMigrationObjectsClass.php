@@ -136,7 +136,7 @@ class JSONMigrationObjectsClass extends AbstractMigrationObjects implements JSON
 		}
 
 		foreach ( ( new FileImportFactory() )->get_file( $this->path_to_json_file )->getIterator() as $json_object ) {
-			yield new MigrationObjectClass( $this->get_run_key(), $json_object, $this->get_pointer_to_identifier() );
+			yield new MigrationObject( $this->get_run_key(), $json_object, $this->get_pointer_to_identifier() );
 		}
 	}
 }
