@@ -82,12 +82,16 @@ class CliLogger extends Log {
 
 		if ( $exit_on_error ) {
 			
+			// leave these comments in here...
+
 			// We can't do exit because this will cause PHPUnit to stop running all subsequent tests.
 			// exit( 1 );
 
 			// we can't throw an exception because this will end up in debug.log when run from WP_CLI
-			// throw new \Exception( 'nope...' );
-			
+			// it may confuse developers why the debug.log is filling up and the exception below and
+			// this exception isn't the reason their code is actually failing.
+			// throw new \Exception( 'exiting the cli' );
+						
 			// Use wp_die (instead of exit) so WP_CLI and PHPUnit can exit more gracefully.
 			// Using wp_die will allow PHPUnit to show call stack and continue running other tests too.
 			// Set argument to empty array/object so WP_CLI doesn't show a blank "Error:" line as last output.
@@ -99,7 +103,8 @@ class CliLogger extends Log {
 			// wp_die();
 
 			// we'd have to use a string:
-			// wp_die( ' -- wp_cli has exited --');
+			// Huddled with Camilla, this is the best way to go to have just one command instead of checking if phpunit or not
+			wp_die( ' -- cli_logger has exited --');
 
 			// otherwise, if we don't want the redundent error message, we have to create our or own die hander...
 			// actually this wont work in PHPUnit without an additional die_handler with a higher priority.
@@ -110,12 +115,13 @@ class CliLogger extends Log {
 			// both PHPUnit and WP_CLI.  So do differnet things based on context. 
 
 			// If PHPUnit throw an exception.
-			if ( isset( $GLOBALS['phpunit_version'] ) ) {
-				throw new \Exception( 'CLILogger exit_on_error.' );
-			}
+			// if ( isset( $GLOBALS['phpunit_version'] ) ) {
+			// 	throw new \Exception( 'CLILogger exit_on_error.' );
+			// }
 
 			// Let WP_CLI do a normal exit.
-			exit( 1 );
+			// exit( 1 );
+
 		}
 	}
 }
