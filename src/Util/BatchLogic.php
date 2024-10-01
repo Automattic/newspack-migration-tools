@@ -75,8 +75,8 @@ class BatchLogic {
 		$end       = $assoc_args[ self::$batch_args[1]['name'] ] ?? PHP_INT_MAX;
 		$num_items = $assoc_args[ self::$batch_args[2]['name'] ] ?? false;
 
-		if ( 0 === $start ) {
-			// We don't count from zero here, so if zero is passed, fix it.
+		if ( $start <= 0 ) {
+			// We don't count from zero here, so if zero (or less) is passed, fix it by assuming 1.
 			$start = 1;
 		}
 
