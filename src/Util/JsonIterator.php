@@ -9,8 +9,8 @@ namespace Newspack\MigrationTools\Util;
  
 use Exception;
 use JsonMachine\Items;
-use NewspackCustomContentMigrator\Utils\Logger;
-use NewspackCustomContentMigrator\Utils\BatchLogic;
+use Newspack\MigrationTools\Log\FileLogger;
+use Newspack\MigrationTools\Util\BatchLogic;
 
 /**
  * Class JsonIterator.
@@ -20,11 +20,11 @@ use NewspackCustomContentMigrator\Utils\BatchLogic;
 class JsonIterator {
 
 	/**
-	 * Logger instance.
+	 * File logger instance.
 	 *
-	 * @var Logger.
+	 * @var FileLogger.
 	 */
-	private Logger $logger;
+	private FileLogger $file_logger;
 
 	/**
 	 * Log file name.
@@ -35,9 +35,15 @@ class JsonIterator {
 
 	/**
 	 * Constructor.
+	 * 
+	 * @param FileLogger $file_logger Optional File logger instance.
 	 */
-	public function __construct() {
-		$this->logger = new Logger();
+	public function __construct( FileLogger $file_logger = null ) {
+		if ( ! $file_logger ) {
+			$file_logger = new FileLogger();
+		}
+
+		$this->file_logger = $file_logger;
 	}
 
 	/**
@@ -98,7 +104,7 @@ class JsonIterator {
 		$file_exists = str_starts_with( $json_file, 'http' ) ? $this->url_responds( $json_file ) : file_exists( $json_file );
 
 		if ( ! $file_exists ) {
-			$this->logger->log( self::LOG_NAME, "Doesn't exist: {$json_file}", Logger::ERROR, true );
+			$this->file_logger::log( self::LOG_NAME, "Doesn't exist: {$json_file}", FileLogger::ERROR, true );
 
 			return new \EmptyIterator();
 		}
@@ -106,7 +112,7 @@ class JsonIterator {
 		try {
 			return Items::fromFile( $json_file, $options );
 		} catch ( Exception $o_0 ) {
-			$this->logger->log( self::LOG_NAME, "Could not read the JSON from {$json_file}", Logger::ERROR, true );
+			$this->file_logger::log( self::LOG_NAME, "Could not read the JSON from {$json_file}", FileLogger::ERROR, true );
 
 			return new \EmptyIterator();
 		}
@@ -132,7 +138,7 @@ class JsonIterator {
 			}
 		}
 
-		throw new Exception( sprintf( 'Could not count entries in JSON file: %s', $json_file_path );
+		throw new Exception( sprintf( 'Could not count entries in JSON file: %s', $json_file_path ) );
 	}
 
 	/**
