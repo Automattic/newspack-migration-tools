@@ -138,7 +138,7 @@ class JsonIterator {
 			}
 		}
 
-		throw new Exception( sprintf( 'Could not count entries in JSON file: %s', $json_file_path ) );
+		throw new Exception( sprintf( 'Could not count entries in JSON file: %s', $json_file_path ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 	}
 
 	/**
