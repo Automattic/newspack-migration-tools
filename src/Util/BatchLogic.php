@@ -70,6 +70,9 @@ class BatchLogic {
 	 * @throws ExitException If the args were not acceptable.
 	 */
 	public static function validate_and_get_batch_args( array $assoc_args ): array {
+		// Ensure that batch_args is initialized by calling get_batch_args().
+		self::get_batch_args();
+
 		$start     = $assoc_args[ self::$batch_args[0]['name'] ] ?? 1;
 		$end       = $assoc_args[ self::$batch_args[1]['name'] ] ?? PHP_INT_MAX;
 		$num_items = $assoc_args[ self::$batch_args[2]['name'] ] ?? false;
