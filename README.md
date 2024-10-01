@@ -4,9 +4,13 @@ This package is a set of migration tools used to make it easy to migrate content
 
 The repository contains a set of WP commands to migrate different data to WordPress, and helper classes that can be used to develop your own migrators.
 
-Minimum PHP version required is 8.1.
+## Requirements
+* WordPress
+* Minimum PHP version required is 8.1.
+* If you use the JsonIterator class, you must have `jq` installed on your system. See [download instructions](https://jqlang.github.io/jq/download/).
 
-### Documentation for Individual Migrators
+
+## Documentation for Individual Migrators
 
 * Attachments (todo)
 * [Newspaper Theme](./docs/newspaper-theme.md)
@@ -40,7 +44,7 @@ If you want to use the WP CLI commands in this package, you can do so by adding 
 ```php
 
 // Add your command class names in the array.
-$cli_commands = [ Newspack\MigrationTools\Commands\MyCommand::class ];
+$cli_commands = [ MyProject\MyCommand::class ];
 
 foreach ( cli_commands as $command_class ) {
     if ( is_a( $command_class, WpCliCommandInterface::class, true ) ) {
