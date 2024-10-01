@@ -7,8 +7,7 @@
 
 namespace Newspack\MigrationTools\Util;
 
-use WP_CLI;
-use WP_CLI\ExitException;
+use Newspack\MigrationTools\Log\CliLogger;
 
 /**
  * BatchLogic helper to consistently handle start and end for commands.
@@ -67,7 +66,6 @@ class BatchLogic {
 	 * @param array $assoc_args Assoc args from a command run.
 	 *
 	 * @return array Array keyed with: start, end, total.
-	 * @throws ExitException If the args were not acceptable.
 	 */
 	public static function validate_and_get_batch_args( array $assoc_args ): array {
 		// Ensure that batch_args is initialized by calling get_batch_args().
@@ -87,10 +85,10 @@ class BatchLogic {
 		}
 
 		if ( ! is_numeric( $start ) || ! is_numeric( $end ) ) {
-			WP_CLI::error( 'Start and end args must be numeric.' );
+			CliLogger::error( 'Start and end args must be numeric.', true );
 		}
 		if ( $end < $start ) {
-			WP_CLI::error( 'End arg must be greater than start arg.' );
+			CliLogger::error( 'End arg must be greater than start arg.', true );
 		}
 
 		return [
