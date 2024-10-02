@@ -99,4 +99,73 @@ class LoggingTests extends WP_UnitTestCase {
 		// And it contains what we expect.
 		$this->assertStringEndsWith( 'Will Robinson!', $output );
 	}
+
+	/**
+	 * Test that $exit_on_error in CliLogger will end execution as expected.
+	 * 
+	 * The WP_CLI migrators use $exit_on_error as an execution control. This
+	 * test will verify that $exit_on_error will "exit" the program.
+	 *
+	 * @return void
+	 */
+	public function test_cli_logger_exit_on_error(): void {
+
+		$error_message = 'Oops, exit.';
+
+		// Note: PHPUnit does not allow multiple "expect" tests if they are of the same
+		// type. Doing a second "expectOutputRegex" test will not run, but since these
+		// two expect tests are of different types ("Exception" vs "Output") it is
+		// OK, both will be tested.
+		$this->expectOutputRegex( '/' . preg_quote( $error_message, '/' ) . '/' );
+		$this->expectExceptionMessage( '-- cli_logger has exited --' );
+
+		// Cause an error with $exit_on_error.
+		CliLogger::error( $error_message, true );
+	}
+
+	/**
+	 * Test that $exit_on_error in the loggers will exit as expected even if
+	 * output logging is disabled via a filter.
+	 * 
+	 * The WP_CLI migrators use $exit_on_error as an execution control while doing output. 
+	 * This test will verify that $exit_on_error will still run properly even if output logging
+	 * is disabled.
+	 * 
+	 * Since the disable logging filter is primary used for PHPUnit, an exception is thrown
+	 * instead of wp_die.
+	 * 
+	 * @return void
+	 */
+	public function test_cli_no_logging_but_still_exit(): void {
+
+		// Turn off logging.
+		add_filter( 'newspack_migration_tools_log_clilog_disable', '__return_true' );
+
+		// Verify $exit_on_error still works even though logging is disabled via filter.
+		$this->expectExceptionMessage( 'CLI logging disabled with exit_on_error.' );
+		CliLogger::error( 'Oops, exit.', true );
+	}
+
+	/**
+	 * Test that $exit_on_error in the loggers will exit as expected even if
+	 * output logging is disabled via a filter.
+	 * 
+	 * The WP_CLI migrators use $exit_on_error as an execution control while doing output. 
+	 * This test will verify that $exit_on_error will still run properly even if output logging
+	 * is disabled.
+	 * 
+	 * Since the disable logging filter is primary used for PHPUnit, an exception is thrown
+	 * instead of wp_die.
+	 * 
+	 * @return void
+	 */
+	public function test_file_no_logging_but_still_exit(): void {
+
+		// Turn off logging.
+		add_filter( 'newspack_migration_tools_log_file_logger_disable', '__return_true' );
+
+		// Verify $exit_on_error still works even though logging is disabled via filter.
+		$this->expectExceptionMessage( 'File logging disabled with exit_on_error.' );
+		FileLogger::log( $this->log_file, 'Oops, exit.', Log::ERROR, true );
+	}
 }
