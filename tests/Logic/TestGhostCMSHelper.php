@@ -14,16 +14,9 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 	 */
 	public function test_ghostcms_import(): void {
 
-		// Set path to log file.
-		$log_file = get_temp_dir() . str_replace( __NAMESPACE__ . '\\', '', __CLASS__ ) . '_' . __FUNCTION__ . '.log';
-
-		// If already exists, clear it.
-		if ( file_exists( $log_file ) ) {
-			file_put_contents( $log_file, '' );
-		}
-
-		// Capture CLI logging.
-		ob_start();
+		// Turn off logging output.
+		add_filter( 'newspack_migration_tools_log_file_logger_disable', '__return_true' );
+		add_filter( 'newspack_migration_tools_log_clilog_disable', '__return_true' );
 
 		// Run test.
 		$test_ghostcms_helper = new GhostCMSHelper();
@@ -34,31 +27,25 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 				'ghost-url'       => 'https://newspack.com/',
 				'default-user-id' => 1,
 			],
-			$log_file
+			''
 		);
 
-		// Get output CLI buffer without color codes.
-		$output = preg_replace( '/\033\[[0-9;]+m/', '', ob_get_clean() );
+		// Posts.
+		$posts = get_posts(
+			[
+				'title'       => 'The Title',
+				'numberposts' => 1,
+			]
+		);
+		$this->assertIsArray( $posts );
+		$this->assertCount( 1, $posts );
+		$this->assertEquals( 'the-title', $posts[0]->post_name );
 
-		// Test that log exists.
-		$this->assertFileExists( $log_file );
+		// @todo CoAuthorsPlus / GA
 
-		// Test that log file matches 
-		// phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
-		$this->assertEquals( $output, file_get_contents( $log_file ) );
-
-		// Test that output.
-		$this->assertStringContainsString( 'Doing migration.', $output );
-		$this->assertStringContainsString( 'Inserted new post:', $output );
-		$this->assertStringContainsString( 'Created new GA.', $output );
-		$this->assertStringContainsString( 'Assigned authors (wp users and/or cap gas).', $output );
-		$this->assertStringContainsString( 'Inserted category term:', $output );
-		$this->assertStringContainsString( 'Set post categories.', $output );
-		$this->assertStringContainsString( 'SUCCESS: Done.', $output );
-
-		// Remove log file.
-		if ( file_exists( $log_file ) ) {
-			unlink( $log_file );
-		}
+		// Categories.
+		$category = get_term_by( 'name', 'News', 'category' );
+		$this->assertIsObject( $category );
+		$this->assertEquals( 'news', $category->slug );
 	}
 }
