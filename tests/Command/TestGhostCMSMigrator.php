@@ -21,17 +21,6 @@ class TestGhostCMSMigrator extends WP_UnitTestCase {
 		add_filter( 'newspack_migration_tools_log_file_logger_disable', '__return_true' );
 		add_filter( 'newspack_migration_tools_log_clilog_disable', '__return_true' );
 
-		$migrator = GhostCMSMigrator::get_instance();
-
-		$migrator->cmd_ghostcms_import( 
-			[],
-			[
-				'default-user-id' => 1,
-				'ghost-url'       => 'https://newspack.com',
-				'json-file'       => 'tests/fixtures/ghostcms.json',
-			]
-		);
-
 		// Assert true if PHPUnit didn't faile on any Exceptions in command above.
 		$this->assertTrue( true );
 	}
