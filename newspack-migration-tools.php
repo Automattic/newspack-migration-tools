@@ -4,7 +4,7 @@
  *
  * Version: 0.0.1
  *
- * This is a library to be included in plugins. See README.md for more information.
+ * This is a library to be included by plugins. See README.md for more information.
  *
  * Requires PHP 8.1 or later.
  *

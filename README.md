@@ -2,7 +2,7 @@
 
 This package is a set of migration tools used to make it easy to migrate content to WordPress.
 
-The repository contains a set of WP commands to migrate different data to WordPress, and helper classes that can be used to develop your own migrators.
+The repository contains a set of WP commands to migrate different data to WordPress, and helper classes that can be used to develop your own migrators. You can use the code from WP_CLI or from just browser WordPress. Think of this as a library that you can build from.
 
 Minimum PHP version required is 8.1.
 
@@ -40,17 +40,14 @@ $attachment_id = AttachmentHelper::import_attachment_for_post( ... your argument
 If you want to use the WP CLI commands in this package, you can do so by adding the following code to your plugin:
 ```php
 
-// All commands in the package can be gotten with:
-$cli_commands = WpCliCommands::get_classes_with_cli_commands();
-// If you only need a specific command or two, you can also just add them like this:
+// Add your command class names in the array.
 $cli_commands = [ Newspack\MigrationTools\Commands\MyCommand::class ];
 
-foreach ( $cli_commands as $command_class ) {
-    $class = $command_class::get_instance();
-    if ( is_a( $class, WpCliCommandInterface::class ) ) {
-        array_map( function ( $command ) {
+foreach ( cli_commands as $command_class ) {
+    if ( is_a( $command_class, WpCliCommandInterface::class, true ) ) {
+            array_map( function ( $command ) {
             WP_CLI::add_command( ...$command );
-        }, $class->get_cli_commands() );
+        }, $command_class::get_cli_commands() );
     }
 }
 ```
