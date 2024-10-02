@@ -105,30 +105,23 @@ class LoggingTests extends WP_UnitTestCase {
 	 * 
 	 * The WP_CLI migrators use $exit_on_error as an execution control. This
 	 * test will verify that $exit_on_error will "exit" the program.
-	 * 
-	 * For PHPUnit, exit_on_error will throw an exception instead of doing "exit()"
-	 * which would stop PHPUnit itself and stop all subsequent tests too.
 	 *
 	 * @return void
 	 */
 	public function test_cli_logger_exit_on_error(): void {
 
-		// @todo clean this up for wp_die again...
-
-		$exit_message = 'Oops, exit';
+		$error_message = 'Oops, exit.';
 
 		// Note: PHPUnit does not allow multiple "expect" tests if they are of the same
-		// type. Doing a second "expectOutputRegex" test will not run, but since the
-		// two expect tests above are of different types ("Exception" vs "Output") it is
-		// OK.  Both will be tested.
+		// type. Doing a second "expectOutputRegex" test will not run, but since these
+		// two expect tests are of different types ("Exception" vs "Output") it is
+		// OK, both will be tested.
+		$this->expectOutputRegex( '/' . preg_quote( $error_message ) . '/' );
+		$this->expectExceptionMessage( '-- cli_logger has exited --' );
 
-		// Catch the "exit_on_error" exception.
-		$this->expectExceptionMessage( 'CLILogger exit_on_error.' );
+		// Cause an error with $exit_on_error.
+		CliLogger::error( $error_message, true );
 
-		// Also capture the output so it doesn't clutter PHPUnit's output.
-		$this->expectOutputRegex( '/' . preg_quote( $exit_message, '/' ) . '/' );
-
-		CliLogger::error( $exit_message, true );
 	}
 
 	/**

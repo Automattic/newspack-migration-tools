@@ -82,45 +82,33 @@ class CliLogger extends Log {
 
 		if ( $exit_on_error ) {
 			
-			// leave these comments in here...
-
 			// We can't do exit because this will cause PHPUnit to stop running all subsequent tests.
 			// exit( 1 );
 
-			// we can't throw an exception because this will end up in debug.log when run from WP_CLI
-			// it may confuse developers why the debug.log is filling up and the exception below and
-			// this exception isn't the reason their code is actually failing.
+			// We can't just throw an exception because this will end up in wp-content/debug.log when run from WP_CLI.
+			// It would confuse developers why the debug.log is filling up with the exception below and
+			// that this exception isn't the reason their WP_CLI is actually "exiting" in the first place.
 			// throw new \Exception( 'exiting the cli' );
 						
-			// Use wp_die (instead of exit) so WP_CLI and PHPUnit can exit more gracefully.
-			// Using wp_die will allow PHPUnit to show call stack and continue running other tests too.
-			// Set argument to empty array/object so WP_CLI doesn't show a blank "Error:" line as last output.
-			
-			// we can't use empty array because this will throw error when WP_CLI tries to trim() array
+			// We could do a check if PHPUnit else WP_CLI...this would look like the following:
+			// if ( isset( $GLOBALS['phpunit_version'] ) ) throw new \Exception( 'CLILogger exit_on_error.' );
+			// else exit( 1 );
+			// But we've decided to try to avoid having divergent code between PHPUnit and normal execution.
+
+			// In the end, we can use wp_die() so WP_CLI and PHPUnit can both exit gracefully.
+			// Using wp_die will causes PHPUnit to throw an exception which can be caught, and it also 
+			// allows other PHPUnit tests to keep running, unlike "exit()".
+
+			// In our call to wp_die() there are some caveats:
+
+			// We can't use empty array or object because this will throw an error as WP_CLI expects a string.
 			// wp_die( [] );
 
-			// we can't use empty () because WP_CLI will print a redundant blank "Error:" line in CLI
+			// We can't use an empty argument/string because WP_CLI will print a blank "Error:" line in the CLI
 			// wp_die();
 
-			// we'd have to use a string:
-			// Huddled with Camilla, this is the best way to go to have just one command instead of checking if phpunit or not
-			wp_die( ' -- cli_logger has exited --');
-
-			// otherwise, if we don't want the redundent error message, we have to create our or own die hander...
-			// actually this wont work in PHPUnit without an additional die_handler with a higher priority.
-			// add_filter( 'wp_die_handler', fn() => fn() => exit );
-			// wp_die();
-
-			// Nevermind about everything above...Ron can't find a way to have one command that works in
-			// both PHPUnit and WP_CLI.  So do differnet things based on context. 
-
-			// If PHPUnit throw an exception.
-			// if ( isset( $GLOBALS['phpunit_version'] ) ) {
-			// 	throw new \Exception( 'CLILogger exit_on_error.' );
-			// }
-
-			// Let WP_CLI do a normal exit.
-			// exit( 1 );
+			// We have to use a string with length...so we'll just print something helpful.
+			wp_die( ' -- cli_logger has exited --' );
 
 		}
 	}
