@@ -116,12 +116,11 @@ class LoggingTests extends WP_UnitTestCase {
 		// type. Doing a second "expectOutputRegex" test will not run, but since these
 		// two expect tests are of different types ("Exception" vs "Output") it is
 		// OK, both will be tested.
-		$this->expectOutputRegex( '/' . preg_quote( $error_message ) . '/' );
+		$this->expectOutputRegex( '/' . preg_quote( $error_message, '/' ) . '/' );
 		$this->expectExceptionMessage( '-- cli_logger has exited --' );
 
 		// Cause an error with $exit_on_error.
 		CliLogger::error( $error_message, true );
-
 	}
 
 	/**
