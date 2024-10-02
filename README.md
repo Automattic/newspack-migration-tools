@@ -2,7 +2,7 @@
 
 This package is a set of migration tools used to make it easy to migrate content to WordPress.
 
-The repository contains a set of WP commands to migrate different data to WordPress, and helper classes that can be used to develop your own migrators.
+The repository contains a set of WP commands to migrate different data to WordPress, and helper classes that can be used to develop your own migrators. You can use the code from WP_CLI or from just browser WordPress. Think of this as a library that you can build from.
 
 Minimum PHP version required is 8.1.
 
