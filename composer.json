@@ -16,6 +16,8 @@
         "php": ">=8.1"
     },
     "require-dev": {
+        "ext-libxml": "*",
+        "ext-dom": "*",
         "wp-coding-standards/wpcs": "^3.0",
         "automattic/vipwpcs": "^3.0",
         "phpcompatibility/phpcompatibility-wp": "*",
