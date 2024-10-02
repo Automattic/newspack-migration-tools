@@ -2,7 +2,8 @@
 
 namespace Newspack\MigrationTools\Scaffold;
 
-use Newspack\MigrationTools\Scaffold\MigrationObject;
+use Exception;
+use Symfony\Component\PropertyAccess\PropertyAccess;
 
 abstract class AbstractMigrationObject implements MigrationObject {
 
@@ -38,8 +39,19 @@ abstract class AbstractMigrationObject implements MigrationObject {
 
 	/**
 	 * @inheritDoc
+	 *
+	 * @throws \InvalidArgumentException If the pointer to the identifier provided does not exist in the data.
 	 */
-	public function set( object|array $data, string $pointer_to_identifier = 'id' ): void {
+	public function set( object|array $data, string $pointer_to_identifier ): void {
+		// Validate the identifier.
+		try {
+			( PropertyAccess::createPropertyAccessorBuilder()
+							->enableExceptionOnInvalidIndex()
+							->getPropertyAccessor() )->getValue( $data, $pointer_to_identifier );
+		} catch ( Exception $e ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+			throw new \InvalidArgumentException( 'The pointer to the identifier provided does not exist in the data.', 0, $e );
+		}
 		$this->data                  = $data;
 		$this->pointer_to_identifier = $pointer_to_identifier;
 		// TODO setting of $processed could be improved by using a cache
@@ -49,8 +61,13 @@ abstract class AbstractMigrationObject implements MigrationObject {
 	/**
 	 * @inheritDoc
 	 */
-	public function get(): array|object {
-		return $this->data;
+	public function get( string $dot_path ): mixed {
+		return (
+			PropertyAccess::createPropertyAccessorBuilder()
+							->enableExceptionOnInvalidIndex()
+							->getPropertyAccessor()
+			)
+			->getValue( $this->data, $dot_path );
 	}
 
 	/**
@@ -67,8 +84,8 @@ abstract class AbstractMigrationObject implements MigrationObject {
 		$insert = $this->wpdb->insert(
 			$this->wpdb->options,
 			[
-				'option_name'  => $this->get_run_key()->get() . '_migration_object_' . $this->get() [ $this->get_pointer_to_identifier() ],
-				'option_value' => wp_json_encode( $this->get() ),
+				'option_name'  => $this->get_run_key()->get() . '_migration_object_' . $this->get( $this->get_pointer_to_identifier() ),
+				'option_value' => wp_json_encode( $this->data ),
 				'autoload'     => 'no',
 			]
 		);
@@ -87,7 +104,7 @@ abstract class AbstractMigrationObject implements MigrationObject {
 		$insert = $this->wpdb->insert(
 			$this->wpdb->options,
 			[
-				'option_name'  => $this->get_run_key()->get() . '_migration_object_' . $this->get()[ $this->get_pointer_to_identifier() ] . '_processed',
+				'option_name'  => $this->get_run_key()->get() . '_migration_object_' . $this->get( $this->get_pointer_to_identifier() ) . '_processed',
 				'option_value' => '1',
 				'autoload'     => 'no',
 			]
@@ -114,7 +131,7 @@ abstract class AbstractMigrationObject implements MigrationObject {
 			$this->processed = (bool) $this->wpdb->get_var(
 				$this->wpdb->prepare(
 					"SELECT option_value FROM {$options_table} WHERE option_name = %s",
-					$this->get_run_key()->get() . '_migration_object_' . $this->get()[ $this->get_pointer_to_identifier() ] . '_processed'
+					$this->get_run_key()->get() . '_migration_object_' . $this->get($this->get_pointer_to_identifier() ) . '_processed'
 				)
 			);
 			// phpcs:enable
@@ -141,7 +158,7 @@ abstract class AbstractMigrationObject implements MigrationObject {
 			default => 'option_id',
 		};
 
-		$option_name = $this->get_run_key()->get() . '_migration_object_source_' . $this->get()[ $this->get_pointer_to_identifier() ] . "_{$table}_{$column}_{$id}";
+		$option_name = $this->get_run_key()->get() . '_migration_object_source_' . $this->get( $this->get_pointer_to_identifier() ) . "_{$table}_{$column}_{$id}";
 		$insert      = $this->wpdb->insert(
 			$meta_table,
 			[

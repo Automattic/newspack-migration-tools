@@ -31,17 +31,18 @@ interface MigrationObject {
 	 * Sets the data to be migrated.
 	 *
 	 * @param array|object $data Data to be migrated.
+	 * @param string       $pointer_to_identifier Pointer to the identifier.
 	 *
 	 * @return void
 	 */
-	public function set( array|object $data ): void;
+	public function set( array|object $data, string $pointer_to_identifier ): void;
 
 	/**
 	 * Gets the data to be migrated.
 	 *
 	 * @return array|object
 	 */
-	public function get(): array|object;
+	public function get( string $dot_path ): mixed;
 
 	/**
 	 * Stores the object in the database.
