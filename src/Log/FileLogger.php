@@ -14,6 +14,8 @@ class FileLogger extends Log {
 	 * @param string $message       Log message.
 	 * @param string $level         Log level. See constants in this class.
 	 * @param bool   $exit_on_error Whether to exit on error.
+	 * 
+	 * @throws \Exception If logging is disabled, but $exit_on_error is true. Primarily used by PHPUnit.
 	 */
 	public static function log( string $file, string $message, string $level = self::LINE, bool $exit_on_error = false ): void {
 		/**
@@ -45,6 +47,11 @@ class FileLogger extends Log {
 		 * @param bool $disable_default If not false then disable file logging.
 		 */
 		if ( apply_filters( 'newspack_migration_tools_log_file_logger_disable', false ) ) {
+			if ( $exit_on_error ) {
+				// We still need to exit even if logging was disabled.
+				// Since this filter is generally used in testing, throw exception instead of wp_die.
+				throw new \Exception( 'File logging disabled with exit_on_error.' );
+			}
 			return;
 		}
 
