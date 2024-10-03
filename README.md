@@ -17,18 +17,21 @@ You can load this package in your PHP project as follows:
 
 _composer.json_
 
-```
+```json
 "repositories": [
     {
         "type": "git",
         "url": "https://github.com/Automattic/newspack-migration-tools.git"
     }
 ],
+"require": {
+    "automattic/newspack-migration-tools": "dev-trunk"
+}
 ```
 
 _my-plugin-file.php_
 
-```
+```php
 // Loading the attachments helper class.
 use Newspack\MigrationTools\Logic\AttachmentHelper;
 // Example call.
@@ -38,11 +41,16 @@ $attachment_id = AttachmentHelper::import_attachment_for_post( ... your argument
 ## Registering the WP CLI commands in this package
 If you want to use the WP CLI commands in this package, you can do so by adding the following code to your plugin:
 ```php
+use Newspack\MigrationTools\Command\WpCliCommands;
+use Newspack\MigrationTools\Command\WpCliCommandInterface;
 
 // Add your command class names in the array.
 $cli_commands = [ Newspack\MigrationTools\Commands\MyCommand::class ];
 
-foreach ( cli_commands as $command_class ) {
+// Or add all classes:
+// $cli_commands = WpCliCommands::get_classes_with_cli_commands();
+
+foreach ( $cli_commands as $command_class ) {
     if ( is_a( $command_class, WpCliCommandInterface::class, true ) ) {
             array_map( function ( $command ) {
             WP_CLI::add_command( ...$command );
