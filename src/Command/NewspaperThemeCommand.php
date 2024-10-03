@@ -8,8 +8,6 @@ use Newspack\MigrationTools\Util\MigrationMetaForCommand;
 
 class NewspaperThemeCommand implements WpCliCommandInterface {
 
-	use WpCliCommandTrait;
-
 	/**
 	 * {@inheritDoc}
 	 */
@@ -72,7 +70,7 @@ class NewspaperThemeCommand implements WpCliCommandInterface {
 	 * @param array $pos_args   Positional arguments.
 	 * @param array $assoc_args Associative arguments.
 	 */
-	public function cmd_list_post_settings( array $pos_args, array $assoc_args ): void {
+	public static function cmd_list_post_settings( array $pos_args, array $assoc_args ): void {
 		$theme_settings = [];
 
 		global $wpdb;

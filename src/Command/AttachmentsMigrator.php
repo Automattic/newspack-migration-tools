@@ -14,8 +14,6 @@ use Newspack\MigrationTools\Log\FileLogger;
  */
 class AttachmentsMigrator implements WpCliCommandInterface {
 
-	use WpCliCommandTrait;
-
 	/**
 	 * {@inheritDoc}
 	 */
