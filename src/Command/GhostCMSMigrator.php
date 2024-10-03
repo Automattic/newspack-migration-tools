@@ -18,17 +18,15 @@ use Newspack\MigrationTools\Logic\GhostCMSHelper;
  */
 class GhostCMSMigrator implements WpCliCommandInterface {
 
-	use WpCliCommandTrait;
-	
 	/**
 	 * {@inheritDoc}
 	 */
-	public function get_cli_commands(): array {
+	public static function get_cli_commands(): array {
 		
 		return [
 			[
 				'newspack-migration-tools ghostcms-import',
-				[ $this, 'cmd_ghostcms_import' ],
+				[ __CLASS__, 'cmd_ghostcms_import' ],
 				[
 					'shortdesc' => 'Import content from Ghost JSON export.',
 					'synopsis'  => array(
@@ -74,7 +72,7 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 	/**
 	 * GhostCMS Import command.
 	 */
-	public function cmd_ghostcms_import( array $pos_args, array $assoc_args ): void {
+	public static function cmd_ghostcms_import( array $pos_args, array $assoc_args ): void {
 
 		$log_file = str_replace( __NAMESPACE__ . '\\', '', __CLASS__ ) . '_' . __FUNCTION__ . '.log';
 
