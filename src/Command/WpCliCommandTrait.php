@@ -8,8 +8,7 @@ use ErrorException;
 /**
  * Utility trait for ensuring singleton instances of WP CLI commands.
  *
- * If your command class uses static functions for commands – don't use this trait as it will cause a fatal error
- * in WP_CLI because WP_CLI will try to call the private __construct() method before calling your static command.
+ * If your command class uses static functions for commands – you shouldn't use this trait.
  */
 trait WpCliCommandTrait {
 
