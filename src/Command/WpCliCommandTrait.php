@@ -10,7 +10,6 @@ use ErrorException;
  *
  * If your command class uses static functions for commands – don't use this trait as it will cause a fatal error
  * in WP_CLI because WP_CLI will try to call the private __construct() method before calling your static command.
- *
  */
 trait WpCliCommandTrait {
 
