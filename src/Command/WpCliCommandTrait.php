@@ -8,7 +8,7 @@ use ErrorException;
 /**
  * Utility trait for ensuring singleton instances of WP CLI commands.
  *
- * If your command class uses static functions for commands – you probably don't need this trait.
+ * If your command class uses static functions for commands – you shouldn't use this trait.
  */
 trait WpCliCommandTrait {
 
