@@ -2,8 +2,16 @@
 
 namespace Newspack\MigrationTools\Scaffold\Database;
 
+/**
+ * Class ScaffoldTables
+ */
 class ScaffoldTables {
 
+	/**
+	 * Creates the custom database tables for use with the Migration Scaffold tool.
+	 *
+	 * @return void
+	 */
 	public static function create() {
 		global $wpdb;
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
