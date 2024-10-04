@@ -1,0 +1,152 @@
+{
+    "db": [
+        {
+            "data": {
+                "posts": [
+                    {
+                        "id": "65ea49ad7b6cf900014e661c",
+                        "uuid": "f64e0b96-02da-4d60-b618-f3d0388b1a9f",
+                        "title": "The Title",
+                        "slug": "the-title",
+                        "mobiledoc": null,
+                        "lexical": "{}",
+                        "html": "<p>The content.</p>",
+                        "comment_id": "65ea49ad7b6cf900014e661c",
+                        "plaintext": "The content.",
+                        "feature_image": "__GHOST_URL__/content/images/2024/04/image.jpeg",
+                        "featured": 0,
+                        "type": "post",
+                        "status": "published",
+                        "locale": null,
+                        "visibility": "public",
+                        "email_recipient_filter": "all",
+                        "created_at": "2024-04-07T23:11:41.000Z",
+                        "updated_at": "2024-04-07T23:12:17.000Z",
+                        "published_at": "2024-04-07T23:12:17.000Z",
+                        "custom_excerpt": null,
+                        "codeinjection_head": null,
+                        "codeinjection_foot": null,
+                        "custom_template": null,
+                        "canonical_url": null,
+                        "newsletter_id": "634d9d2778516800318062d9",
+                        "show_title_and_feature_image": 1
+                    }
+               ],
+                "posts_authors": [
+                    {
+                        "id": "65ea49b97b6cf900014e6622",
+                        "post_id": "65ea49ad7b6cf900014e661c",
+                        "author_id": "6387a43e354f5f003ddbe55f",
+                        "sort_order": 0
+                    }
+                ],
+                "posts_meta": [
+                    {
+                        "id": "65ea4a1b7b6cf900014e668d",
+                        "post_id": "65ea49ad7b6cf900014e661c",
+                        "og_image": null,
+                        "og_title": null,
+                        "og_description": null,
+                        "twitter_image": null,
+                        "twitter_title": null,
+                        "twitter_description": null,
+                        "meta_title": null,
+                        "meta_description": null,
+                        "email_subject": null,
+                        "frontmatter": null,
+                        "feature_image_alt": null,
+                        "feature_image_caption": "<span style=\"white-space: pre-wrap;\">caption</span>",
+                        "email_only": 0
+                    }
+                ],
+                "posts_tags": [
+                    {
+                        "id": "65ea49cf7b6cf900014e6624",
+                        "post_id": "65ea49ad7b6cf900014e661c",
+                        "tag_id": "6387a43f354f5f003ddbe565",
+                        "sort_order": 0
+                    }
+                ],
+                "roles": [
+                    {
+                        "id": "634d9d2778516800318062d0",
+                        "name": "Contributor",
+                        "description": "Contributors",
+                        "created_at": "2022-10-17T18:21:27.000Z",
+                        "updated_at": "2022-10-17T18:21:27.000Z"
+                    }
+                ],
+                "roles_users": [
+                    {
+                        "id": "6387a43f354f5f003ddbe563",
+                        "role_id": "634d9d2778516800318062d0",
+                        "user_id": "6387a43e354f5f003ddbe55f"
+                    }
+                ],
+                "tags": [
+                    {
+                        "id": "6387a43f354f5f003ddbe565",
+                        "name": "News",
+                        "slug": "news",
+                        "description": null,
+                        "feature_image": null,
+                        "parent_id": null,
+                        "visibility": "public",
+                        "og_image": null,
+                        "og_title": null,
+                        "og_description": null,
+                        "twitter_image": null,
+                        "twitter_title": null,
+                        "twitter_description": null,
+                        "meta_title": null,
+                        "meta_description": null,
+                        "codeinjection_head": null,
+                        "codeinjection_foot": null,
+                        "canonical_url": null,
+                        "accent_color": null,
+                        "created_at": "2022-11-30T18:43:11.000Z",
+                        "updated_at": "2023-02-23T20:17:40.000Z"
+                    }
+                ],
+                "users": [
+                    {
+                        "id": "6387a43e354f5f003ddbe55f",
+                        "name": "Some User",
+                        "slug": "some-user",
+                        "password": "",
+                        "email": "noreply-nouser-migration-tools-tests@newspack.com",
+                        "profile_image": "",
+                        "cover_image": null,
+                        "bio": null,
+                        "website": "https://newspack.com",
+                        "location": null,
+                        "facebook": null,
+                        "twitter": null,
+                        "accessibility": null,
+                        "status": "locked",
+                        "locale": null,
+                        "visibility": "public",
+                        "meta_title": null,
+                        "meta_description": null,
+                        "tour": null,
+                        "last_seen": null,
+                        "comment_notifications": 1,
+                        "free_member_signup_notification": 1,
+                        "paid_subscription_started_notification": 1,
+                        "paid_subscription_canceled_notification": 0,
+                        "created_at": "2022-11-30T18:43:11.000Z",
+                        "updated_at": "2022-11-30T18:43:11.000Z",
+                        "mention_notifications": 1,
+                        "milestone_notifications": 1,
+                        "donation_notifications": 1,
+                        "recommendation_notifications": 1
+                    }
+               ]
+            },
+            "meta": {
+                "exported_on": 1712331384383,
+                "version": "5.81.1"
+            }
+        }
+    ]
+}
