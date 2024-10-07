@@ -1,0 +1,58 @@
+[
+  {
+    "id": 1,
+    "tree_name": "Apple Tree",
+    "type": "fruit",
+    "fruit": "apple",
+    "metadata": {
+      "is_evergreen": false,
+      "origin": "Central Asia",
+      "planted_at": "2022-03-15T09:00:00Z"
+    }
+  },
+  {
+    "id": 2,
+    "tree_name": "Maple Tree",
+    "type": "non-fruit",
+    "fruit": null,
+    "metadata": {
+      "is_evergreen": false,
+      "origin": "North America",
+      "planted_at": "2019-11-10T11:30:00Z"
+    }
+  },
+  {
+    "id": 3,
+    "tree_name": "Orange Tree",
+    "type": "fruit",
+    "fruit": "orange",
+    "metadata": {
+      "is_evergreen": true,
+      "origin": "Southeast Asia",
+      "planted_at": "2020-06-05T14:45:00Z"
+    }
+  },
+  {
+    "id": 4,
+    "tree_name": "Pine Tree",
+    "type": "non-fruit",
+    "fruit": null,
+    "metadata": {
+      "is_evergreen": true,
+      "origin": "Northern Hemisphere",
+      "planted_at": "2018-08-21T08:00:00Z"
+    }
+  },
+  {
+    "id": 5,
+    "tree_name": "Mango Tree",
+    "type": "fruit",
+    "fruit": "mango",
+    "metadata": {
+      "is_evergreen": true,
+      "origin": "South Asia",
+      "planted_at": "2021-07-22T16:00:00Z"
+    }
+  }
+]
+

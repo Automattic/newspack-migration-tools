@@ -28,3 +28,4 @@ release
 codecov/
 coverage/
 .phpunit.result.cache
+build/
