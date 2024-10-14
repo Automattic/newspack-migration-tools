@@ -2,6 +2,8 @@
 
 namespace Newspack\MigrationTools\Command;
 
+use Newspack\MigrationTools\Command\General\BlockTransformerCommand;
+
 class WpCliCommands {
 
 	/**
@@ -13,6 +15,7 @@ class WpCliCommands {
 		// Add class names that implement WpCliCommandInterface here to register them with WP CLI.
 		$classes_with_cli_commands = [
 			AttachmentsMigrator::class,
+			BlockTransformerCommand::class,
 			NewspaperThemeCommand::class,
 		];
 

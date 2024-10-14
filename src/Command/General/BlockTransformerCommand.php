@@ -4,32 +4,22 @@
  *
  * Methods for encoding and decoding blocks in posts as base64 to "hide" them from the NCC.
  *
- * @package NewspackCustomContentMigrator
  */
 
-namespace NewspackCustomContentMigrator\Command\General;
+namespace Newspack\MigrationTools\Command\General;
 
-use Newspack\MigrationTools\Command\WpCliCommandTrait;
-use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
-use NewspackCustomContentMigrator\Logic\GutenbergBlockTransformer;
-use NewspackCustomContentMigrator\Utils\Logger;
-use WP_CLI;
-use WP_CLI\ExitException;
+use Newspack\MigrationTools\Command\WpCliCommandInterface;
+use Newspack\MigrationTools\Log\CliLogger;
+use Newspack\MigrationTools\Log\FileLogger;
+use Newspack\MigrationTools\Log\Log;
+use Newspack\MigrationTools\Logic\GutenbergBlockTransformer;
 
-class BlockTransformerCommand implements RegisterCommandInterface {
-
-	use WpCliCommandTrait;
-
-	private Logger $logger;
-
-	private function __construct() {
-		$this->logger = new Logger();
-	}
+class BlockTransformerCommand implements WpCliCommandInterface {
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public static function register_commands(): void {
+	public static function get_cli_commands(): array {
 		$generic_args = [
 			'post-id'     => [
 				'type'        => 'assoc',
@@ -68,46 +58,50 @@ class BlockTransformerCommand implements RegisterCommandInterface {
 			],
 		];
 
-		WP_CLI::add_command(
-			'newspack-content-migrator transform-blocks-encode',
-			self::get_command_closure( 'cmd_blocks_encode' ),
+		return [
 			[
-				'shortdesc' => '"Obfuscate" blocks in posts by encoding them as base64.',
-				'synopsis'  => [
-					...$generic_args,
-				],
-			]
-		);
-		WP_CLI::add_command(
-			'newspack-content-migrator transform-blocks-decode',
-			self::get_command_closure( 'cmd_blocks_decode' ),
+				'newspack-content-migrator transform-blocks-encode',
+				[ __CLASS__, 'cmd_blocks_encode' ],
+				[
+					'shortdesc' => '"Obfuscate" blocks in posts by encoding them as base64.',
+					'synopsis'  => [
+						...$generic_args,
+					],
+				]
+			],
 			[
-				'shortdesc' => '"Un-obfuscate" blocks in posts by decoding them.',
-				'synopsis'  => [
-					...$generic_args,
-				],
-			]
-		);
-
-		WP_CLI::add_command(
-			'newspack-content-migrator transform-blocks-nudge',
-			self::get_command_closure( 'cmd_blocks_nudge' ),
+				'newspack-content-migrator transform-blocks-decode',
+				[ __CLASS__, 'cmd_blocks_decode' ],
+				[
+					'shortdesc' => '"Un-obfuscate" blocks in posts by decoding them.',
+					'synopsis'  => [
+						...$generic_args,
+					],
+				]
+			],
 			[
-				'shortdesc' => '"Nudge" posts so NCC picks them up',
-				'synopsis'  => [
-					...$generic_args,
-				],
+				'newspack-content-migrator transform-blocks-nudge',
+				[ __CLASS__, 'cmd_blocks_nudge' ],
+				[
+					'shortdesc' => '"Nudge" posts so NCC picks them up',
+					'synopsis'  => [
+						...$generic_args,
+					],
+				]
 			]
-		);
+		];
 	}
 
 	/**
-	 * @throws ExitException
+	 * Nudge posts so the NCC picks them up.
+	 *
+	 * This is very low-tech and just adds a newline to the beginning of the post content.
+	 * @throws \Exception
 	 */
 	public function cmd_blocks_nudge( array $pos_args, array $assoc_args ): void {
 		$post_range = $this->get_post_id_range( $assoc_args );
 		if ( empty( $post_range ) ) {
-			WP_CLI::log( 'No posts to nudge. Try a bigger range of post ids maybe?' );
+			 CliLogger::log( 'No posts to nudge. Try a bigger range of post ids maybe?' );
 
 			return;
 		}
@@ -131,10 +125,13 @@ class BlockTransformerCommand implements RegisterCommandInterface {
 		$high         = max( $post_range );
 		$low          = min( $post_range );
 
-		WP_CLI::log( sprintf( 'Nudged %d posts between (and including) %d and %d ID', $posts_nudged, $low, $high ) );
+		 CliLogger::log( sprintf( 'Nudged %d posts between (and including) %d and %d ID', $posts_nudged, $low, $high ) );
 	}
 
 
+	/**
+	 * @throws \Exception
+	 */
 	public function cmd_blocks_decode( array $pos_args, array $assoc_args ): void {
 		$logfile = sprintf( '%s-%s.log', __FUNCTION__, wp_date( 'Y-m-d-H-i-s' ) );
 
@@ -154,7 +151,7 @@ class BlockTransformerCommand implements RegisterCommandInterface {
 		$posts_to_decode = $wpdb->get_results( $sql );
 
 		$num_posts_found = count( $posts_to_decode );
-		$this->logger->log( $logfile, sprintf( 'Found %d posts to decode', $num_posts_found ), Logger::INFO );
+		FileLogger::log( $logfile, sprintf( 'Found %d posts to decode', $num_posts_found ), Log::INFO );
 
 		$decoded_posts_counter = 0;
 		foreach ( $posts_to_decode as $post ) {
@@ -171,15 +168,15 @@ class BlockTransformerCommand implements RegisterCommandInterface {
 				]
 			);
 			if ( 0 === $updated || is_wp_error( $updated ) ) {
-				$this->logger->log( $logfile, sprintf( 'Could not decode blocks in ID %d %s', $post->ID, get_permalink( $post->ID ) ), Logger::ERROR );
+				FileLogger::log( $logfile, sprintf( 'Could not decode blocks in ID %d %s', $post->ID, get_permalink( $post->ID ) ), Log::ERROR );
 			} else {
-				$this->logger->log( $logfile, sprintf( 'Decoded blocks in ID %d %s', $post->ID, get_permalink( $post->ID ) ), Logger::SUCCESS );
+				FileLogger::log( $logfile, sprintf( 'Decoded blocks in ID %d %s', $post->ID, get_permalink( $post->ID ) ), Log::SUCCESS );
 				++$decoded_posts_counter;
 			}
 
 			if ( 0 === $decoded_posts_counter % 25 ) {
 				$spacer = str_repeat( ' ', 10 );
-				WP_CLI::log(
+				 CliLogger::log(
 					sprintf(
 						'%s ==== Decoded %d of %d posts. %d remaining ==== %s',
 						$spacer,
@@ -192,18 +189,18 @@ class BlockTransformerCommand implements RegisterCommandInterface {
 			}
 		}
 
-		$this->logger->log( $logfile, sprintf( '%d posts have been decoded', count( $posts_to_decode ) ), Logger::SUCCESS );
+		FileLogger::log( $logfile, sprintf( '%d posts have been decoded', count( $posts_to_decode ) ), Log::SUCCESS );
 		wp_cache_flush();
 	}
 
 	/**
 	 * Obfuscate blocks in posts and optionally reset NCC to only work on the posts in the range.
 	 *
-	 * @param array $pos_args The positional arguments passed to the command.
+	 * @param array $pos_args   The positional arguments passed to the command.
 	 * @param array $assoc_args The associative arguments passed to the command.
 	 *
 	 * @return void
-	 * @throws ExitException
+	 * @throws \Exception
 	 */
 	public function cmd_blocks_encode( array $pos_args, array $assoc_args ): void {
 		$logfile = sprintf( '%s-%s.log', __FUNCTION__, wp_date( 'Y-m-d-H-i-s' ) );
@@ -224,7 +221,7 @@ class BlockTransformerCommand implements RegisterCommandInterface {
 			)
 		);
 		$num_posts_found = count( $posts_to_encode );
-		$this->logger->log( $logfile, sprintf( 'Found %d posts to encode', $num_posts_found ), Logger::INFO );
+		FileLogger::log( $logfile, sprintf( 'Found %d posts to encode', $num_posts_found ), Log::INFO );
 
 		$encoded_posts_counter = 0;
 		foreach ( $posts_to_encode as $post ) {
@@ -241,17 +238,17 @@ class BlockTransformerCommand implements RegisterCommandInterface {
 				]
 			);
 			if ( 0 === $updated || is_wp_error( $updated ) ) {
-				$this->logger->log( $logfile, sprintf( 'Could not encode blocks in post ID %d %s', $post->ID, get_permalink( $post->ID ) ), Logger::ERROR );
+				FileLogger::log( $logfile, sprintf( 'Could not encode blocks in post ID %d %s', $post->ID, get_permalink( $post->ID ) ), Log::ERROR );
 				continue;
 			} else {
-				$this->logger->log( $logfile, sprintf( 'Encoded blocks in post ID %d  %s', $post->ID, get_permalink( $post->ID ) ), Logger::SUCCESS );
+				FileLogger::log( $logfile, sprintf( 'Encoded blocks in post ID %d  %s', $post->ID, get_permalink( $post->ID ) ), Log::SUCCESS );
 
 				++$encoded_posts_counter;
 			}
 
 			if ( 0 === $encoded_posts_counter % 25 ) {
 				$spacer = str_repeat( ' ', 10 );
-				WP_CLI::log(
+				 CliLogger::log(
 					sprintf(
 						'%s ==== Encoded %d of %d posts. %d remaining ==== %s',
 						$spacer,
@@ -277,8 +274,8 @@ class BlockTransformerCommand implements RegisterCommandInterface {
 		if ( ( $assoc_args['post-types'] ?? false ) ) {
 			$decode_command .= ' --post-types=' . $assoc_args['post-types'];
 		}
-		$this->logger->log( $logfile, sprintf( '%d posts needed encoding', $encoded_posts_counter ), Logger::SUCCESS );
-		$this->logger->log( $logfile, sprintf( 'To decode the blocks AFTER running the NCC, run this:%s %s', PHP_EOL, $decode_command ), Logger::INFO );
+		FileLogger::log( $logfile, sprintf( '%d posts needed encoding', $encoded_posts_counter ), Log::SUCCESS );
+		FileLogger::log( $logfile, sprintf( 'To decode the blocks AFTER running the NCC, run this:%s %s', PHP_EOL, $decode_command ), Log::INFO );
 
 		wp_cache_flush();
 	}
@@ -302,8 +299,8 @@ class BlockTransformerCommand implements RegisterCommandInterface {
 			$num_items   = $assoc_args['num-items'] ?? PHP_INT_MAX;
 			$min_post_id = $assoc_args['min-post-id'] ?? 0;
 			$max_post_id = $assoc_args['max-post-id'] ?? PHP_INT_MAX;
-			if ($min_post_id > $max_post_id ) {
-				WP_CLI::error( 'min-post-id must be less than or equal to max-post-id' );
+			if ( $min_post_id > $max_post_id ) {
+				CliLogger::error( 'min-post-id must be less than or equal to max-post-id', true );
 			}
 
 			$post_types_format = implode( ', ', array_fill( 0, count( $post_types ), '%s' ) );
