@@ -4,12 +4,11 @@
  *
  * Methods for encoding and decoding blocks in posts as base64.
  *
- * @package NewspackCustomContentMigrator
  */
 
-namespace NewspackCustomContentMigrator\Logic;
+namespace Newspack\MigrationTools\Logic;
 
-use WP_CLI;
+use Newspack\MigrationTools\Log\CliLogger;
 
 /**
  * Class GutenbergBlockTransformer.
@@ -17,13 +16,6 @@ use WP_CLI;
  * Encodes blocks in posts as base64, so they don't get mangled by converting blocks from classic.
  */
 class GutenbergBlockTransformer {
-
-	/**
-	 * Constructor private to ensure singleton.
-	 */
-	private function __construct() {
-		$this->block_generator = new GutenbergBlockGenerator();
-	}
 
 	/**
 	 * Get singleton instance.
@@ -110,7 +102,7 @@ class GutenbergBlockTransformer {
 			if ( ! empty( $decoded ) ) {
 				$blocks[ $idx ] = $decoded;
 			} else {
-				WP_CLI::log( sprintf( 'Failed to decode block %d', $idx ) );
+				CliLogger::log( sprintf( 'Failed to decode block %d', $idx ) );
 			}
 		}
 
