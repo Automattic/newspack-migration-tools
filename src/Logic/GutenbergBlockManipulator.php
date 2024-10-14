@@ -5,7 +5,7 @@
  * @package NewspackCustomContentMigrator
  */
 
-namespace NewspackCustomContentMigrator\Logic;
+namespace Newspack\MigrationTools\Logic;
 
 class GutenbergBlockManipulator {
 
