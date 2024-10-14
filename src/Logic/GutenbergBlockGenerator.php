@@ -13,30 +13,16 @@
  * @package GutenbergBlockGenerator
  */
 
-namespace NewspackCustomContentMigrator\Logic;
+namespace Newspack\MigrationTools\Logic;
 
-use NewspackCustomContentMigrator\Utils\Logger;
-use WP_Post;
+use Newspack\MigrationTools\Log\CliLogger;
+use Newspack\MigrationTools\Log\FileLogger;
+use Newspack\MigrationTools\Log\Log;
 
 /**
- * Class ContentDiffMigrator and main logic.
- *
- * @package NewspackCustomContentMigrator\Logic
+ * Class GutenbergBlockGenerator
  */
 class GutenbergBlockGenerator {
-	/**
-	 * Logger class.
-	 *
-	 * @var Logger.
-	 */
-	private $logger;
-
-	/**
-	 * Constructor.
-	 */
-	public function __construct() {
-		$this->logger = new Logger();
-	}
 
 	/**
 	 * Generate a Jetpack Tiled Gallery Block.
@@ -44,15 +30,22 @@ class GutenbergBlockGenerator {
 	 *      - after updating the Posts, it is necessary to manually open the post in the editor, click "Attempt recovery", and click "Update" to get the correct HTML
 	 *      - at the time of writing this, JP Tiled Gallery doesn't support captions
 	 *
-	 * @param int[]    $attachment_ids Attachments IDs to be used in the tiled gallery.
-	 * @param ?string  $link_to         `linkTo` attribute of the Jetpack Tiled Gallery block. Can be null, or "media", or "attachment".
+	 * @param int[]    $attachment_ids  Attachments IDs to be used in the tiled gallery.
+	 * @param string   $link_to         `linkTo` attribute of the Jetpack Tiled Gallery block. Can be "media", or "attachment".
 	 * @param string[] $tile_sizes_list List of tiles sizes in percentages (e.g. ['50', '50']).
 	 *
-	 * @throws \UnexpectedValueException If $link_to param is invalid.
-	 *
 	 * @return array to be used in the serialize_block() or serialize_blocks() function to get the raw content of a Gutenberg Block.
+	 * @throws \UnexpectedValueException If $link_to param is invalid.
 	 */
-	public function get_jetpack_tiled_gallery( $attachment_ids, $link_to = null, $tile_sizes_list = [ '66.79014', '33.20986', '33.33333', '33.33333', '33.33333', '50.00000', '50.00000' ] ) {
+	public function get_jetpack_tiled_gallery( array $attachment_ids, string $link_to, array $tile_sizes_list = [
+		'66.79014',
+		'33.20986',
+		'33.33333',
+		'33.33333',
+		'33.33333',
+		'50.00000',
+		'50.00000',
+	] ) {
 		// Validate $link_to param.
 		if ( ! in_array( $link_to, [ 'media', 'attachment' ] ) ) {
 			throw new \UnexpectedValueException( 'Invalid $link_to param value.' );
@@ -76,12 +69,14 @@ class GutenbergBlockGenerator {
 
 						if ( ! $attachment_url ) {
 							$non_existing_attachment_indexes[] = $index;
-							$this->logger->log( 'jetpack_tiled_gallery_migrator.log', sprintf( "Attachment %d doesn't exist!", $attachment_id ), Logger::WARNING );
+							FileLogger::log( 'jetpack_tiled_gallery_migrator.log', sprintf( "Attachment %d doesn't exist!", $attachment_id ), Log::WARNING );
+
 							return null;
 						}
 
 						$tile_size    = $this->get_tile_image_size_by_index( $index, $tile_sizes_list );
 						$tile_sizes[] = $tile_size;
+
 						return '
                             <div class="tiled-gallery__col" style="flex-basis: ' . $tile_size . '%">
                             <figure class="tiled-gallery__item">
@@ -134,12 +129,13 @@ class GutenbergBlockGenerator {
 	 * Generate a Jetpack Slideshow Block.
 	 *
 	 * @param int[]     $attachment_ids Attachments IDs to be used in the tiled gallery.
-	 * @param string    $transition Slideshow transition (slide or fade).
-	 * @param int|false $autoplay False de disable, on the delay in seconds.
-	 * @param string    $image_size Image size (thumbnail, medium, large, full).
+	 * @param string    $transition     Slideshow transition (slide or fade).
+	 * @param int|false $autoplay       False de disable, on the delay in seconds.
+	 * @param string    $image_size     Image size (thumbnail, medium, large, full).
+	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_jetpack_slideshow( $attachment_ids, $transition = 'slide', $autoplay = false, $image_size = 'large' ) {
+	public function get_jetpack_slideshow( array $attachment_ids, $transition = 'slide', $autoplay = false, $image_size = 'large' ) {
 		$data_autoplay = is_numeric( $autoplay ) ? 'data-autoplay="true" data-delay="' . $autoplay . '"' : '';
 		$data_effect   = 'data-effect="' . $transition . '"';
 
@@ -147,7 +143,7 @@ class GutenbergBlockGenerator {
 		foreach ( $attachment_ids as $attachment_id ) {
 			$attachment_post = get_post( $attachment_id );
 			if ( ! $attachment_post ) {
-				$this->logger->log( 'jetpack_slideshow_migrator.log', sprintf( "Attachment %d doesn't exist!", $attachment_id ), Logger::WARNING );
+				FileLogger::log( 'jetpack_slideshow_migrator.log', sprintf( "Attachment %d doesn't exist!", $attachment_id ), Log::WARNING );
 				continue;
 			}
 
@@ -178,6 +174,7 @@ class GutenbergBlockGenerator {
                     <div class="wp-block-jetpack-slideshow_pagination swiper-pagination swiper-pagination-white"></div>
                 </div>
             </div>';
+
 		return [
 			'blockName'    => 'jetpack/slideshow',
 			'attrs'        => [
@@ -197,9 +194,10 @@ class GutenbergBlockGenerator {
 	 *
 	 * @param int[]   $attachment_ids Attachments IDs to be used in the tiled gallery.
 	 * @param int     $images_per_row Images per row.
-	 * @param string  $image_size Image size (thumbnail, medium, large, full), full by default.
-	 * @param string  $image_link_to Link images to `none`, `media`, or to `attachment`.
-	 * @param boolean $crop_images To crop the gallery images or not.
+	 * @param string  $image_size     Image size (thumbnail, medium, large, full), full by default.
+	 * @param string  $image_link_to  Link images to `none`, `media`, or to `attachment`.
+	 * @param boolean $crop_images    To crop the gallery images or not.
+	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
 	public function get_gallery( $attachment_ids, $images_per_row = 3, $image_size = 'full', $image_link_to = 'none', $crop_images = false ) {
@@ -208,7 +206,7 @@ class GutenbergBlockGenerator {
 		foreach ( $attachment_ids as $attachment_id ) {
 			$attachment_post = get_post( $attachment_id );
 			if ( ! $attachment_post ) {
-				$this->logger->log( 'gallery_migrator.log', sprintf( "Attachment %d doesn't exist!", $attachment_id ), Logger::WARNING );
+				FileLogger::log( 'gallery_migrator.log', sprintf( "Attachment %d doesn't exist!", $attachment_id ), Log::WARNING );
 				continue;
 			}
 
@@ -227,7 +225,7 @@ class GutenbergBlockGenerator {
 		// Inner content.
 		$inner_content = array_fill( 1, count( $attachment_posts ), null );
 		array_unshift( $inner_content, '<figure class="wp-block-gallery has-nested-images columns-' . $images_per_row . '">' );
-		array_push( $inner_content, '</figure>' );
+		$inner_content[] = '</figure>';
 
 		return [
 			'blockName'    => 'core/gallery',
@@ -263,8 +261,8 @@ class GutenbergBlockGenerator {
 
 		$caption_tag   = ! empty( $attachment_post->post_excerpt ) ? '<figcaption class="wp-element-caption">' . $attachment_post->post_excerpt . '</figcaption>' : '';
 		$image_alt     = get_post_meta( $attachment_post->ID, '_wp_attachment_image_alt', true );
-		$image_url     = Attachments::get_attachment_image_src( $attachment_post->ID, $size )[0];
-		$attachment_id = intval( $attachment_post->ID );
+		$image_url     = AttachmentHelper::get_attachment_image_src( $attachment_post->ID, $size )[0];
+		$attachment_id = $attachment_post->ID;
 
 		$attrs = [
 			'id'       => $attachment_id,
@@ -309,7 +307,7 @@ class GutenbergBlockGenerator {
 	/**
 	 * Get a video block.
 	 *
-	 * @param WP_Post $attachment_post
+	 * @param WP_Post $attachment_post The post object of the video.
 	 *
 	 * @return array
 	 */
@@ -318,6 +316,7 @@ class GutenbergBlockGenerator {
 		$content   = <<<VIDEO
 <figure class="wp-block-video"><video controls src="$video_url"></video></figure>
 VIDEO;
+
 		return [
 			'blockName'    => 'core/video',
 			'attrs'        => [],
@@ -330,10 +329,10 @@ VIDEO;
 	/**
 	 * Generate a File Block item with a PDF preview.
 	 *
-	 * @param \WP_Post $attachment_post        File Post.
-	 * @param string   $title                  File title.
-	 * @param bool     $show_download_button   Whether to show the download button or not.
-	 * @param int      $height                 PDF Block height in px, empty by default (which set it to 800px, plugin's default).
+	 * @param \WP_Post $attachment_post      File Post.
+	 * @param string   $title                File title.
+	 * @param bool     $show_download_button Whether to show the download button or not.
+	 * @param int      $height               PDF Block height in px, empty by default (which set it to 800px, plugin's default).
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
@@ -367,8 +366,9 @@ VIDEO;
 	 * Generate a Header Block.
 	 *
 	 * @param string $heading_content Paragraph content.
-	 * @param string $heading_level Heading level (h1, h2, h3, h4, h5, h6), defaults to h2.
-	 * @param string $anchor Paragraph anchor.
+	 * @param string $heading_level   Heading level (h1, h2, h3, h4, h5, h6), defaults to h2.
+	 * @param string $anchor          Paragraph anchor.
+	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
 	public function get_heading( $heading_content, $heading_level = 'h2', $anchor = '' ) {
@@ -381,6 +381,7 @@ VIDEO;
 
 		$anchor_attribute = ! empty( $anchor ) ? ' id="' . $anchor . '"' : '';
 		$content          = "<$heading_level" . $anchor_attribute . ' class="wp-block-heading">' . $heading_content . "</$heading_level>";
+
 		return [
 			'blockName'    => 'core/heading',
 			'attrs'        => $attrs,
@@ -393,11 +394,12 @@ VIDEO;
 	/**
 	 * Generate a Paragraph Block.
 	 *
-	 * @param string $paragraph_content Paragraph content.
-	 * @param string $anchor Paragraph anchor.
-	 * @param string $text_color Paragraph text color (black, blue, green, red, yellow, gray, dark-gray, medium-gray, light-gray, white).
-	 * @param string $font_size Paragraph font size (small, normal, medium, large, huge).
+	 * @param string $paragraph_content      Paragraph content.
+	 * @param string $anchor                 Paragraph anchor.
+	 * @param string $text_color             Paragraph text color (black, blue, green, red, yellow, gray, dark-gray, medium-gray, light-gray, white).
+	 * @param string $font_size              Paragraph font size (small, normal, medium, large, huge).
 	 * @param array  $additional_css_classes Additional paragraph classes.
+	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
 	public function get_paragraph( $paragraph_content, $anchor = '', $text_color = '', $font_size = '', array $additional_css_classes = [] ) {
@@ -438,7 +440,8 @@ VIDEO;
 	 * Generate a Quote Block.
 	 *
 	 * @param string $quote_content Quote content.
-	 * @param string $cite_content Quote cite.
+	 * @param string $cite_content  Quote cite.
+	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
 	public function get_quote( $quote_content, $cite_content = '' ) {
@@ -470,6 +473,7 @@ VIDEO;
 	 * Generate a HTML Block.
 	 *
 	 * @param string $html_content HTML content.
+	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
 	public function get_html( $html_content ) {
@@ -486,9 +490,10 @@ VIDEO;
 	 * Generate a PDF Viewer Block (Gutenberg PDF Viewer Block plugin should be installed).
 	 *
 	 * @param int    $pdf_media_id PDF Media ID.
-	 * @param string $pdf_url PDF URL if known.
-	 * @param string $width PDF Block width, empty by default (which set it to 100%, plugin's default).
-	 * @param string $height PDF Block height, empty by default (which set it to 700px, plugin's default).
+	 * @param string $pdf_url      PDF URL if known.
+	 * @param string $width        PDF Block width, empty by default (which set it to 100%, plugin's default).
+	 * @param string $height       PDF Block height, empty by default (which set it to 700px, plugin's default).
+	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
 	public function get_pdf( $pdf_media_id, $pdf_url = '', $width = '', $height = '' ) {
@@ -507,21 +512,6 @@ VIDEO;
 	}
 
 	/**
-	 * Generate a Featured Image Block.
-	 *
-	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
-	 */
-	public function get_featured_image() {
-		return [
-			'blockName'    => 'core/post-featured-image',
-			'attrs'        => [],
-			'innerBlocks'  => [],
-			'innerHTML'    => '',
-			'innerContent' => [],
-		];
-	}
-
-	/**
 	 * Generate a Site Logo Block.
 	 *
 	 * @param int $width Logo width (in pixels).
@@ -533,6 +523,7 @@ VIDEO;
 		if ( 0 !== $width ) {
 			$attrs['width'] = $width;
 		}
+
 		return [
 			'blockName'    => 'core/site-logo',
 			'attrs'        => $attrs,
@@ -572,17 +563,18 @@ VIDEO;
 	/**
 	 * Generate Newspack Author Profile Block.
 	 *
-	 * @param int     $author_id Author ID.
-	 * @param boolean $show_email Show author email.
-	 * @param boolean $show_avatar Show author avatar.
-	 * @param boolean $show_newspack_job_title Show author job title.
-	 * @param boolean $is_guest_author If the author is a guest author.
-	 * @param boolean $show_bio Show author bio.
-	 * @param boolean $show_social Show author bio.
-	 * @param boolean $show_archive_link Show author link.
-	 * @param boolean $show_newspack_employer Show author employer.
+	 * @param int     $author_id                  Author ID.
+	 * @param boolean $show_email                 Show author email.
+	 * @param boolean $show_avatar                Show author avatar.
+	 * @param boolean $show_newspack_job_title    Show author job title.
+	 * @param boolean $is_guest_author            If the author is a guest author.
+	 * @param boolean $show_bio                   Show author bio.
+	 * @param boolean $show_social                Show author bio.
+	 * @param boolean $show_archive_link          Show author link.
+	 * @param boolean $show_newspack_employer     Show author employer.
 	 * @param boolean $show_newspack_phone_number Show author phone number.
-	 * @param boolean $show_newspack_role Show author role.
+	 * @param boolean $show_newspack_role         Show author role.
+	 *
 	 * @return array
 	 */
 	public function get_author_profile( $author_id, $show_email = false, $show_avatar = false, $show_newspack_job_title = false, $is_guest_author = false, $show_bio = false, $show_social = false, $show_archive_link = false, $show_newspack_employer = false, $show_newspack_phone_number = false, $show_newspack_role = false ) {
@@ -610,8 +602,8 @@ VIDEO;
 	/**
 	 * Generate a Columns Block.
 	 *
-	 * @param array  $columns Columns list.
-	 * @param string $style Columns style (is-style-default, is-style-borders, is-style-first-col-to-second, is-style-first-col-to-third).
+	 * @param array  $columns              Columns list.
+	 * @param string $style                Columns style (is-style-default, is-style-borders, is-style-first-col-to-second, is-style-first-col-to-third).
 	 * @param string $is_stacked_on_mobile If the columns should be stacked on mobile, true by default.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
@@ -648,7 +640,7 @@ VIDEO;
 	 * Generate a Column Block.
 	 *
 	 * @param array  $blocks Blocks list.
-	 * @param string $width Column width (e.g. 100px, 50%, 100em, 50rem, 50vw). If empty the columns sizes will be even.
+	 * @param string $width  Column width (e.g. 100px, 50%, 100em, 50rem, 50vw). If empty the columns sizes will be even.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
@@ -721,11 +713,11 @@ VIDEO;
 	 * Generate a List Block.
 	 *
 	 * @param array   $elements List elements.
-	 * @param boolean $ordered If the list is ordered. False by default.
+	 * @param boolean $ordered  If the list is ordered. False by default.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_list( $elements, $ordered = false ) {
+	public function get_list( array $elements, bool $ordered = false ): array {
 		$attrs = [];
 
 		if ( $ordered ) {
@@ -751,7 +743,7 @@ VIDEO;
 	/**
 	 * Generate a Youtube block -- uses core/embed.
 	 *
-	 * @param string $src     YT src or YT ID.
+	 * @param string $src YT src or YT ID.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
@@ -779,6 +771,7 @@ VIDEO;
 		$inner_html = '<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper">
 		' . $youtube_video_url . '
 		</div></figure>';
+
 		return [
 			'blockName'    => 'core/embed',
 			'attrs'        => [
@@ -797,16 +790,15 @@ VIDEO;
 	/**
 	 * Generate a Vimeo block -- uses core/embed.
 	 *
-	 * @param string $src     Vimeo src.
-	 * @param string $caption Optional.
+	 * @param string $src Vimeo src.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_vimeo( $src, $caption = '' ) {
-		return $this->get_core_embed( $src, $caption );
+	public function get_vimeo( $src ) {
+		return $this->get_core_embed( $src );
 	}
 
-	public function get_twitter( string $src, string $caption = '' ): array {
+	public function get_twitter( string $src ): array {
 		$class_names   = implode(
 			' ',
 			[
@@ -841,12 +833,11 @@ HTML;
 	/**
 	 * Generate a core/embed.
 	 *
-	 * @param string $src     Src.
-	 * @param string $caption Optional.
+	 * @param string $src Source url.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_core_embed( $src, $caption = '' ) {
+	public function get_core_embed( $src ) {
 		return [
 			'blockName'    => 'core/embed',
 			'attrs'        => [
@@ -868,20 +859,19 @@ HTML;
 	 * Generate a Facebook block (which is visible in menu only after Jetpack connection is registered),
 	 * which uses core/embed in background.
 	 *
-	 * @param string $src     Facebook src.
-	 * @param string $caption Optional.
+	 * @param string $src Facebook src.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_facebook( $src, $caption = '' ) {
-		return $this->get_core_embed( $src, $caption );
+	public function get_facebook( $src ) {
+		return $this->get_core_embed( $src );
 	}
 
 	/**
 	 * Generate a Newspack Iframe block.
 	 *
-	 * @param string $src URL.
-	 * @param string $width Width.
+	 * @param string $src    URL.
+	 * @param string $width  Width.
 	 * @param string $height Height.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
@@ -913,10 +903,10 @@ HTML;
 	 *
 	 * WARNING: To use this block we need to install Genesis Blocks: https://wordpress.org/plugins/genesis-blocks/.
 	 *
-	 * @param string  $title Accordion title.
-	 * @param string  $body Accordion body content.
+	 * @param string  $title          Accordion title.
+	 * @param string  $body           Accordion body content.
 	 * @param boolean $use_html_block If the content shoulb have a html block as parent, if not it defaults to paragraph.
-	 * @param boolean $open If the accordion is open by default, defaults to false.
+	 * @param boolean $open           If the accordion is open by default, defaults to false.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
@@ -924,6 +914,7 @@ HTML;
 		$inner_block = $use_html_block ? $this->get_html( $body ) : $this->get_paragraph( $body );
 
 		$attrs = $open ? [ 'accordionOpen' => $open ] : [];
+
 		return [
 			'blockName'    => 'genesis-blocks/gb-accordion',
 			'attrs'        => $attrs,
@@ -959,8 +950,9 @@ HTML;
 	/**
 	 * Generate tile size based on its index.
 	 *
-	 * @param int      $index Tile size.
+	 * @param int      $index           Tile size.
 	 * @param string[] $tile_sizes_list Tile sizes list in percentage (e.g. [ '66.79014', '33.20986', '33.33333', '33.33333', '33.33333', '50.00000', '50.00000' ]).
+	 *
 	 * @return string
 	 */
 	private function get_tile_image_size_by_index( $index, $tile_sizes_list ) {
@@ -989,6 +981,7 @@ HTML;
 	 * To be used the first time we're adding a new method to generate a block, to get the right array attributes.
 	 *
 	 * @param string $content content of one Gutenberg Block.
+	 *
 	 * @return string a JSON encoded array of the Gutenberg Block.
 	 */
 	public function get_block_json_array_from_content( $content ) {
@@ -999,14 +992,26 @@ HTML;
 	 * Generate a Newspack Homepage Articles Block for categories.
 	 *
 	 * @param array $category_ids array of category IDs.
-	 * @param array $args args to pass to the block.
+	 * @param array $args         args to pass to the block.
 	 *
 	 * @return array
 	 */
 	public function get_homepage_articles_for_category( array $category_ids, array $args ): array {
 		if ( empty( $category_ids ) ) {
+			CliLogger::error( sprintf( 'Category ID cannot be empty in %s', __METHOD__ ) );
+
 			return [];
 		}
+		// If any of the categories don't exist, then throw an error.
+		array_map(
+			function ( $category_id ) {
+				$category = get_category( $category_id );
+				if ( null === $category || is_wp_error( $category ) ) {
+					CliLogger::error( sprintf( 'Category ID %d passed to get_homepage_articles_for_category() does not exist.', $category_id ), true );
+				}
+			},
+			$category_ids
+		);
 		$args['categories'] = $category_ids;
 
 		if ( empty( $args['postsToShow'] ) ) {
@@ -1027,12 +1032,14 @@ HTML;
 	 * Generate a Newspack Homepage Articles Block with specific posts.
 	 *
 	 * @param array $post_ids array of post IDs.
-	 * @param array $args args to pass to the block.
+	 * @param array $args     args to pass to the block.
 	 *
 	 * @return array
 	 */
 	public function get_homepage_articles_for_specific_posts( array $post_ids, array $args ): array {
 		if ( empty( $post_ids ) ) {
+			CliLogger::error( sprintf( 'Post ID array cannot be empty in %s', __METHOD__ ) );
+
 			return [];
 		}
 		$args['specificPosts'] = $post_ids;
