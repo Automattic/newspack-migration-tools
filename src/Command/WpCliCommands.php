@@ -13,6 +13,7 @@ class WpCliCommands {
 		// Add class names that implement WpCliCommandInterface here to register them with WP CLI.
 		$classes_with_cli_commands = [
 			AttachmentsMigrator::class,
+			GhostCMSMigrator::class,
 			NewspaperThemeCommand::class,
 		];
 

@@ -13,6 +13,7 @@ The repository contains a set of WP commands to migrate different data to WordPr
 ## Documentation for Individual Migrators
 
 * Attachments (todo)
+* [GhostCMS](./docs/GhostCMS.md)
 * [Newspaper Theme](./docs/newspaper-theme.md)
 
 ## Development
