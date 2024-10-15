@@ -2,8 +2,6 @@
 
 namespace Newspack\MigrationTools\Command;
 
-use Newspack\MigrationTools\Command\General\BlockTransformerCommand;
-
 class WpCliCommands {
 
 	/**
