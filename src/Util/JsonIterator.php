@@ -10,7 +10,6 @@ namespace Newspack\MigrationTools\Util;
 use Exception;
 use JsonMachine\Items;
 use Newspack\MigrationTools\Log\FileLogger;
-use Newspack\MigrationTools\Util\BatchLogic;
 
 /**
  * Class JsonIterator.
@@ -35,8 +34,8 @@ class JsonIterator {
 
 	/**
 	 * Constructor.
-	 * 
-	 * @param FileLogger $file_logger Optional File logger instance.
+	 *
+	 * @param FileLogger|null $file_logger Optional File logger instance.
 	 */
 	public function __construct( FileLogger $file_logger = null ) {
 		if ( ! $file_logger ) {
@@ -148,7 +147,7 @@ class JsonIterator {
 	 * @param array  $assoc_args Args from WP CLI command.
 	 *
 	 * @return array
-	 * @throws \WP_CLI\ExitException If the args were not acceptable or the json file not countable.
+	 * @throws Exception If the args were not acceptable or the json file not countable.
 	 */
 	public function validate_and_get_batch_args_for_json_file( string $json_path, array $assoc_args ): array {
 		$batch_args = BatchLogic::validate_and_get_batch_args( $assoc_args );
