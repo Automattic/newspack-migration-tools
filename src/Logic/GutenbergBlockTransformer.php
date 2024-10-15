@@ -3,7 +3,6 @@
  * Gutenberg Block Transformer.
  *
  * Methods for encoding and decoding blocks in posts as base64.
- *
  */
 
 namespace Newspack\MigrationTools\Logic;

@@ -3,7 +3,6 @@
  * Gutenberg Block Transformer.
  *
  * Methods for encoding and decoding blocks in posts as base64 to "hide" them from the NCC.
- *
  */
 
 namespace Newspack\MigrationTools\Command\General;
@@ -67,7 +66,7 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 					'synopsis'  => [
 						...$generic_args,
 					],
-				]
+				],
 			],
 			[
 				'newspack-content-migrator transform-blocks-decode',
@@ -77,7 +76,7 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 					'synopsis'  => [
 						...$generic_args,
 					],
-				]
+				],
 			],
 			[
 				'newspack-content-migrator transform-blocks-nudge',
@@ -87,8 +86,8 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 					'synopsis'  => [
 						...$generic_args,
 					],
-				]
-			]
+				],
+			],
 		];
 	}
 
@@ -96,12 +95,11 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 	 * Nudge posts so the NCC picks them up.
 	 *
 	 * This is very low-tech and just adds a newline to the beginning of the post content.
-	 * @throws \Exception
 	 */
 	public function cmd_blocks_nudge( array $pos_args, array $assoc_args ): void {
 		$post_range = $this->get_post_id_range( $assoc_args );
 		if ( empty( $post_range ) ) {
-			 CliLogger::log( 'No posts to nudge. Try a bigger range of post ids maybe?' );
+			CliLogger::log( 'No posts to nudge. Try a bigger range of post ids maybe?' );
 
 			return;
 		}
@@ -116,7 +114,7 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 					AND post_content LIKE %s",
 			[
 				PHP_EOL,
-				...$post_range,
+				...$post_range, // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				$wpdb->esc_like( '<!--' ) . '%',
 			]
 		);
@@ -125,7 +123,7 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 		$high         = max( $post_range );
 		$low          = min( $post_range );
 
-		 CliLogger::log( sprintf( 'Nudged %d posts between (and including) %d and %d ID', $posts_nudged, $low, $high ) );
+		CliLogger::log( sprintf( 'Nudged %d posts between (and including) %d and %d ID', $posts_nudged, $low, $high ) );
 	}
 
 
@@ -176,7 +174,7 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 
 			if ( 0 === $decoded_posts_counter % 25 ) {
 				$spacer = str_repeat( ' ', 10 );
-				 CliLogger::log(
+				CliLogger::log(
 					sprintf(
 						'%s ==== Decoded %d of %d posts. %d remaining ==== %s',
 						$spacer,
@@ -248,7 +246,7 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 
 			if ( 0 === $encoded_posts_counter % 25 ) {
 				$spacer = str_repeat( ' ', 10 );
-				 CliLogger::log(
+				CliLogger::log(
 					sprintf(
 						'%s ==== Encoded %d of %d posts. %d remaining ==== %s',
 						$spacer,
@@ -328,5 +326,4 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 
 		return $post_range;
 	}
-
 }
