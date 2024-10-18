@@ -33,6 +33,10 @@ _composer.json_
 }
 ```
 
+You can either include the `newspack-migration-tools.php` file in your code, use the classes directly, or call `NMT:setup()`.
+
+```php
+
 _my-plugin-file.php_
 
 ```php
