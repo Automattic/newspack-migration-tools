@@ -31,8 +31,7 @@ class CliLog {
 			return $logger;
 		}
 		$handler   = new StreamHandler( 'php://stdout', NMT::get_log_level() );
-		$formatter = new ColoredLineFormatter();
-		$formatter->setDateFormat( 'Y-m-d H:i:s' );
+		$formatter = new ColoredLineFormatter( null, null, 'Y-m-d H:i:s', true, true );
 		$handler->setFormatter( $formatter );
 		$logger->pushHandler( $handler );
 

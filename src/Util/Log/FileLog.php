@@ -2,6 +2,7 @@
 
 namespace Newspack\MigrationTools\Util\Log;
 
+use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
@@ -37,8 +38,10 @@ class FileLog {
 			$basename      = basename( $log_file_name );
 			$log_file_name = "{$log_dir}/$basename";
 		}
+		$handler   = new StreamHandler( $log_file_name, NMT::get_log_level() );
 
-		$logger->pushHandler( new StreamHandler( $log_file_name, NMT::get_log_level() ) );
+		$handler->setFormatter( new LineFormatter(null, 'Y-m-d H:i:s' , true, true) );
+		$logger->pushHandler( $handler );
 
 		return $logger;
 	}
