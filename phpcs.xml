@@ -15,7 +15,7 @@
         <exclude name="WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_file_put_contents" />
         <exclude name="WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink" />
 
-        <!-- Only comment when neccessary -->
+        <!-- Only comment when necessary -->
         <exclude name="Squiz.Commenting.FileComment.Missing" />
         <exclude name="Squiz.Commenting.FileComment.MissingPackageTag" />
         <exclude name="Squiz.Commenting.ClassComment.Missing" />
@@ -32,7 +32,7 @@
     </rule>
 
     <rule ref="PHPCompatibilityWP"/>
-    <config name="testVersion" value="8.0"/>
+    <config name="testVersion" value="8.3"/>
 
     <arg name="extensions" value="php"/>
 
