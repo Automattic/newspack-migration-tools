@@ -9,6 +9,21 @@ The repository contains a set of WP commands to migrate different data to WordPr
 * Minimum PHP version required is 8.1.
 * If you use the JsonIterator class, you must have `jq` installed on your system. See [download instructions](https://jqlang.github.io/jq/download/).
 
+## Logging
+By default the code logs to dev/null (as in – it logs nothing). If you want logging, you can enable it with a filter. There are currently 3 different loggers: A file logger, a CLI logger, and a plain file logger useful for log files with no formatting. You can enable them like this respectively:
+
+```php
+add_filter( 'newspack_migration_tools_enable_file_log', '__return_true' );
+add_filter( 'newspack_migration_tools_enable_cli_log', '__return_true' );
+add_filter( 'newspack_migration_tools_enable_plain_log', '__return_true' );
+```
+Note that the loggers check that filter only on logger creation. There is no support for toggling logging on/of after you have already created the logger.
+
+The log level is configured to `DEBUG` by default. To change it, you can set the constant `NMT_LOG_LEVEL` (see the constructor in [NMT.php](src/NMT.php)).
+
+```php
+
+The loggers are PSR-3 compliant and use [Monolog](https://github.com/Seldaek/monolog). If you want to add loggers or formatters to the logging in this project, please make a pull request! 🙏
 
 ## Documentation for Individual Migrators
 
@@ -33,8 +48,9 @@ _composer.json_
 }
 ```
 
-_my-plugin-file.php_
+You can either include the `newspack-migration-tools.php` file in your code, use the classes directly, or call `NMT:setup()`.
 
+_my-plugin-file.php_
 ```php
 // Loading the attachments helper class.
 use Newspack\MigrationTools\Logic\AttachmentHelper;

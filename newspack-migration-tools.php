@@ -11,6 +11,8 @@
  * @package newspack-migration-tools
  */
 
+use Newspack\MigrationTools\NMT;
+
 defined( 'ABSPATH' ) || exit;
 
-require_once __DIR__ . '/vendor/autoload.php';
+NMT::setup();
