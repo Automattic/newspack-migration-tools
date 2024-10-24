@@ -38,6 +38,8 @@ class CliLog {
 		$handler->setFormatter( $formatter );
 		$logger->pushHandler( $handler );
 
+		LoggerManager::addLogger( $logger );
+
 		return $logger;
 	}
 }
