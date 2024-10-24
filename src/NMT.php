@@ -27,7 +27,7 @@ class NMT {
 	 */
 	private function __construct() {
 		require_once realpath( __DIR__ . '/../vendor/autoload.php' );
-		$this->log_level = Level::fromName( LogLevel::INFO );
+		$this->log_level = Level::fromName( LogLevel::DEBUG );
 
 		if ( defined( 'NMT_LOG_LEVEL' ) && in_array( NMT_LOG_LEVEL, array_map( fn( $value ) => $value->name, Level::cases() ) ) ) {
 			$this->log_level = Level::fromName( NMT_LOG_LEVEL );
