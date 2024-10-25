@@ -2,7 +2,7 @@
 
 namespace Newspack\MigrationTools\Util;
 
-use Newspack\MigrationTools\Log\CliLogger;
+use Newspack\MigrationTools\Util\Log\CliLog;
 
 class MigrationMetaForCommand {
 	private string $command_name;
@@ -19,7 +19,7 @@ class MigrationMetaForCommand {
 		$this->refresh_existing = $refresh_existing;
 	}
 
-	public function get_suggested_logfile_name(): string {
+	public function get_suggested_log_name(): string {
 		$logfile_name = $this->command_name . '-' . $this->command_version;
 		if ( $this->refresh_existing ) {
 			$logfile_name .= '-refresh-existing';
@@ -43,7 +43,7 @@ class MigrationMetaForCommand {
 	}
 
 	public function log_skip_post_id( int $post_id ): void {
-		CliLogger::line(
+		CliLog::get_logger( $this->get_suggested_log_name() )->notice(
 			sprintf(
 				'Skipping post %d, already at MigrationMeta %s for command %s.',
 				$post_id,
@@ -63,5 +63,23 @@ class MigrationMetaForCommand {
 	 */
 	public function set_next_version_on_post( int $post_id ): void {
 		MigrationMeta::update( $post_id, $this->command_name, 'post', ( $this->command_version + 1 ) );
+	}
+
+	/**
+	 * Get the command version.
+	 *
+	 * @return int The command version.
+	 */
+	public function get_command_version(): int {
+		return $this->command_version;
+	}
+
+	/**
+	 * Get the command name.
+	 *
+	 * @return string The command name.
+	 */
+	public function get_command_name(): string {
+		return $this->command_name;
 	}
 }

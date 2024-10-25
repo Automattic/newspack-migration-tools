@@ -2,8 +2,6 @@
 
 namespace Newspack\MigrationTools\Util;
 
-use Newspack\MigrationTools\Log\CliLogger;
-
 class PostSelect {
 	/**
 	 *
@@ -92,7 +90,7 @@ class PostSelect {
 		$min_post_id = $args['min-post-id'] ?? 0;
 		$max_post_id = $args['max-post-id'] ?? PHP_INT_MAX;
 		if ( $min_post_id > $max_post_id ) {
-			CliLogger::error( 'min-post-id must be less than or equal to max-post-id', true );
+			wp_die( 'min-post-id must be less than or equal to max-post-id' );
 		}
 
 		$post_types_format = implode( ', ', array_fill( 0, count( $post_types ), '%s' ) );

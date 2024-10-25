@@ -7,10 +7,10 @@
 
 namespace Newspack\MigrationTools\Command;
 
-use Newspack\MigrationTools\Log\CliLogger;
-use Newspack\MigrationTools\Log\FileLogger;
-use Newspack\MigrationTools\Log\Log;
 use Newspack\MigrationTools\Logic\GutenbergBlockTransformer;
+use Newspack\MigrationTools\NMT;
+use Newspack\MigrationTools\Util\Log\CliLog;
+use Newspack\MigrationTools\Util\Log\FileLog;
 use Newspack\MigrationTools\Util\PostSelect;
 
 class BlockTransformerCommand implements WpCliCommandInterface {
@@ -62,10 +62,12 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 	public static function cmd_blocks_nudge( array $pos_args, array $assoc_args ): void {
 		$post_range = PostSelect::get_id_range( $assoc_args );
 		if ( empty( $post_range ) ) {
-			CliLogger::log( 'No posts to nudge. Try a bigger range of post ids maybe?' );
+			NMT::exit_with_message( 'No posts to nudge. Try a bigger range of post ids maybe?' );
 
 			return;
 		}
+
+		$cli_logger = CliLog::get_logger( 'nudge-posts' );
 
 		$post_ids_format = implode( ', ', array_fill( 0, count( $post_range ), '%d' ) );
 		global $wpdb;
@@ -90,7 +92,7 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 		$high         = max( $post_range );
 		$low          = min( $post_range );
 
-		CliLogger::log(
+		$cli_logger->info(
 			sprintf(
 				'Nudged %d posts between (and including) %d and %d ID needed nudging. Note that the nudge only happens on posts that have <!-- as the very first chars',
 				$posts_nudged,
@@ -104,12 +106,13 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 	 * @throws \Exception If things go wrong.
 	 */
 	public static function cmd_blocks_decode( array $pos_args, array $assoc_args ): void {
-		$logfile = sprintf( '%s-%s.log', __FUNCTION__, wp_date( 'Y-m-d-H-i-s' ) );
-
 		$block_transformer = GutenbergBlockTransformer::get_instance();
 
 		$post_id_range   = PostSelect::get_id_range( $assoc_args );
 		$post_ids_format = implode( ', ', array_fill( 0, count( $post_id_range ), '%d' ) );
+
+		$cli_logger  = CliLog::get_logger( 'blocks-decode' );
+		$file_logger = FileLog::get_logger( 'blocks-decode.log', 'blocks-decode.log' );
 
 		global $wpdb;
 
@@ -128,7 +131,7 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 
 
 		$num_posts_found = count( $posts_to_decode );
-		FileLogger::log( $logfile, sprintf( 'Found %d posts to decode', $num_posts_found ), Log::INFO );
+		$cli_logger->info( sprintf( 'Found %d posts to decode', $num_posts_found ) );
 
 		$decoded_posts_counter = 0;
 		foreach ( $posts_to_decode as $post ) {
@@ -145,15 +148,15 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 				]
 			);
 			if ( 0 === $updated || is_wp_error( $updated ) ) {
-				FileLogger::log( $logfile, sprintf( 'Could not decode blocks in ID %d %s', $post->ID, get_post_permalink( $post->ID ) ), Log::ERROR );
+				$file_logger->error( sprintf( 'Could not decode blocks in ID %d %s', $post->ID, get_post_permalink( $post->ID ) ) );
 			} else {
-				FileLogger::log( $logfile, sprintf( 'Decoded blocks in ID %d %s', $post->ID, get_post_permalink( $post->ID ) ), Log::SUCCESS );
+				$file_logger->info( sprintf( 'Decoded blocks in ID %d %s', $post->ID, get_post_permalink( $post->ID ) ) );
 				++$decoded_posts_counter;
 			}
 
 			if ( 0 === $decoded_posts_counter % 25 ) {
 				$spacer = str_repeat( ' ', 10 );
-				CliLogger::log(
+				$cli_logger->info(
 					sprintf(
 						'%s ==== Decoded %d of %d posts. %d remaining ==== %s',
 						$spacer,
@@ -166,7 +169,7 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 			}
 		}
 
-		FileLogger::log( $logfile, sprintf( '%d posts have been decoded', count( $posts_to_decode ) ), Log::SUCCESS );
+		$cli_logger->info( sprintf( '%d posts have been decoded', count( $posts_to_decode ) ) );
 		wp_cache_flush();
 	}
 
@@ -180,7 +183,8 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 	 * @throws \Exception If things go wrong.
 	 */
 	public static function cmd_blocks_encode( array $pos_args, array $assoc_args ): void {
-		$logfile = sprintf( '%s-%s.log', __FUNCTION__, wp_date( 'Y-m-d-H-i-s' ) );
+		$cli_logger = CliLog::get_logger( 'blocks-encode' );
+		$file_log   = FileLog::get_logger( 'blocks-encode.log', 'blocks-encode.log' );
 
 		$block_transformer = GutenbergBlockTransformer::get_instance();
 
@@ -202,7 +206,7 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 
 		$num_posts_found = count( $posts_to_encode );
-		FileLogger::log( $logfile, sprintf( 'Found %d posts to encode', $num_posts_found ), Log::INFO );
+		$cli_logger->info( sprintf( 'Found %d posts to encode', $num_posts_found ) );
 
 		$encoded_posts_counter = 0;
 		foreach ( $posts_to_encode as $post ) {
@@ -219,17 +223,17 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 				]
 			);
 			if ( 0 === $updated || is_wp_error( $updated ) ) {
-				FileLogger::log( $logfile, sprintf( 'Could not encode blocks in post ID %d %s', $post->ID, get_post_permalink( $post->ID ) ), Log::ERROR );
+				$file_log->error( sprintf( 'Could not encode blocks in post ID %d %s', $post->ID, get_post_permalink( $post->ID ) ) );
 				continue;
 			} else {
-				FileLogger::log( $logfile, sprintf( 'Encoded blocks in post ID %d  %s', $post->ID, get_post_permalink( $post->ID ) ), Log::SUCCESS );
+				$file_log->info( sprintf( 'Encoded blocks in post ID %d  %s', $post->ID, get_post_permalink( $post->ID ) ) );
 
 				++$encoded_posts_counter;
 			}
 
 			if ( 0 === $encoded_posts_counter % 25 ) {
 				$spacer = str_repeat( ' ', 10 );
-				CliLogger::log(
+				$cli_logger->info(
 					sprintf(
 						'%s ==== Encoded %d of %d posts. %d remaining ==== %s',
 						$spacer,
@@ -255,8 +259,8 @@ class BlockTransformerCommand implements WpCliCommandInterface {
 		if ( ( $assoc_args['post-types'] ?? false ) ) {
 			$decode_command .= ' --post-types=' . $assoc_args['post-types'];
 		}
-		FileLogger::log( $logfile, sprintf( '%d posts needed encoding', $encoded_posts_counter ), Log::SUCCESS );
-		FileLogger::log( $logfile, sprintf( 'To decode the blocks AFTER running the NCC, run this:%s %s', PHP_EOL, $decode_command ), Log::INFO );
+		$cli_logger->info( sprintf( '%d posts needed encoding', $encoded_posts_counter ) );
+		$cli_logger->info( sprintf( 'To decode the blocks AFTER running the NCC, run this:%s %s', PHP_EOL, $decode_command ) );
 
 		wp_cache_flush();
 	}
