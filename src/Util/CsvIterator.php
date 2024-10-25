@@ -1,11 +1,9 @@
 <?php
 /**
  * Wrapper class for csv file iteration using BatchLogic.
- *
- * @package NewspackCustomContentMigrator
  */
 
-namespace NewspackCustomContentMigrator\Utils;
+namespace Newspack\MigrationTools\Util;
 
 use Exception;
 use WP_CLI;
