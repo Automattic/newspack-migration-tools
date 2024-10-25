@@ -7,7 +7,8 @@
 
 namespace Newspack\MigrationTools\Util;
 
-use Newspack\MigrationTools\Log\CliLogger;
+use Newspack\MigrationTools\NMT;
+use Newspack\MigrationTools\Util\Log\CliLog;
 
 /**
  * BatchLogic helper to consistently handle start and end for commands.
@@ -70,6 +71,7 @@ class BatchLogic {
 	public static function validate_and_get_batch_args( array $assoc_args ): array {
 		// Ensure that batch_args is initialized by calling get_batch_args().
 		self::get_batch_args();
+		$cli_logger = CliLog::get_logger( 'batchlogic-validate' );
 
 		$start     = $assoc_args[ self::$batch_args[0]['name'] ] ?? 1;
 		$end       = $assoc_args[ self::$batch_args[1]['name'] ] ?? PHP_INT_MAX;
@@ -85,10 +87,10 @@ class BatchLogic {
 		}
 
 		if ( ! is_numeric( $start ) || ! is_numeric( $end ) ) {
-			CliLogger::error( 'Start and end args must be numeric.', true );
+			NMT::exit_with_message( 'Start and end args must be numeric.', [ $cli_logger ] );
 		}
 		if ( $end < $start ) {
-			CliLogger::error( 'End arg must be greater than start arg.', true );
+			wp_die( 'End arg must be greater than start arg.' );
 		}
 
 		return [

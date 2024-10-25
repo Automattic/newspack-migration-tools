@@ -7,7 +7,7 @@
 
 namespace Newspack\MigrationTools\Logic;
 
-use Newspack\MigrationTools\Log\CliLogger;
+use Newspack\MigrationTools\Util\Log\CliLog;
 
 /**
  * Class GutenbergBlockTransformer.
@@ -96,12 +96,14 @@ class GutenbergBlockTransformer {
 		if ( empty( $encoded_blocks ) ) {
 			return $post_content;
 		}
+		$cli_logger = CliLog::get_logger( 'gb-block-transformer' );
+
 		foreach ( $encoded_blocks as $idx => $encoded ) {
 			$decoded = $this->decode_block( $encoded['innerHTML'] );
 			if ( ! empty( $decoded ) ) {
 				$blocks[ $idx ] = $decoded;
 			} else {
-				CliLogger::log( sprintf( 'Failed to decode block %d', $idx ) );
+				$cli_logger->error( sprintf( 'Failed to decode block %d', $idx ) );
 			}
 		}
 

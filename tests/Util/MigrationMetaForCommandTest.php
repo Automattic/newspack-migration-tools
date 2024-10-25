@@ -16,7 +16,7 @@ class MigrationMetaForCommandTest extends WP_UnitTestCase {
 	public function test_get_suggested_logfile_name() {
 		$command_meta       = new MigrationMetaForCommand( 'test_myself_with_a_log_file_name', 1 );
 		$expected_file_name = 'test-myself-with-a-log-file-name-1.log';
-		$this->assertEquals( $expected_file_name, $command_meta->get_suggested_logfile_name() );
+		$this->assertEquals( $expected_file_name, $command_meta->get_suggested_log_name() );
 	}
 
 	/**

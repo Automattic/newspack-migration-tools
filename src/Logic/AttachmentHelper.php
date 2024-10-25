@@ -7,7 +7,7 @@
 
 namespace Newspack\MigrationTools\Logic;
 
-use Newspack\MigrationTools\Log\CliLogger;
+use Newspack\MigrationTools\Util\Log\CliLog;
 use WP_Error;
 
 /**
@@ -56,6 +56,7 @@ class AttachmentHelper {
 	 */
 	public static function import_external_file( string $path, string $title = '', string $caption = '', string $description = '', string $alt = '', int $post_id = 0, array $args = [], string $desired_filename = '' ): int|WP_Error {
 
+		$cli_logger = CliLog::get_logger( 'import-external-attachment' );
 		// Fetch remote or local file.
 		$is_http = str_starts_with( $path, 'http' );
 		if ( $is_http ) {
@@ -123,7 +124,7 @@ class AttachmentHelper {
 		if ( is_wp_error( $att_id ) ) {
 			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			@unlink( $file_array['tmp_name'] );
-			CliLogger::warning( $att_id->get_error_message() );
+			$cli_logger->warning( $att_id->get_error_message() );
 		}
 
 

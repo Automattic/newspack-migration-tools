@@ -7,7 +7,7 @@
 
 namespace Newspack\MigrationTools\Command;
 
-use Newspack\MigrationTools\Log\FileLogger;
+use Newspack\MigrationTools\Util\Log\CliLog;
 
 /**
  * Attachments general Migrator command class.
@@ -35,11 +35,13 @@ class AttachmentsMigrator implements WpCliCommandInterface {
 		$ids_failed = [];
 		$logfile    = __FUNCTION__ . '.log';
 
+		$cli_logger = CliLog::get_logger( 'get_atts_by_years_cli' );
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$att_ids = $wpdb->get_results( "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'attachment' ; ", ARRAY_A );
 		foreach ( $att_ids as $key_att_id => $att_id_row ) {
 			$att_id = $att_id_row['ID'];
-			FileLogger::log( $logfile, sprintf( '(%d)/(%d) %d', $key_att_id + 1, count( $att_ids ), $att_id ) );
+			$cli_logger->info( sprintf( '(%d)/(%d) %d', $key_att_id + 1, count( $att_ids ), $att_id ) );
 
 			// Check if this attachment is in local wp-content/uploads.
 			$url                        = wp_get_attachment_url( $att_id );
@@ -72,6 +74,6 @@ class AttachmentsMigrator implements WpCliCommandInterface {
 			file_put_contents( $file, $att_id . ' ' . $url . "\n", FILE_APPEND );
 		}
 
-		FileLogger::log( $logfile, sprintf( "> created {year}.txt's and %s", $file ) );
+		$cli_logger->info( sprintf( "> created {year}.txt's and %s", $file ) );
 	}
 }

@@ -2,8 +2,8 @@
 
 namespace Newspack\MigrationTools\Command;
 
-use Newspack\MigrationTools\Log\CliLogger;
 use Newspack\MigrationTools\Logic\NewspaperThemeHelper;
+use Newspack\MigrationTools\Util\Log\CliLog;
 use Newspack\MigrationTools\Util\MigrationMetaForCommand;
 
 class NewspaperThemeCommand implements WpCliCommandInterface {
@@ -85,10 +85,11 @@ class NewspaperThemeCommand implements WpCliCommandInterface {
 				$theme_settings[ $key ]++;
 			}
 		}
-		CliLogger::log( 'These keys were found in `td_post_theme_settings` and the number of posts that have each key:' );
+		$cli_logger = CliLog::get_logger( 'newspaper-theme-list-post-settings' );
+		$cli_logger->info( 'These keys were found in `td_post_theme_settings` and the number of posts that have each key:' );
 		array_map(
-			function ( $key, $count ) {
-				CliLogger::line( sprintf( '%s: %d', $key, $count ) );
+			function ( $key, $count ) use ( $cli_logger ) {
+				$cli_logger->info( sprintf( '%s: %d', $key, $count ) );
 			},
 			array_keys( $theme_settings ),
 			array_values( $theme_settings )

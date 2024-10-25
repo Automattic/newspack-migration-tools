@@ -3,6 +3,7 @@
 namespace Newspack\MigrationTools;
 
 use Monolog\Level;
+use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 
 defined( 'ABSPATH' ) || exit;
@@ -49,7 +50,7 @@ class NMT {
 	}
 
 	/**
-	 * Call this to get things started (or include ./newspack-migration-tools.php.
+	 * Call this to get things started (or include ./newspack-migration-tools.php).
 	 */
 	public static function setup() {
 		self::get_instance();
@@ -62,5 +63,19 @@ class NMT {
 	 */
 	public static function get_log_level(): Level {
 		return self::get_instance()->log_level;
+	}
+
+	/**
+	 * Logs the message using an array of LoggerInterface instances.
+	 *
+	 * @param string                 $message What to say as the last words – this is output no matter if loggers are passed too.
+	 * @param LoggerInterface[]|null $loggers An optional array of LoggerInterface instances that will log the message.
+	 *
+	 * @return void
+	 */
+	public static function exit_with_message( string $message, array $loggers = [] ): void {
+		array_map( fn( LoggerInterface $logger ) => $logger->critical( $message ), $loggers );
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		wp_die( $message );
 	}
 }

@@ -15,14 +15,21 @@
 
 namespace Newspack\MigrationTools\Logic;
 
-use Newspack\MigrationTools\Log\CliLogger;
-use Newspack\MigrationTools\Log\FileLogger;
-use Newspack\MigrationTools\Log\Log;
+use Monolog\Logger;
+use Newspack\MigrationTools\NMT;
+use Newspack\MigrationTools\Util\Log\CliLog;
+use Newspack\MigrationTools\Util\Log\FileLog;
 
 /**
  * Class GutenbergBlockGenerator
  */
 class GutenbergBlockGenerator {
+
+	private Logger $cli_logger;
+
+	public function __construct() {
+		$this->cli_logger = CliLog::get_logger( 'gutenberg-block-generator' );
+	}
 
 	/**
 	 * Generate a Jetpack Tiled Gallery Block.
@@ -60,16 +67,18 @@ class GutenbergBlockGenerator {
 		$tile_sizes                      = [];
 		$non_existing_attachment_indexes = [];
 
+		$file_logger = FileLog::get_logger( 'jetpack_tiled_gallery_migrator', 'jetpack_tiled_gallery_migrator.log' );
+
 		$gallery_content .= join(
 			' ',
 			array_filter(
 				array_map(
-					function ( $index, $attachment_id ) use ( &$tile_sizes, &$non_existing_attachment_indexes, $tile_sizes_list ) {
+					function ( $index, $attachment_id ) use ( &$tile_sizes, &$non_existing_attachment_indexes, $tile_sizes_list, $file_logger ) {
 						$attachment_url = wp_get_attachment_url( $attachment_id );
 
 						if ( ! $attachment_url ) {
 							$non_existing_attachment_indexes[] = $index;
-							FileLogger::log( 'jetpack_tiled_gallery_migrator.log', sprintf( "Attachment %d doesn't exist!", $attachment_id ), Log::WARNING );
+							$file_logger->warning( sprintf( "Attachment %d doesn't exist!", $attachment_id ) );
 
 							return null;
 						}
@@ -139,11 +148,13 @@ class GutenbergBlockGenerator {
 		$data_autoplay = is_numeric( $autoplay ) ? 'data-autoplay="true" data-delay="' . $autoplay . '"' : '';
 		$data_effect   = 'data-effect="' . $transition . '"';
 
+		$file_logger = FileLog::get_logger( 'jetpack_slideshow_migrator', 'jetpack_slideshow_migrator.log' );
+
 		$attachment_posts = [];
 		foreach ( $attachment_ids as $attachment_id ) {
 			$attachment_post = get_post( $attachment_id );
 			if ( ! $attachment_post ) {
-				FileLogger::log( 'jetpack_slideshow_migrator.log', sprintf( "Attachment %d doesn't exist!", $attachment_id ), Log::WARNING );
+				$file_logger->warning( sprintf( "Attachment %d doesn't exist!", $attachment_id ) );
 				continue;
 			}
 
@@ -203,10 +214,12 @@ class GutenbergBlockGenerator {
 	public function get_gallery( $attachment_ids, $images_per_row = 3, $image_size = 'full', $image_link_to = 'none', $crop_images = false ) {
 		$attachment_posts = [];
 		$image_blocks     = [];
+		$file_logger      = FileLog::get_logger( 'gallery_migrator', 'gallery_migrator.log' );
+
 		foreach ( $attachment_ids as $attachment_id ) {
 			$attachment_post = get_post( $attachment_id );
 			if ( ! $attachment_post ) {
-				FileLogger::log( 'gallery_migrator.log', sprintf( "Attachment %d doesn't exist!", $attachment_id ), Log::WARNING );
+				$file_logger->warning( sprintf( "Attachment %d doesn't exist!", $attachment_id ) );
 				continue;
 			}
 
@@ -998,7 +1011,7 @@ HTML;
 	 */
 	public function get_homepage_articles_for_category( array $category_ids, array $args ): array {
 		if ( empty( $category_ids ) ) {
-			CliLogger::error( sprintf( 'Category ID cannot be empty in %s', __METHOD__ ) );
+			$this->cli_logger->error( sprintf( 'Category ID cannot be empty in %s', __METHOD__ ) );
 
 			return [];
 		}
@@ -1007,7 +1020,7 @@ HTML;
 			function ( $category_id ) {
 				$category = get_category( $category_id );
 				if ( null === $category || is_wp_error( $category ) ) {
-					CliLogger::error( sprintf( 'Category ID %d passed to get_homepage_articles_for_category() does not exist.', $category_id ), true );
+					NMT::exit_with_message( sprintf( 'Category ID %d passed to get_homepage_articles_for_category() does not exist.', $category_id ), [ $this->cli_logger ] );
 				}
 			},
 			$category_ids
@@ -1038,7 +1051,7 @@ HTML;
 	 */
 	public function get_homepage_articles_for_specific_posts( array $post_ids, array $args ): array {
 		if ( empty( $post_ids ) ) {
-			CliLogger::error( sprintf( 'Post ID array cannot be empty in %s', __METHOD__ ) );
+			$this->cli_logger->error( sprintf( 'Post ID array cannot be empty in %s', __METHOD__ ) );
 
 			return [];
 		}
