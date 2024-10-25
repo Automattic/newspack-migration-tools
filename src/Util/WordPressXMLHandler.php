@@ -1,19 +1,16 @@
 <?php
 /**
  * Class WordPressXMLHandler
- *
- * @package NewspackCustomContentMigrator\Utils
  */
 
 namespace Newspack\MigrationTools\Util;
 
 use DOMNode;
-use WP_CLI;
+use Exception;
+use Newspack\MigrationTools\Util\Log\CliLog;
 
 /**
  * Class WordPressXMLHandler
- *
- * @package NewspackCustomContentMigrator\Utils
  */
 class WordPressXMLHandler {
 
@@ -24,7 +21,7 @@ class WordPressXMLHandler {
 	 * @param DOMNode $author The XML node representing the author.
 	 *
 	 * @return false|\WP_User
-	 * @throws WP_CLI\ExitException If there was an error creating the user.
+	 * @throws Exception If there was an error creating the user.
 	 */
 	public static function get_or_create_author( DOMNode $author ) {
 		$author_data = [
@@ -78,12 +75,13 @@ class WordPressXMLHandler {
 			$user_id = wp_insert_user( $author_data );
 
 			if ( is_wp_error( $user_id ) ) {
-				print_r( $author_data );
-				WP_CLI::error( $user_id->get_error_message() );
+				CliLog::get_logger( __CLASS__ )->error( 'Error creating user: ' . $user_id->get_error_message(), $author_data );
+				throw new Exception( 'Error creating user: ' . $user_id->get_error_message() );
 			}
 
 			$user = get_user_by( 'id', $user_id );
 		}
+
 		//phpcs:enable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 
 		return $user;
@@ -93,7 +91,7 @@ class WordPressXMLHandler {
 	 * This function will handle an XML node representing a post/page/attachment and return an array consisting
 	 * of objects and data that could be used to create a post/page/attachment and meta data.
 	 *
-	 * @param DOMNode $item   The XML node representing the post/page/attachment.
+	 * @param DOMNode $item    The XML node representing the post/page/attachment.
 	 * @param array   $authors An array of existing authors.
 	 *
 	 * @return array
@@ -217,6 +215,7 @@ class WordPressXMLHandler {
 				}
 			}
 		}
+
 		// phpcs:enable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 
 		return [

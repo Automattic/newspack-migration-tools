@@ -1,8 +1,6 @@
 <?php
 /**
  * Wrapper class for json file iteration using JsonMachine.
- *
- * @package NewspackCustomContentMigrator
  */
 
 namespace Newspack\MigrationTools\Util;

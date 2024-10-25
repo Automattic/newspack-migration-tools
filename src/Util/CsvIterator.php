@@ -6,12 +6,12 @@
 namespace Newspack\MigrationTools\Util;
 
 use Exception;
-use WP_CLI;
+use Newspack\MigrationTools\NMT;
 
 class CsvIterator {
 
 	/**
-	 * @param string $csv_path Path to CSV file.
+	 * @param string $csv_path  Path to CSV file.
 	 * @param string $separator Separator for CSV file.
 	 *
 	 * @return iterable
@@ -19,7 +19,7 @@ class CsvIterator {
 	 */
 	public function items( string $csv_path, string $separator ): iterable {
 		if ( ! is_readable( $csv_path ) ) {
-			WP_CLI::error( "Could not read CSV file: $csv_path" );
+			NMT::exit_with_message( "Could not read CSV file: $csv_path" );
 
 			return [];
 		}
@@ -28,7 +28,7 @@ class CsvIterator {
 		$csv_headers = [];
 		$line_number = 0;
 		while ( false !== ( $line = fgetcsv( $csv_file, null, $separator ) ) ) {
-			++ $line_number;
+			++$line_number;
 			if ( $line_number === 1 ) {
 				$csv_headers = array_map( 'trim', $line );
 				continue;
@@ -39,10 +39,10 @@ class CsvIterator {
 	}
 
 	/**
-	 * @param string $csv_file Path to CSV file.
+	 * @param string $csv_file  Path to CSV file.
 	 * @param string $separator Separator for CSV file.
-	 * @param int    $start Start number (inclusive) line in the file.
-	 * @param int    $end End number (exclusive) line in the file.
+	 * @param int    $start     Start number (inclusive) line in the file.
+	 * @param int    $end       End number (exclusive) line in the file.
 	 *
 	 * @return iterable
 	 * @throws Exception
@@ -50,7 +50,7 @@ class CsvIterator {
 	public function batched_items( string $csv_file, string $separator, int $start, int $end ): iterable {
 		$item_no = 0;
 		foreach ( $this->items( $csv_file, $separator ) as $item ) {
-			$item_no ++;
+			$item_no++;
 			if ( 0 !== $start && $item_no < $start ) {
 				// Keep looping until we get to where we want to be in the file.
 				continue;
@@ -82,9 +82,9 @@ class CsvIterator {
 	/**
 	 * Will validate and get batch args for a CSV file.
 	 *
-	 * @param string $csv_path Path to CSV file.
+	 * @param string $csv_path   Path to CSV file.
 	 * @param array  $assoc_args Args from WP CLI command.
-	 * @param string $separator Separator for CSV file.
+	 * @param string $separator  Separator for CSV file.
 	 *
 	 * @return array
 	 * @throws Exception
