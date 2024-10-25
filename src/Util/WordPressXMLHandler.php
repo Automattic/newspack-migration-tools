@@ -35,9 +35,8 @@ class WordPressXMLHandler {
 		];
 
 		// phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+		/** @var DOMNode $node */
 		foreach ( $author->childNodes as $node ) {
-			/*
-			@var DOMNode $node */
 			$node_name = $node->nodeName;
 
 			switch ( $node_name ) {
@@ -75,8 +74,10 @@ class WordPressXMLHandler {
 			$user_id = wp_insert_user( $author_data );
 
 			if ( is_wp_error( $user_id ) ) {
-				CliLog::get_logger( __CLASS__ )->error( 'Error creating user: ' . $user_id->get_error_message(), $author_data );
-				throw new Exception( 'Error creating user: ' . $user_id->get_error_message() );
+				$error_message = 'Error creating user: ' . $user_id->get_error_message();
+				CliLog::get_logger( __CLASS__ )->critical( $error_message, $author_data );
+				// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+				throw new Exception( $error_message );
 			}
 
 			$user = get_user_by( 'id', $user_id );
@@ -106,8 +107,7 @@ class WordPressXMLHandler {
 
 		// phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 		foreach ( $item->childNodes as $node ) {
-			/* @var \DOMNode $node */
-
+			/** @var \DOMNode $node */
 			if ( 'wp:post_id' === $node->nodeName ) {
 				$post_data['ID'] = $node->nodeValue;
 			}

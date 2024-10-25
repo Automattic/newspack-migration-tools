@@ -15,7 +15,6 @@ class CsvIterator {
 	 * @param string $separator Separator for CSV file.
 	 *
 	 * @return iterable
-	 * @throws Exception
 	 */
 	public function items( string $csv_path, string $separator ): iterable {
 		if ( ! is_readable( $csv_path ) ) {
@@ -24,12 +23,13 @@ class CsvIterator {
 			return [];
 		}
 
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- We're reading a CSV file outside WP.
 		$csv_file    = fopen( $csv_path, 'r' );
 		$csv_headers = [];
 		$line_number = 0;
 		while ( false !== ( $line = fgetcsv( $csv_file, null, $separator ) ) ) {
 			++$line_number;
-			if ( $line_number === 1 ) {
+			if ( 1 === $line_number ) {
 				$csv_headers = array_map( 'trim', $line );
 				continue;
 			}
@@ -45,7 +45,6 @@ class CsvIterator {
 	 * @param int    $end       End number (exclusive) line in the file.
 	 *
 	 * @return iterable
-	 * @throws Exception
 	 */
 	public function batched_items( string $csv_file, string $separator, int $start, int $end ): iterable {
 		$item_no = 0;
@@ -72,11 +71,9 @@ class CsvIterator {
 	 * @param string $csv_file_path Path to the CSV file.
 	 *
 	 * @return int Number of entries in the array in the CSV file.
-	 *
-	 * @throws Exception
 	 */
 	public function count_csv_file_entries( string $csv_file_path, string $separator ): int {
-		return count( [ ... $this->items( $csv_file_path, $separator ) ] );
+		return count( [ ...$this->items( $csv_file_path, $separator ) ] );
 	}
 
 	/**
@@ -87,7 +84,6 @@ class CsvIterator {
 	 * @param string $separator  Separator for CSV file.
 	 *
 	 * @return array
-	 * @throws Exception
 	 */
 	public function validate_and_get_batch_args_for_file( string $csv_path, array $assoc_args, string $separator ): array {
 		$batch_args = BatchLogic::validate_and_get_batch_args( $assoc_args );
