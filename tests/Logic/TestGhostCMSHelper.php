@@ -2,6 +2,7 @@
 
 namespace Newspack\MigrationTools\Tests\Logic;
 
+use Newspack\MigrationTools\Logic\CoAuthorsPlusHelper;
 use Newspack\MigrationTools\Logic\GhostCMSHelper;
 use WP_UnitTestCase;
 
@@ -41,7 +42,9 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$this->assertCount( 1, $posts );
 		$this->assertEquals( 'the-title', $posts[0]->post_name );
 
-		// @todo CoAuthorsPlus / GA
+		// CoAuthorsPlus / GA
+		$test_cap_helper = new CoAuthorsPlusHelper();
+		$this->assertIsObject( $test_cap_helper->get_guest_author_by_user_login( 'some-user' ) );
 
 		// Categories.
 		$category = get_term_by( 'name', 'News', 'category' );
