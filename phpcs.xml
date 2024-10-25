@@ -13,6 +13,7 @@
 
         <exclude name="WordPress.NamingConventions.PrefixAllGlobals" />
         <exclude name="WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_file_put_contents" />
+        <exclude name="WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_is_writable" />
         <exclude name="WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink" />
 
         <!-- Only comment when neccessary -->

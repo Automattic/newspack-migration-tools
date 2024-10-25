@@ -13,9 +13,13 @@
         }
     },
     "require": {
-        "php": ">=8.1"
+        "php": ">=8.1",
+        "monolog/monolog": "^3.7",
+        "bramus/monolog-colored-line-formatter": "^3.1"
     },
     "require-dev": {
+        "ext-libxml": "*",
+        "ext-dom": "*",
         "wp-coding-standards/wpcs": "^3.0",
         "automattic/vipwpcs": "^3.0",
         "phpcompatibility/phpcompatibility-wp": "*",

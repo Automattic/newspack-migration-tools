@@ -2,7 +2,7 @@
 /**
  * Newspack Migration Tools.
  *
- * Version: 0.0.1
+ * Version: 0.1.0
  *
  * This is a library to be included by plugins. See README.md for more information.
  *
@@ -11,6 +11,8 @@
  * @package newspack-migration-tools
  */
 
+use Newspack\MigrationTools\NMT;
+
 defined( 'ABSPATH' ) || exit;
 
-require_once __DIR__ . '/vendor/autoload.php';
+NMT::setup();

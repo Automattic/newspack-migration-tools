@@ -3,15 +3,14 @@
 namespace Newspack\MigrationTools\Tests\Logic;
 
 use Newspack\MigrationTools\Logic\AttachmentHelper;
+use Newspack\MigrationTools\Tests\AttachmentUnitTestTrait;
 use WP_UnitTestCase;
 
 class TestAttachmentHelper extends WP_UnitTestCase {
 
+	use AttachmentUnitTestTrait;
+
 	private int $post_id;
-
-	private array $attachment_ids = [];
-
-	private $dummy_image = 'https://dummyimage.com/600x400.jpg/000/fff&text=Iz+test';
 
 	/**
 	 * {@inheritDoc}
@@ -19,16 +18,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 		$this->post_id = self::factory()->post->create();
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public function tearDown(): void {
-		foreach ( $this->attachment_ids as $attachment_id ) {
-			wp_delete_attachment( $attachment_id, true );
-		}
-		parent::tearDown();
+		add_filter( 'newspack_migration_tools_log_clilog_disable', '__return_true' );
 	}
 
 	/**
@@ -38,7 +28,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 	 */
 	public function test_get_attachment_id_by_filename(): void {
 		$desired_file_name = uniqid() . '.jpeg';
-		$attachment_id     = AttachmentHelper::import_attachment_for_post(
+		$attachment_id     = $this->wrap_import_attachments_for_post(
 			self::factory()->post->create(),
 			$this->dummy_image,
 			'Test image',
@@ -63,7 +53,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 		$post_excerpt = 'Some text about the image.';
 		$post_content = 'Some more lengthy text about the image.';
 
-		$attachment_id = AttachmentHelper::import_attachment_for_post(
+		$attachment_id = $this->wrap_import_attachments_for_post(
 			$this->post_id,
 			$this->dummy_image,
 			'Test image',
@@ -93,7 +83,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 
 		$desired_file_name = uniqid() . '.jpeg';
 
-		$attachment_id          = AttachmentHelper::import_attachment_for_post(
+		$attachment_id          = $this->wrap_import_attachments_for_post(
 			$this->post_id,
 			$this->dummy_image,
 			'Named test image',
