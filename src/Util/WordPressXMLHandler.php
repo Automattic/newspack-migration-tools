@@ -5,7 +5,7 @@
  * @package NewspackCustomContentMigrator\Utils
  */
 
-namespace NewspackCustomContentMigrator\Utils;
+namespace Newspack\MigrationTools\Util;
 
 use DOMNode;
 use WP_CLI;
