@@ -83,7 +83,7 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 		$log_slug = str_replace( __NAMESPACE__ . '\\', '', __CLASS__ ) . '_' . __FUNCTION__;
 
 		$file_logger = FileLog::get_logger( $log_slug . '.log', $log_slug . '.log' );
-		$cli_logger = CliLog::get_logger( $log_slug . '-cli' );
+		$cli_logger  = CliLog::get_logger( $log_slug . '-cli' );
 
 		$info = 'Starting CLI - GhostCMS Import...';
 		$file_logger->info( $info );

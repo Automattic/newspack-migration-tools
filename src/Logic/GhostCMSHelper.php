@@ -183,7 +183,7 @@ class GhostCMSHelper {
 			
 				$this->log( 'Skip JSON post (review by hand -skips.log): ' . $skip_reason, LogLevel::WARNING );
 
-				$this->log_to_skips_file( json_encode( array( $skip_reason, $json_post ) ) );
+				$this->log_to_skips_file( json_encode( array( $skip_reason, $json_post ) ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
 
 				continue;
 
@@ -483,9 +483,9 @@ class GhostCMSHelper {
 		add_filter( 'newspack_migration_tools_log_dir', fn() => WP_CONTENT_DIR );
 
 		$file_logger = FileLog::get_logger( $this->log_slug . '.log', $this->log_slug . '.log' );
-		$cli_logger = CliLog::get_logger( $this->log_slug . '-cli' );
+		$cli_logger  = CliLog::get_logger( $this->log_slug . '-cli' );
 
-		switch( $level ) {
+		switch ( $level ) {
 			case 'info':
 				$file_logger->info( $message );
 				$cli_logger->info( $message );
@@ -508,7 +508,7 @@ class GhostCMSHelper {
 	/**
 	 * Log function that will log to a "skips" file with no CLI output.
 	 *
-	 * @param string  $message The message to log.
+	 * @param string $message The message to log.
 	 * @return void
 	 */
 	private function log_to_skips_file( string $message ): void {
