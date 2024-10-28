@@ -4,7 +4,7 @@ namespace NewspackCustomContentMigrator\Command\General;
 
 use Newspack\MigrationTools\Command\WpCliCommandTrait;
 use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
-use \WP_CLI;
+use WP_CLI;
 
 /**
  * Exports and imports menus and associated content.
