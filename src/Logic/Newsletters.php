@@ -1,6 +1,6 @@
 <?php
 
-namespace NewspackCustomContentMigrator\Logic;
+namespace Newspack\MigrationTools\Logic;
 
 class Newsletters {
 
@@ -10,15 +10,17 @@ class Newsletters {
 	const NEWSLETTER_POST_TYPE = 'newspack_nl_cpt';
 
 	/**
-	 * Fetches all Newsletter.
+	 * Fetches all Newsletters.
 	 *
 	 * @return int[]|\WP_Post[]
 	 */
-	public function get_all_newsletters( $post_status = [ 'publish', 'draft', 'trash' ] ) {
-		return get_posts( [
-			'posts_per_page' => -1,
-			'post_type'      => [ self::NEWSLETTER_POST_TYPE ],
-			'post_status'    => $post_status
-		] );
+	public function get_all_newsletters( $post_status = [ 'publish', 'draft', 'trash' ] ): array {
+		return get_posts(
+			[
+				'posts_per_page' => -1,
+				'post_type'      => [ self::NEWSLETTER_POST_TYPE ],
+				'post_status'    => $post_status,
+			] 
+		);
 	}
 }
