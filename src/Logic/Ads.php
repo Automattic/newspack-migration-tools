@@ -1,6 +1,6 @@
 <?php
 
-namespace NewspackCustomContentMigrator\Logic;
+namespace Newspack\MigrationTools\Logic;
 
 class Ads {
 
@@ -15,10 +15,12 @@ class Ads {
 	 * @return int[]|\WP_Post[]
 	 */
 	public function get_all_ad_units( $post_status = [ 'publish', 'draft' ] ) {
-		return get_posts( [
-			'posts_per_page' => -1,
-			'post_type'      => [ self::ADS_POST_TYPE ],
-			'post_status'    => $post_status
-		] );
+		return get_posts(
+			[
+				'posts_per_page' => -1,
+				'post_type'      => [ self::ADS_POST_TYPE ],
+				'post_status'    => $post_status,
+			] 
+		);
 	}
 }
