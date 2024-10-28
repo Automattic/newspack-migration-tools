@@ -1,48 +1,65 @@
 <?php
 
-namespace NewspackCustomContentMigrator\Logic;
+namespace Newspack\MigrationTools\Logic;
 
+use Newspack\MigrationTools\NMT;
 use Red_Group;
 
 class Redirection {
+
+	public function __construct() {
+		if ( ! is_plugin_active( 'redirection/redirection.php' ) ) {
+			NMT::exit_with_message( 'The Redirection plugin ( redirection ) is a dependency, and will have to be installed and activated before this helper class can be used.' );
+		}
+	}
 
 	/**
 	 * Creates a redirection rule with the johngodley/redirection plugin.
 	 *
 	 * Arguments documented at https://redirection.me/developer/rest-api/
 	 *
-	 * @param string $title
-	 * @param string $url_from
-	 * @param string $url_to
-	 * @param false  $match_data_source_flag_regex
-	 * @param bool   $match_data_source_flag_trailing
-	 * @param string $match_data_source_flag_query
-	 * @param false  $match_data_source_flag_case
+	 * @param string $title                           Title of the redirection rule.
+	 * @param string $url_from                        From URL.
+	 * @param string $url_to                          To URL.
+	 * @param false  $match_data_source_flag_regex    Whether to match the from-url as a regex.
+	 * @param bool   $match_data_source_flag_trailing Whether to match the from-url with trailing slashes.
+	 * @param string $match_data_source_flag_query    Whether to match the from-url with query strings.
+	 * @param false  $match_data_source_flag_case     Whether to match the from-url with case sensitivity.
 	 */
-	public function create_redirection_rule( $title, $url_from, $url_to, $match_data_source_flag_regex = false,
-		$match_data_source_flag_trailing = true, $match_data_source_flag_query = 'exact', $match_data_source_flag_case = false, $group_id = 1 ) {
-		\Red_Item::create( [
-			'action_code' => 301,
-			'action_type' => 'url',
-			'action_data' => [
-				'url' => $url_to,
-			],
-			'match_type'  => 'url',
-			'group_id'    => $group_id,
-			'position'    => 1,
-			'title'       => $title,
-			'regex'       => false,
-			'enabled'     => true,
-			'match_data'  => [
-				'source' => [
-					'flag_query'    => $match_data_source_flag_query,
-					'flag_case'     => $match_data_source_flag_case,
-					'flag_trailing' => $match_data_source_flag_trailing,
-					'flag_regex'    => $match_data_source_flag_regex,
+	public function create_redirection_rule(
+		$title,
+		$url_from,
+		$url_to,
+		$match_data_source_flag_regex = false,
+		$match_data_source_flag_trailing = true,
+		$match_data_source_flag_query = 'exact',
+		$match_data_source_flag_case = false,
+		$group_id = 1
+	) {
+		\Red_Item::create(
+			[
+				'action_code' => 301,
+				'action_type' => 'url',
+				'action_data' => [
+					'url' => $url_to,
 				],
-			],
-			'url'         => $url_from,
-		] );
+				'match_type'  => 'url',
+				'group_id'    => $group_id,
+				'position'    => 1,
+				'title'       => $title,
+				'regex'       => false,
+				'enabled'     => true,
+				'match_data'  => [
+					'source' => [
+						'flag_query'    => $match_data_source_flag_query,
+						'flag_case'     => $match_data_source_flag_case,
+						'flag_trailing' => $match_data_source_flag_trailing,
+						'flag_regex'    => $match_data_source_flag_regex,
+					],
+				],
+				'url'         => $url_from,
+			]
+		);
 	}
 
 	/**
@@ -67,10 +84,10 @@ class Redirection {
 	/**
 	 * Create a redirection rule in a group after deleting existing redirects for the same url if any.
 	 *
-	 * @param string $title Title
-	 * @param string $url_from From URL
-	 * @param string $url_to To URL
-	 * @param string $group_name Group name
+	 * @param string $title      Title.
+	 * @param string $url_from   From URL.
+	 * @param string $url_to     To URL.
+	 * @param string $group_name Group name.
 	 *
 	 * @return void
 	 */
@@ -94,7 +111,6 @@ class Redirection {
 			false,
 			$this->get_or_create_group_id( $group_name )
 		);
-
 	}
 
 	/**
@@ -123,5 +139,4 @@ class Redirection {
 
 		return ! empty( $existing_redirects );
 	}
-
 }
