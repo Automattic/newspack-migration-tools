@@ -7,8 +7,6 @@
 
 namespace NewspackCustomContentMigrator\Logic;
 
-use \WP_CLI;
-
 /**
  * Image logic class.
  */
