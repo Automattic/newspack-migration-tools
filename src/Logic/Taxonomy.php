@@ -1,11 +1,9 @@
 <?php
 /**
  * Logic for working Taxonomies.
- *
- * @package NewspackCustomContentMigrator
  */
 
-namespace NewspackCustomContentMigrator\Logic;
+namespace Newspack\MigrationTools\Logic;
 
 use InvalidArgumentException;
 
@@ -39,7 +37,7 @@ class Taxonomy {
 	/**
 	 * Reassigns all content from one taxonomy to a different taxonomy.
 	 *
-	 * @param string $taxonomy     Source taxonomy, e.g. 'category'.
+	 * @param string $taxonomy            Source taxonomy, e.g. 'category'.
 	 * @param int    $source_term_id      Source term_id.
 	 * @param int    $destination_term_id Destination term_id.
 	 *
@@ -53,8 +51,8 @@ class Taxonomy {
 				'posts_per_page'   => -1,
 				'post_type'        => 'any',
 				'post_status'      => 'any',
-				'suppress_filters' => true,
-				'tax_query'        => [
+				'suppress_filters' => true, // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.SuppressFilters_suppress_filters -- Suppress filters is needed here.
+				'tax_query'        => [ // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
 					'relation' => 'AND',
 					[
 						'taxonomy' => $taxonomy,
@@ -91,6 +89,7 @@ class Taxonomy {
 	public function update_object_relational_mapping_term_taxonomy_id( $old_term_taxonomy_id, $new_term_taxonomy_id ) {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		return $wpdb->update( $wpdb->term_relationships, [ 'term_taxonomy_id' => $new_term_taxonomy_id ], [ 'term_taxonomy_id' => $old_term_taxonomy_id ] );
 	}
 
@@ -98,7 +97,7 @@ class Taxonomy {
 	 * Runs a direct DB DELETE on wp_term_relationships table and deletes all rows with a given term_taxonomy_id and post_ids.
 	 *
 	 * @param int   $term_taxonomy_id Term_taxonomy_id.
-	 * @param array $post_ids          Post IDs.
+	 * @param array $post_ids         Post IDs.
 	 *
 	 * @return string|null Return from $wpdb::query().
 	 */
@@ -107,7 +106,13 @@ class Taxonomy {
 
 		$object_id_placeholders = implode( ', ', array_fill( 0, count( $post_ids ), '%d' ) );
 
-		return $wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->term_relationships} WHERE object_id IN( $object_id_placeholders ) and term_taxonomy_id = %d", array_merge( $post_ids, [ $term_taxonomy_id ] ) ) ); //phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		return $wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->term_relationships} WHERE object_id IN( $object_id_placeholders ) and term_taxonomy_id = %d",      //phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				array_merge( $post_ids, [ $term_taxonomy_id ] )
+			)
+		);
 	}
 
 	/**
@@ -163,9 +168,8 @@ class Taxonomy {
 	 * @param string $cat_name      Category name.
 	 * @param int    $cat_parent_id Category's parent term_id.
 	 *
-	 * @throws \RuntimeException If nonexisting $cat_parent_id is given.
-	 *
 	 * @return string|null Category term ID.
+	 * @throws \RuntimeException If nonexisting $cat_parent_id is given.
 	 */
 	public function get_or_create_category_by_name_and_parent_id( string $cat_name, int $cat_parent_id = 0 ) {
 		global $wpdb;
@@ -181,6 +185,7 @@ class Taxonomy {
 
 		// Double check this parent exists.
 		if ( 0 != $cat_parent_id ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 			$existing_cat_parent_id = $wpdb->get_var(
 				$wpdb->prepare(
 					"select t.term_id
@@ -191,6 +196,7 @@ class Taxonomy {
 				)
 			);
 			if ( is_null( $existing_cat_parent_id ) ) {
+				// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 				throw new \RuntimeException( sprintf( 'Wrong parent category term_id=%d given, does not exist.', $cat_parent_id ) );
 			}
 		}
@@ -214,6 +220,7 @@ class Taxonomy {
 	public function get_duplicate_term_slugs() {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		return $wpdb->get_results(
 			"SELECT
 			t.slug,
@@ -234,7 +241,7 @@ class Taxonomy {
 	/**
 	 * Gets terms and taxonomies by slug.
 	 *
-	 * @param string $slug Slug.
+	 * @param string $slug       Slug.
 	 * @param array  $taxonomies Taxonomies.
 	 *
 	 * @return array
@@ -255,14 +262,16 @@ class Taxonomy {
 
 		if ( ! empty( $taxonomies ) ) {
 			$query .= 'AND tt.taxonomy IN ( '
-			          . implode( ',', array_fill( 0, count( $taxonomies ), '%s' ) )
-			          . ' )';
+						. implode( ',', array_fill( 0, count( $taxonomies ), '%s' ) )
+						. ' )';
 		}
 
 		$query .= ' ORDER BY t.term_id, tt.term_taxonomy_id ASC';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		return $wpdb->get_results(
 			$wpdb->prepare(
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				$query,
 				array_merge( [ $slug ], $taxonomies )
 			)
@@ -272,7 +281,7 @@ class Taxonomy {
 	/**
 	 * Obtains a new slug that does not exist in the database.
 	 *
-	 * @param string $slug Slug.
+	 * @param string $slug   Slug.
 	 * @param int    $offset Offset.
 	 *
 	 * @return string
@@ -296,11 +305,11 @@ class Taxonomy {
 	 * Get terms from a taxonomy that are assigned to fewer than or equal to $assigned_to_max_num_posts posts.
 	 * This is useful for finding terms that are not assigned to many posts.
 	 *
-	 * @param string $taxonomy Taxonomy name - e.g. 'post_tag'.
+	 * @param string $taxonomy                  Taxonomy name - e.g. 'post_tag'.
 	 * @param int    $assigned_to_max_num_posts Max number of posts a term can be assigned to.
 	 *
-	 * @throws InvalidArgumentException If the taxonomy does not exist.
 	 * @return array Ids of terms assigned to fewer than or equal to $assigned_to_max_num_posts posts.
+	 * @throws InvalidArgumentException If the taxonomy does not exist.
 	 */
 	public function get_terms_assigned_to_max_num_posts( string $taxonomy, int $assigned_to_max_num_posts ): array {
 		if ( ! taxonomy_exists( $taxonomy ) ) {
