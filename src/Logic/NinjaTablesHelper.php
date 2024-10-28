@@ -1,17 +1,19 @@
 <?php
 
-namespace NewspackCustomContentMigrator\Logic;
+namespace Newspack\MigrationTools\Logic;
 
+use Newspack\MigrationTools\NMT;
 use NinjaTables\Classes\ArrayHelper;
 use NinjaTablesAdmin;
-use WP_CLI;
 
 /**
  * NinjaTables Plugin Migrator Logic.
+ *
+ * NOTE: That this might be outdated.
  */
-class NinjaTables {
+class NinjaTablesHelper {
 	/**
-	 * @var null|NinjaTablesAdmin
+	 * @var NinjaTablesAdmin
 	 */
 	public $ninja_tables_admin;
 
@@ -19,18 +21,8 @@ class NinjaTables {
 	 * NinjaTables constructor.
 	 */
 	public function __construct() {
-		$plugin_path = defined( 'WP_PLUGIN_DIR' ) ? WP_PLUGIN_DIR : ABSPATH . 'wp-content/plugins';
-
-		$ninja_tables                = $plugin_path . '/ninja-tables/ninja-tables.php';
-		$ninja_tables_class          = $plugin_path . '/ninja-tables/includes/NinjaTableClass.php';
-		$ninja_tables_admin          = $plugin_path . '/ninja-tables/admin/NinjaTablesAdmin.php';
-		$included_ninja_tables       = is_file( $ninja_tables ) && include_once $ninja_tables;
-		$included_ninja_tables_class = is_file( $ninja_tables_class ) && include_once $ninja_tables_class;
-		$included_ninja_tables_admin = is_file( $ninja_tables_admin ) && include_once $ninja_tables_admin;
-
-		if ( false === $included_ninja_tables || false === $included_ninja_tables_class || false === $included_ninja_tables_admin ) {
-			// Ninja Tables is a dependency, and will have to be installed before the public functions/commands can be used.
-			return;
+		if ( ! is_plugin_active( 'ninja-tables/ninja-tables.php' ) ) {
+			NMT::exit_with_message( 'Ninja Tables is a dependency, and will have to be installed and activated before this command can be used.' );
 		}
 
 		$this->ninja_tables_admin = new NinjaTablesAdmin();
@@ -71,7 +63,7 @@ class NinjaTables {
 				array_push( $export_data, $temp );
 			}
 			$this->export_as_csv( array_values( $header ), $export_data, $file_path );
-		} elseif ( $format == 'json' ) {
+		} elseif ( 'json' === $format ) {
 			$table = get_post( $table_id );
 
 			$data_provider = \ninja_table_get_data_provider( $table_id );
@@ -93,7 +85,7 @@ class NinjaTables {
 
 			file_put_contents( $file_path, wp_json_encode( $data ) );
 		} else {
-			WP_CLI::error( sprintf( 'The %s export format is not supported, please choose either csv or json.', $format ) );
+			NMT::exit_with_message( sprintf( 'The %s export format is not supported, please choose either csv or json.', $format ) );
 		}
 	}
 
@@ -105,10 +97,13 @@ class NinjaTables {
 	 * @param string  $file_path File path where to save the CSV file.
 	 */
 	private function export_as_csv( $header, $data, $file_path ) {
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
 		$f = fopen( $file_path, 'w' );
 
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fputcsv
 		fputcsv( $f, $header );
 		foreach ( $data as $row ) {
+			// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fputcsv
 			fputcsv( $f, $row );
 		}
 
