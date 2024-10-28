@@ -1,10 +1,10 @@
 <?php
 namespace NewspackCustomContentMigrator\Logic;
 
-use \CoAuthors_Plus;
-use \CoAuthors_Guest_Authors;
+use CoAuthors_Guest_Authors;
+use CoAuthors_Plus;
 use Newspack\MigrationTools\Logic\CoAuthorsPlusHelper;
-use \WP_CLI;
+use WP_CLI;
 use WP_User;
 
 class CoAuthorDuplicateSlugTest extends CoAuthorsPlusHelper {
