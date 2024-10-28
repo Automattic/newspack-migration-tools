@@ -1,6 +1,6 @@
 <?php
 
-namespace NewspackCustomContentMigrator\Logic;
+namespace Newspack\MigrationTools\Util;
 
 use TablePress as TablePress_Plugin;
 use TablePress_Admin_Controller;
