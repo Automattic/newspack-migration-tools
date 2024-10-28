@@ -2,9 +2,13 @@
 
 // phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 
-namespace NewspackCustomContentMigrator\Logic;
+namespace Newspack\MigrationTools\Logic;
 
-use NewspackCustomContentMigrator\Utils\Logger;
+use Newspack\MigrationTools\Util\Log\CliLog;
+use Newspack\MigrationTools\Util\Log\FileLog;
+use Newspack\MigrationTools\Util\Log\MultiLog;
+use Psr\Log\LoggerInterface;
+use WP_Error;
 
 /**
  * Class Medium
@@ -36,12 +40,12 @@ class Medium {
 	 *
 	 * @var string $log_file Log file name.
 	 */
-	private static $log_file = 'medium-migrator.log';
+	private static string $log_file = 'medium-migrator.log';
 
 	/**
-	 * Logger instance.
+	 * Logger.
 	 *
-	 * @var Logger.
+	 * @var LoggerInterface.
 	 */
 	private $logger;
 
@@ -49,7 +53,13 @@ class Medium {
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->logger = new Logger();
+		$this->logger = MultiLog::get_logger(
+			'Medium',
+			[
+				CliLog::get_logger( 'Medium' ),
+				FileLog::get_logger( 'medium-migrator', self::$log_file ), // TODO. Just kill.
+			] 
+		);
 	}
 
 	/**
@@ -72,7 +82,7 @@ class Medium {
 	 * @var string USER_AGENT User agent passed with GET requests.
 	 */
 	const USER_AGENT = 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko)' .
-		' Chrome/41.0.2228.0 Safari/537.36';
+						' Chrome/41.0.2228.0 Safari/537.36';
 
 	/**
 	 * Meta key that will be used for posts that failed to import properly.
@@ -211,7 +221,7 @@ class Medium {
 			}
 		}
 
-		return new \WP_Error( 'get_post_url', __( 'Failed to retrieve post URL' ) );
+		return new WP_Error( 'get_post_url', __( 'Failed to retrieve post URL' ) );
 	}
 
 	/**
@@ -219,12 +229,11 @@ class Medium {
 	 *
 	 * @access private
 	 *
-	 * @see WP_Http
-	 * @link https://developer.wordpress.org/reference/classes/wp_http
-	 *
 	 * @param string $url Medium URL for the current post.
 	 *
 	 * @return object|WP_Error JSON object on success or error on failure.
+	 * @see    WP_Http
+	 * @link   https://developer.wordpress.org/reference/classes/wp_http
 	 */
 	private function fetch_post_json( $url ) {
 		$request = new \WP_Http();
@@ -295,7 +304,7 @@ class Medium {
 	 *
 	 * @param object $post_json JSON object for current post.
 	 *
-	 * @return object Date object corresponding to post's publish date.
+	 * @return string Date corresponding to post's publish date.
 	 */
 	private function get_post_date_gmt( $post_json ) {
 		$date_format    = 'Y-m-d H:i:s';
@@ -456,7 +465,7 @@ class Medium {
 	 *
 	 * @access private
 	 *
-	 * @param object $doc DOMDocument object for current post.
+	 * @param object $doc   DOMDocument object for current post.
 	 * @param object $xpath DOMXPath object for current post HTML.
 	 *
 	 * @return string $post_title Post's content, or empty string if none is found.
@@ -540,7 +549,7 @@ class Medium {
 	 * @param object $xpath DOMXPath object for current HTML file.
 	 */
 	private function remove_duplicate_title( $xpath ) {
-		for ( $i = 1; $i <= 6; $i ++ ) {
+		for ( $i = 1; $i <= 6; $i++ ) {
 			$nodes = $xpath->query( "//h{$i}[ contains( @class, 'graf--title' ) ]" );
 
 			if ( $nodes->length ) {
@@ -562,7 +571,7 @@ class Medium {
 	 * @param object $xpath DOMXPath object for current HTML file.
 	 */
 	private function remove_duplicate_subtitle( $xpath ) {
-		for ( $i = 1; $i <= 6; $i ++ ) {
+		for ( $i = 1; $i <= 6; $i++ ) {
 			$nodes = $xpath->query( "//h{$i}[ contains( @class, 'graf--subtitle' ) ]" );
 
 			if ( $nodes->length ) {
@@ -670,8 +679,8 @@ class Medium {
 	 *
 	 * @access private
 	 *
-	 * @param object $doc DOMDocument object for current post.
-	 * @param object $xpath DOMXPath object for current HTML file.
+	 * @param object $doc       DOMDocument object for current post.
+	 * @param object $xpath     DOMXPath object for current HTML file.
 	 * @param object $post_json JSON object for current post.
 	 */
 	private function replace_embeds( $doc, $xpath, $post_json = null ) {
@@ -761,7 +770,6 @@ class Medium {
 
 			$figure_embed->parentNode->replaceChild( $embed_node, $figure_embed );
 		}
-
 	}
 
 	/**
@@ -793,11 +801,11 @@ class Medium {
 	 *
 	 * @access private
 	 *
-	 * @see wp_extract_urls
-	 * @link https://developer.wordpress.org/reference/functions/wp_extract_urls/
-	 *
-	 * @param object $doc DOMDocument object for current post.
+	 * @param object $doc   DOMDocument object for current post.
 	 * @param object $xpath DOMXPath object for current HTML file.
+	 *
+	 * @see    wp_extract_urls
+	 * @link   https://developer.wordpress.org/reference/functions/wp_extract_urls/
 	 */
 	private function replace_background_images( $doc, $xpath ) {
 		$background_images = $xpath->query( "//div [ contains( @style, 'background-image' ) ]" );
@@ -875,8 +883,8 @@ class Medium {
 	 *
 	 * @access private
 	 *
-	 * @param object $doc DOMDocument object for current post.
-	 * @param object $xpath DOMXPath object for current HTML file.
+	 * @param object $doc       DOMDocument object for current post.
+	 * @param object $xpath     DOMXPath object for current HTML file.
 	 * @param string $post_json The post in JSON.
 	 */
 	private function preprocess_current_post( $doc, $xpath, $post_json = null ) {
@@ -939,7 +947,8 @@ class Medium {
 	/**
 	 * Create a new item structure with all of the keys prepopulated
 	 *
-	 * @param  array $item An array of item data to merge with the default values.
+	 * @param array $item An array of item data to merge with the default values.
+	 *
 	 * @return array     The merged array of item data.
 	 */
 	private function create_new_item( $item = array() ) {
@@ -977,7 +986,8 @@ class Medium {
 	/**
 	 * Create a new category structure with all the keys prepopulated
 	 *
-	 * @param  array $category An array of category data to merge with the default values.
+	 * @param array $category An array of category data to merge with the default values.
+	 *
 	 * @return array   The merged array of category data.
 	 */
 	private function create_new_category( $category = array() ) {
@@ -994,7 +1004,7 @@ class Medium {
 	/**
 	 * Creates a new post_meta entry.
 	 *
-	 * @param string $meta_key Meta key.
+	 * @param string $meta_key   Meta key.
 	 * @param string $meta_value Meta value.
 	 *
 	 * @return array
@@ -1021,7 +1031,7 @@ class Medium {
 		$html_files = $this->get_html_files( $archive_file );
 
 		foreach ( $html_files as $file => $html ) {
-			$this->logger->log( self::$log_file, " -- Processing $file\n" );
+			$this->logger->info( " -- Processing $file\n" );
 
 			$doc = new \DOMDocument();
 			$doc->loadHTML( $html );
@@ -1029,14 +1039,14 @@ class Medium {
 
 			// If it's a profile file.
 			if ( str_ends_with( $file, 'profile/profile.html' ) ) {
-				$this->logger->log( self::$log_file, " -- Processing $file as profile\n" );
+				$this->logger->info( " -- Processing $file as profile\n" );
 
 				// Get the display name.
 				$display_name = $xpath->query( '//h3[contains(concat(" ", normalize-space(@class), " "), " p-name")]' )->item( 0 );
 
 				if ( ! $display_name ) {
 					// No display found, so this HTML file probably isn't a post.
-					$this->logger->log( self::$log_file, self::$log_file, "   -- Skipping $file as no display found\n" );
+					$this->logger->info( "   -- Skipping $file as no display found\n" );
 					continue;
 				}
 
@@ -1044,7 +1054,7 @@ class Medium {
 
 				if ( empty( $display_name ) ) {
 					// No display found, so this HTML file probably isn't a post.
-					$this->logger->log( self::$log_file, self::$log_file, "   -- Skipping $file as no display found\n" );
+					$this->logger->info( "   -- Skipping $file as no display found\n" );
 					continue;
 				}
 
@@ -1058,7 +1068,7 @@ class Medium {
 
 				if ( ! $avatar ) {
 					// No display found, so this HTML file probably isn't a post.
-					$this->logger->log( self::$log_file, self::$log_file, "   -- Skipping $file as no display found\n" );
+					$this->logger->info( "   -- Skipping $file as no display found\n" );
 
 					$avatar = '';
 				} else {
@@ -1071,7 +1081,7 @@ class Medium {
 
 				if ( ! $email ) {
 					// No display found, so this HTML file probably isn't a post.
-					$this->logger->log( self::$log_file, self::$log_file, "   -- No email found\n" );
+					$this->logger->info( "   -- No email found\n" );
 				}
 
 				$email = str_replace( 'Email address: ', '', $email->textContent );
@@ -1085,7 +1095,7 @@ class Medium {
 					'avatar'       => $avatar,
 				];
 
-				$this->logger->log( self::$log_file, "   -- Author:  {$display_name}\n" );
+				$this->logger->info( "   -- Author:  {$display_name}\n" );
 
 				continue;
 			}
@@ -1097,7 +1107,7 @@ class Medium {
 
 			if ( ! $_author ) {
 				// No author found, so this HTML file probably isn't a post.
-				$this->logger->log( self::$log_file, self::$log_file, "   -- Skipping $file as no author found\n" );
+				$this->logger->info( "   -- Skipping $file as no author found\n" );
 				continue;
 			}
 
@@ -1105,7 +1115,7 @@ class Medium {
 
 			if ( empty( $_author ) ) {
 				// No author found, so this HTML file probably isn't a post.
-				$this->logger->log( self::$log_file, self::$log_file, "   -- Skipping $file as no author found\n" );
+				$this->logger->info( "   -- Skipping $file as no author found\n" );
 				continue;
 			}
 
@@ -1123,7 +1133,7 @@ class Medium {
 			$post_url = $this->get_post_url( $xpath );
 
 			if ( is_wp_error( $post_url ) ) {
-				$this->logger->log( self::$log_file, "   -- Skipping $file as no post URL found\n", Logger::WARNING );
+				$this->logger->warning( "   -- Skipping $file as no post URL found\n" );
 				continue;
 			}
 
@@ -1131,7 +1141,7 @@ class Medium {
 			$post_json = $this->fetch_post_json( $post_url );
 
 			if ( is_wp_error( $post_json ) ) {
-				$this->logger->log( self::$log_file, "   -- Skipping $file as no post JSON found\n", Logger::WARNING );
+				$this->logger->warning( "   -- Skipping $file as no post JSON found\n" );
 				continue;
 			}
 

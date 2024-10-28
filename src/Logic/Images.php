@@ -1,8 +1,6 @@
 <?php
 /**
  * Replaces strings in <img> elements in Posts.
- *
- * @package NewspackCustomContentMigrator
  */
 
 namespace Newspack\MigrationTools\Logic;
