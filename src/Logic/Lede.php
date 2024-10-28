@@ -1,9 +1,9 @@
 <?php
 
-namespace NewspackCustomContentMigrator\Logic;
+namespace Newspack\MigrationTools\Logic;
 
-use Newspack\MigrationTools\Logic\CoAuthorsPlusHelper;
-use NewspackCustomContentMigrator\Utils\Logger;
+use Newspack\MigrationTools\NMT;
+use Newspack\MigrationTools\Util\Log\CliLog;
 
 /**
  * Lede migration logic.
@@ -19,33 +19,15 @@ class Lede {
 	];
 
 	/**
-	 * CoAuthorPlus instance.
-	 *
-	 * @var CoAuthorPlus CoAuthorPlus instance.
+	 * @var CoAuthorsPlusHelper CoAuthorPlus instance.
 	 */
 	private $cap;
-
-	/**
-	 * Posts instance.
-	 *
-	 * @var Posts Posts instance.
-	 */
-	private $posts;
-
-	/**
-	 * Logger instance.
-	 *
-	 * @var Logger Logger instance.
-	 */
-	private $logger;
 
 	/**
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->cap    = new CoAuthorsPlusHelper();
-		$this->posts  = new Posts();
-		$this->logger = new Logger();
+		$this->cap = new CoAuthorsPlusHelper();
 	}
 
 	/**
@@ -54,9 +36,8 @@ class Lede {
 	 * @param string $live_table_prefix Live tables prefix. Needed to access live_posts, live_postmeta and live_users.
 	 * @param int    $post_id           Post ID.
 	 *
-	 * @throws \RuntimeException If required live tables don't exist.
-	 *
 	 * @return array|null GA IDs.
+	 * @throws \RuntimeException If required live tables don't exist.
 	 */
 	public function convert_lede_authors_to_gas_for_post( $live_table_prefix, $post_id ) {
 		global $wpdb;
@@ -70,14 +51,14 @@ class Lede {
 			return null;
 		}
 
-		$byline_meta = unserialize( $byline_postmeta_row['meta_value'] );
+		$byline_meta = maybe_unserialize( $byline_postmeta_row['meta_value'] );
 		$ga_ids      = [];
 		foreach ( $byline_meta['profiles'] as $profile ) {
 
 			// Check if script knows how to convert this byline type.
 			$type = $profile['type'];
 			if ( ! in_array( $type, self::KNOWN_LEDE_AUTHOR_BYLINE_TYPES ) ) {
-				throw new \RuntimeException( sprintf( "Byline type '$type' is unknown. See self::KNOWN_LEDE_AUTHOR_BYLINE_TYPES and write more code to convert this byline type to GA." ) );
+				NMT::exit_with_message( 'Unknown byline type encountered. See logs for details.', [ CliLog::get_logger( 'Lede' ) ] );
 			}
 
 			// Convert byline types to GAs.
@@ -244,7 +225,7 @@ class Lede {
 		if ( ! $ga_id ) {
 			$ga_id = $this->cap->create_guest_author( $ga_args );
 			if ( ! $ga_id ) {
-				throw new \RuntimeException( sprintf( 'create_guest_author() did not return ga_id, ga_args:%s', json_encode( $ga_args ) ) );
+				throw new \RuntimeException( sprintf( 'create_guest_author() did not return ga_id, ga_args:%s', wp_json_encode( $ga_args ) ) );
 			}
 		} else {
 			$update_args = [];
