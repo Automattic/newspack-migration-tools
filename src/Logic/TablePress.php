@@ -2,9 +2,9 @@
 
 namespace NewspackCustomContentMigrator\Logic;
 
-use \TablePress as TablePress_Plugin;
-use \TablePress_Import;
-use \TablePress_Admin_Controller;
+use TablePress as TablePress_Plugin;
+use TablePress_Admin_Controller;
+use TablePress_Import;
 
 /**
  * TablePress Plugin Migrator Logic.
