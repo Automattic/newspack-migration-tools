@@ -1,12 +1,11 @@
 <?php
 /**
  * Logic for working with the Simple Local Avatars
- *
- * @package NewspackCustomContentMigrator
  */
 
-namespace NewspackCustomContentMigrator\Logic;
+namespace Newspack\MigrationTools\Logic;
 
+use Newspack\MigrationTools\NMT;
 use Simple_Local_Avatars;
 
 /**
@@ -39,12 +38,8 @@ class SimpleLocalAvatars {
 	 * Constructor.
 	 */
 	public function __construct() {
-		$plugins_path = defined( 'WP_PLUGIN_DIR' ) ? WP_PLUGIN_DIR : ABSPATH . 'wp-content/plugins';
-
-		$simple_local_avatars_plugin_file = $plugins_path . '/simple-local-avatars/simple-local-avatars.php';
-
-		if ( is_file( $simple_local_avatars_plugin_file ) && include_once $simple_local_avatars_plugin_file ) {
-			$this->simple_local_avatars = new Simple_Local_Avatars();
+		if ( ! is_plugin_active( 'simple-local-avatars/simple-local-avatars.php' ) ) {
+			NMT::exit_with_message( 'The simple-local-avatars plugin is a dependency, and will have to be installed and activated before this helper class can be used.' );
 		}
 	}
 
@@ -66,7 +61,7 @@ class SimpleLocalAvatars {
 		}
 
 		// Check that the avatar was actually imported.
-		if ( ! did_action('simple_local_avatar_updated') ) {
+		if ( ! did_action( 'simple_local_avatar_updated' ) ) {
 			return false;
 		}
 
