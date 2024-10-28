@@ -56,9 +56,9 @@ You can either include the `newspack-migration-tools.php` file in your code, use
 _my-plugin-file.php_
 ```php
 // Loading the attachments helper class.
-use Newspack\MigrationTools\Logic\AttachmentHelper;
+use Newspack\MigrationTools\Logic\Attachments;
 // Example call.
-$attachment_id = AttachmentHelper::import_attachment_for_post( ... your arguments here ... );
+$attachment_id = Attachments::import_attachment_for_post( ... your arguments here ... );
 ```
 
 ## Registering the WP CLI commands in this package

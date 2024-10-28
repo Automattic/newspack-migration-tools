@@ -2,7 +2,7 @@
 
 namespace Newspack\MigrationTools\Tests;
 
-use Newspack\MigrationTools\Logic\AttachmentHelper;
+use Newspack\MigrationTools\Logic\Attachments;
 use WP_Error;
 
 trait AttachmentUnitTestTrait {
@@ -23,7 +23,7 @@ trait AttachmentUnitTestTrait {
 	}
 
 	/**
-	 * This just wraps AttachmentHelper::import_attachment_for_post() and keeps track of the attachment IDs so we can delete them on tearDown().
+	 * This just wraps Attachments::import_attachment_for_post() and keeps track of the attachment IDs so we can delete them on tearDown().
 	 *
 	 * @param int    $post_id The post ID to attach the image to.
 	 * @param string $path The path to the image.
@@ -34,7 +34,7 @@ trait AttachmentUnitTestTrait {
 	 * @return int|WP_Error
 	 */
 	public function wrap_import_attachments_for_post( int $post_id, string $path, string $alt_text = '', array $attachment_args = [], string $desired_filename = '' ): int|WP_Error {
-		$attachment_id          = AttachmentHelper::import_attachment_for_post( $post_id, $path, $alt_text, $attachment_args, $desired_filename );
+		$attachment_id          = Attachments::import_attachment_for_post( $post_id, $path, $alt_text, $attachment_args, $desired_filename );
 		$this->attachment_ids[] = $attachment_id;
 		return $attachment_id;
 	}

@@ -1,8 +1,8 @@
 <?php
 
-namespace NewspackCustomContentMigrator\Logic;
+namespace Newspack\MigrationTools\Logic;
 
-use \WP_CLI;
+use WP_CLI;
 use WP_Error;
 
 /**
@@ -18,7 +18,7 @@ class Attachments {
 	 *
 	 * @return mixed ID of the imported media file.
 	 */
-	public function import_media_from_path( $file ) {
+	public static function import_media_from_path( $file ) {
 		$options = [ 'return' => true ];
 		$id      = WP_CLI::runcommand( "media import $file --title='favicon' --porcelain", $options );
 
@@ -39,8 +39,8 @@ class Attachments {
 	 *
 	 * @return int|WP_Error
 	 */
-	public function import_attachment_for_post( int $post_id, string $path, string $alt_text = '', array $attachment_args = [], string $desired_filename = '' ): int|WP_Error {
-		return $this->import_external_file( $path, null, null, null, $alt_text, $post_id, $attachment_args, $desired_filename );
+	public static function import_attachment_for_post( int $post_id, string $path, string $alt_text = '', array $attachment_args = [], string $desired_filename = '' ): int|WP_Error {
+		return self::import_external_file( $path, null, null, null, $alt_text, $post_id, $attachment_args, $desired_filename );
 	}
 
 	/**
@@ -64,7 +64,7 @@ class Attachments {
 	 *
 	 * @return int|WP_Error Attachment ID.
 	 */
-	public function import_external_file( $path, $title = null, $caption = null, $description = null, $alt = null, $post_id = 0, $args = [], $desired_filename = '' ) {
+	public static function import_external_file( $path, $title = null, $caption = null, $description = null, $alt = null, $post_id = 0, $args = [], $desired_filename = '' ) {
 		// Fetch remote or local file.
 		$is_http = 'http' == substr( $path, 0, 4 );
 		if ( $is_http ) {
@@ -109,8 +109,9 @@ class Attachments {
 			}
 		}
 
-		$maybe_exising_attachment_id = $this->maybe_get_existing_attachment_id( $file_array['tmp_name'], $file_array['name'] );
+		$maybe_exising_attachment_id = self::maybe_get_existing_attachment_id( $file_array['tmp_name'], $file_array['name'] );
 		if ( null !== $maybe_exising_attachment_id ) {
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			@unlink( $file_array['tmp_name'] );
 			return $maybe_exising_attachment_id;
 		}
@@ -128,6 +129,7 @@ class Attachments {
 
 		// If this was a download and there was an error then clean up the temp file.
 		if ( is_wp_error( $att_id ) ) {
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			@unlink( $file_array['tmp_name'] );
 			WP_CLI::warning( $att_id->get_error_message() );
 		}
@@ -148,7 +150,7 @@ class Attachments {
 	 *
 	 * @return int|null Attachment ID if found, null otherwise.
 	 */
-	public function maybe_get_existing_attachment_id( string $filepath, string $filename = '' ) {
+	public static function maybe_get_existing_attachment_id( string $filepath, string $filename = '' ) {
 		if ( ! file_exists( $filepath ) ) {
 			return null;
 		}
@@ -258,7 +260,7 @@ class Attachments {
 			$broken_post_images = [];
 
 			// get responsive images.
-			$image_urls_to_check = $this->get_images_sources_from_content( $post->post_content );
+			$image_urls_to_check = self::get_images_sources_from_content( $post->post_content );
 
 			foreach ( $image_urls_to_check as $image_url_to_check ) {
 				// Skip non-local and non-S3 URLs.
@@ -370,7 +372,7 @@ class Attachments {
 	 * @param string $filename The filename.
 	 * @return int The attachment ID.
 	 */
-	public function get_attachment_by_filename( $filename ) {
+	public static function get_attachment_by_filename( $filename ) {
 		global $wpdb;
 
 		$filename = esc_sql( $filename );
@@ -391,18 +393,16 @@ class Attachments {
 	 *
 	 * We don't want the CDN urls in migration data because they are harder to replace later.
 	 *
-	 * @param int $attachment_id The attachment ID.
+	 * @param int    $attachment_id The attachment ID.
 	 * @param string $size The image size.
-	 * @param bool $icon Whether the image should be an icon.
+	 * @param bool   $icon Whether the image should be an icon.
 	 *
 	 * @return array|false
 	 */
 	public static function get_attachment_image_src( $attachment_id, $size = 'thumbnail', $icon = false ) {
 		static $filter_callback = null;
 		if ( null === $filter_callback ) {
-			$filter_callback = function ( $skip, $image_url, $args, $scheme ) {
-				return true;
-			};
+			$filter_callback = fn() => true;
 		}
 		add_filter( 'jetpack_photon_skip_for_url', $filter_callback, 10, 4 );
 		$src = wp_get_attachment_image_src( $attachment_id, $size, $icon );
@@ -411,4 +411,30 @@ class Attachments {
 		return $src;
 	}
 
+	/**
+	 * Find an attachment by its filename.
+	 *
+	 * The search is finding the first attachment with a filename that ends with the provided filename.
+	 * The filename can also contain a path – the search just finds a file that ends in the string.
+	 *
+	 * @param string $filename The filename or path.
+	 *
+	 * @return int The attachment ID or zero if none was found.
+	 */
+	public static function get_attachment_id_by_filename( string $filename ): int {
+		global $wpdb;
+
+		$filename = esc_sql( $filename );
+		// phpcs:disable -- Direct SQL query is OK here and the filename is escaped.
+		$attachment_id = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT post_id FROM $wpdb->postmeta WHERE meta_key = '_wp_attached_file' AND meta_value LIKE '%s'",
+				'%' . $wpdb->esc_like( $filename ),
+			),
+		);
+
+		// phpcs:enable
+
+		return $attachment_id ?? 0;
+	}
 }
