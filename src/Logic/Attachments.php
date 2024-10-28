@@ -2,28 +2,13 @@
 
 namespace Newspack\MigrationTools\Logic;
 
-use WP_CLI;
+use Newspack\MigrationTools\Util\Log\CliLog;
 use WP_Error;
 
 /**
  * Attachments logic.
  */
 class Attachments {
-	/**
-	 * Imports a media object from file and returns the ID.
-	 *
-	 * @deprecated Warning: this function is quite slow, and the new function `import_external_file` here should be used instead.
-	 *
-	 * @param string $file Media file full path.
-	 *
-	 * @return mixed ID of the imported media file.
-	 */
-	public static function import_media_from_path( $file ) {
-		$options = [ 'return' => true ];
-		$id      = WP_CLI::runcommand( "media import $file --title='favicon' --porcelain", $options );
-
-		return $id;
-	}
 
 	/**
 	 * Wrapper for import_external_file() with fewer args and enforced post_id.
@@ -131,7 +116,7 @@ class Attachments {
 		if ( is_wp_error( $att_id ) ) {
 			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			@unlink( $file_array['tmp_name'] );
-			WP_CLI::warning( $att_id->get_error_message() );
+			CliLog::get_logger( 'attachments' )->warning( $att_id->get_error_message() );
 		}
 
 
@@ -245,6 +230,8 @@ class Attachments {
 			]
 		);
 
+		$cli_logger = CliLog::get_logger( 'attachments' );
+
 		$total_posts = count( $posts );
 		$logs        = file_exists( 'broken_media_urls_batch.log' ) ? file_get_contents( 'broken_media_urls_batch.log' ) : '';
 		$batch_logs  = file_exists( "broken_media_urls_batch_$batch.log" ) ? file_get_contents( "broken_media_urls_batch_$batch.log" ) : '';
@@ -256,7 +243,7 @@ class Attachments {
 			if ( str_contains( $logs, $post->ID . '' ) || str_contains( $batch_logs, $post->ID . '' ) ) {
 				continue;
 			}
-			WP_CLI::line( sprintf( 'Checking Post(%d/%d): %d', $index + 1, $total_posts, $post->ID ) );
+			$cli_logger->info( sprintf( 'Checking Post(%d/%d): %d', $index + 1, $total_posts, $post->ID ) );
 			$broken_post_images = [];
 
 			// get responsive images.
@@ -266,14 +253,14 @@ class Attachments {
 				// Skip non-local and non-S3 URLs.
 				$local_domain = str_replace( [ 'http://', 'https://' ], '', get_site_url() );
 				if ( ! str_contains( $image_url_to_check, $local_domain ) && ! str_contains( $image_url_to_check, '.s3.amazonaws.com' ) ) {
-					WP_CLI::warning( sprintf( 'Skipping non-local URL: %s', $image_url_to_check ) );
+					$cli_logger->warning( sprintf( 'Skipping non-local URL: %s', $image_url_to_check ) );
 					continue;
 				}
 
 				$image_request = wp_remote_head( $image_url_to_check, [ 'redirection' => 5 ] );
 
 				if ( is_wp_error( $image_request ) ) {
-					WP_CLI::warning(
+					$cli_logger->warning(
 						sprintf(
 							'Local image ID (%s) returned an error: %s',
 							$image_url_to_check,
@@ -299,7 +286,7 @@ class Attachments {
 						$image_request_from_s3 = wp_remote_head( $s3_url, [ 'redirection' => 5 ] );
 
 						if ( is_wp_error( $image_request_from_s3 ) ) {
-							WP_CLI::warning(
+							$cli_logger->warning(
 								sprintf(
 									'Image ID (%s) from S3 returned an error: %s',
 									$s3_url,
