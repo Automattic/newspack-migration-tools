@@ -4,8 +4,8 @@ namespace NewspackCustomContentMigrator\Command\General;
 
 use Newspack\MigrationTools\Command\WpCliCommandTrait;
 use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
-use \NewspackCustomContentMigrator\Logic\Posts as PostsLogic;
-use \WP_CLI;
+use NewspackCustomContentMigrator\Logic\Posts as PostsLogic;
+use WP_CLI;
 
 class ContentConverterPluginMigrator implements RegisterCommandInterface {
 
