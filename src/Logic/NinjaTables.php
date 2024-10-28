@@ -2,9 +2,9 @@
 
 namespace NewspackCustomContentMigrator\Logic;
 
-use \WP_CLI;
-use \NinjaTablesAdmin;
-use \NinjaTables\Classes\ArrayHelper;
+use NinjaTables\Classes\ArrayHelper;
+use NinjaTablesAdmin;
+use WP_CLI;
 
 /**
  * NinjaTables Plugin Migrator Logic.
