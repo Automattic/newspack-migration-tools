@@ -5,7 +5,7 @@
  * @package NewspackCustomContentMigrator
  */
 
-namespace NewspackCustomContentMigrator\Logic;
+namespace Newspack\MigrationTools\Logic;
 
 /**
  * Image logic class.
@@ -55,5 +55,4 @@ class Images {
 
 		return $updated;
 	}
-
 }
