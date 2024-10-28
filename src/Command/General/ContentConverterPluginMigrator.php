@@ -3,8 +3,8 @@
 namespace NewspackCustomContentMigrator\Command\General;
 
 use Newspack\MigrationTools\Command\WpCliCommandTrait;
+use Newspack\MigrationTools\Logic\Posts as PostsLogic;
 use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
-use NewspackCustomContentMigrator\Logic\Posts as PostsLogic;
 use WP_CLI;
 
 class ContentConverterPluginMigrator implements RegisterCommandInterface {
