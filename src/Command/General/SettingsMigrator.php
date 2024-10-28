@@ -181,7 +181,7 @@ class SettingsMigrator implements RegisterCommandInterface {
 		if ( isset( $imported_mods_and_options['custom_logo_file'] ) && ! empty( $imported_mods_and_options['custom_logo_file'] ) ) {
 			$logo_file = $imported_mods_and_options['custom_logo_file'];
 			if ( file_exists( $logo_file ) ) {
-				$logo_id = Attachments::import_media_from_path( $logo_file );
+				$logo_id = Attachments::import_external_file( $logo_file );
 			}
 		}
 
@@ -190,7 +190,7 @@ class SettingsMigrator implements RegisterCommandInterface {
 		if ( isset( $imported_mods_and_options['newspack_footer_logo_file'] ) && ! empty( $imported_mods_and_options['newspack_footer_logo_file'] ) ) {
 			$footer_logo_file = $imported_mods_and_options['newspack_footer_logo_file'];
 			if ( file_exists( $footer_logo_file ) ) {
-				$footer_logo_id = Attachments::import_media_from_path( $footer_logo_file );
+				$footer_logo_id = Attachments::import_external_file( $footer_logo_file );
 			}
 		}
 
@@ -201,7 +201,7 @@ class SettingsMigrator implements RegisterCommandInterface {
 		if ( isset( $imported_mods_and_options['site_icon_file'] ) && ! empty( $imported_mods_and_options['site_icon_file'] ) ) {
 			$icon_file = $imported_mods_and_options['site_icon_file'];
 			if ( file_exists( $icon_file ) ) {
-				$icon_id = Attachments::import_media_from_path( $icon_file );
+				$icon_id = Attachments::import_external_file( $icon_file );
 				if ( is_numeric( $icon_id ) ) {
 					update_option( 'site_icon', $icon_id );
 				}
