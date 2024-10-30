@@ -2,6 +2,7 @@
 
 namespace NewspackCustomContentMigrator\Command\General;
 
+use Newspack\MigrationTools\Command\PostsMigrator;
 use Newspack\MigrationTools\Command\WpCliCommandTrait;
 use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
 use WP_CLI;
