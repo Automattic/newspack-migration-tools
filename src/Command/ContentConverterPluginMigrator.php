@@ -34,7 +34,7 @@ class ContentConverterPluginMigrator implements WpCliCommandInterface {
 						],
 					],
 				],
-			]
+			],
 		];
 	}
 
@@ -57,9 +57,10 @@ class ContentConverterPluginMigrator implements WpCliCommandInterface {
 		$posts_table         = $wpdb->dbh->real_escape_string( $table_prefix . 'posts' );
 
 		// Check if the backed up posts table from staging exists.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$table_count = $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COUNT(table_name) AS table_count FROM information_schema.tables WHERE table_schema='%s' AND table_name='%s';",
+				'SELECT COUNT(table_name) AS table_count FROM information_schema.tables WHERE table_schema=%s AND table_name=%s',
 				$wpdb->dbname,
 				$staging_posts_table
 			)
@@ -70,9 +71,10 @@ class ContentConverterPluginMigrator implements WpCliCommandInterface {
 
 		// Get Staging hostname, and this hostname..
 		$this_options_table = $wpdb->dbh->real_escape_string( $table_prefix . 'options' );
-		$this_siteurl       = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM $this_options_table where option_name = 'siteurl';", $staging_posts_table ) );
-		$url_parse          = wp_parse_url( $this_siteurl );
-		$this_host          = $url_parse['host'] ?? null;
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$this_siteurl = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM $this_options_table where option_name = 'siteurl'", $staging_posts_table ) );
+		$url_parse    = wp_parse_url( $this_siteurl );
+		$this_host    = $url_parse['host'] ?? null;
 		if ( null === $this_host ) {
 			WP_CLI::error( "Could not fetch this site's siteurl from the options table $this_options_table." );
 		}
@@ -80,6 +82,8 @@ class ContentConverterPluginMigrator implements WpCliCommandInterface {
 
 		// Update wp_posts with converted content from the Staging wp_posts backup.
 		WP_CLI::line( 'Importing content previously converted to blocks from the Staging posts table...' );
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->get_results(
 			"UPDATE $posts_table wp
 			JOIN $staging_posts_table swp
@@ -89,6 +93,7 @@ class ContentConverterPluginMigrator implements WpCliCommandInterface {
 			SET wp.post_content = swp.post_content
 			WHERE swp.post_content LIKE '<!-- wp:%'; "
 		);
+		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 
 		// Now update hostnames, too.
@@ -100,6 +105,7 @@ class ContentConverterPluginMigrator implements WpCliCommandInterface {
 			$post_content_updated = str_replace( $staging_host, $this_host, $post->post_content );
 			$post_excerpt_updated = str_replace( $staging_host, $this_host, $post->post_excerpt );
 			if ( $post->post_content != $post_content_updated || $post->post_excerpt != $post_excerpt_updated ) {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 				$wpdb->update(
 					$wpdb->prefix . 'posts',
 					[
