@@ -4,8 +4,8 @@ namespace NewspackCustomContentMigrator\Command\General;
 
 use Newspack\MigrationTools\Command\WpCliCommandTrait;
 use Newspack\MigrationTools\Logic\Posts;
+use Newspack\MigrationTools\Util\Log\LegacyLogger;
 use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
-use NewspackCustomContentMigrator\Utils\Logger;
 use WP_CLI;
 
 class PostsMigrator implements RegisterCommandInterface {
@@ -33,7 +33,7 @@ class PostsMigrator implements RegisterCommandInterface {
 	private $posts_logic = null;
 
 	/**
-	 * @var Logger.
+	 * @var LegacyLogger.
 	 */
 	private $logger;
 
@@ -42,7 +42,7 @@ class PostsMigrator implements RegisterCommandInterface {
 	 */
 	private function __construct() {
 		$this->posts_logic = new Posts();
-		$this->logger      = new Logger();
+		$this->logger      = new LegacyLogger();
 	}
 
 	/**
