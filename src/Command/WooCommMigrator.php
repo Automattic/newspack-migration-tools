@@ -2,27 +2,29 @@
 
 namespace Newspack\MigrationTools\Command;
 
-use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
 use WP_CLI;
 
-class WooCommMigrator implements RegisterCommandInterface {
+class WooCommMigrator implements WpCliCommandInterface {
 
 	use WpCliCommandTrait;
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public static function register_commands(): void {
-		WP_CLI::add_command( 'newspack-content-migrator woocomm-setup', self::get_command_closure( 'cmd_setup' ), [
-			'shortdesc' => 'Updates all the WooCommerce settings.',
-		] );
+	public static function get_cli_commands(): array {
+		return [
+			[
+				'newspack-content-migrator woocomm-setup',
+				self::get_command_closure( 'cmd_setup' ),
+				[
+					'shortdesc' => 'Updates all the WooCommerce settings.',
+				],
+			],
+		];
 	}
 
 	/**
 	 * Callable for woocomm-setup command.
-	 *
-	 * @param $args
-	 * @param $assoc_args
 	 */
 	public function cmd_setup( $args, $assoc_args ) {
 		WP_CLI::success( 'Updating WooComm Pages IDs...' );

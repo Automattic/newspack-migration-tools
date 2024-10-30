@@ -21,6 +21,7 @@ class WpCliCommands {
 			NewspaperThemeCommand::class,
 			PostsMigrator::class,
 			SettingsMigrator::class,
+			WooCommMigrator::class,
 		];
 
 		return apply_filters( 'newspack_migration_tools_command_classes', $classes_with_cli_commands );
