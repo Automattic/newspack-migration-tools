@@ -2,6 +2,7 @@
 
 namespace NewspackCustomContentMigrator\Command\General;
 
+use Newspack\MigrationTools\Command\PostsMigrator;
 use Newspack\MigrationTools\Command\WpCliCommandTrait;
 use Newspack\MigrationTools\Logic\Attachments;
 use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
