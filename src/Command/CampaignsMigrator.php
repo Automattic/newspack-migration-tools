@@ -1,9 +1,7 @@
 <?php
 
-namespace NewspackCustomContentMigrator\Command\General;
+namespace Newspack\MigrationTools\Command;
 
-use Newspack\MigrationTools\Command\PostsMigrator;
-use Newspack\MigrationTools\Command\WpCliCommandTrait;
 use Newspack\MigrationTools\Logic\Campaigns;
 use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
 use WP_CLI;
