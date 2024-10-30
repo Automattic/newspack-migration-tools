@@ -12,27 +12,29 @@ class ContentConverterPluginMigrator implements WpCliCommandInterface {
 	 */
 	public static function get_cli_commands(): array {
 		return [
-			'newspack-content-migrator import-blocks-content-from-staging-site',
-			array( __CLASS__, 'cmd_import_blocks_content_from_staging_site' ),
 			[
-				'shortdesc' => "Imports previously backed up Newspack Content Converter plugin's Staging site table contents.",
-				'synopsis'  => [
-					[
-						'type'        => 'assoc',
-						'name'        => 'table-prefix',
-						'description' => 'WP DB table prefix.',
-						'optional'    => false,
-						'repeating'   => false,
-					],
-					[
-						'type'        => 'assoc',
-						'name'        => 'staging-hostname',
-						'description' => "Staging site's hostname -- the site from which this site was cloned.",
-						'optional'    => false,
-						'repeating'   => false,
+				'newspack-content-migrator import-blocks-content-from-staging-site',
+				array( __CLASS__, 'cmd_import_blocks_content_from_staging_site' ),
+				[
+					'shortdesc' => "Imports previously backed up Newspack Content Converter plugin's Staging site table contents.",
+					'synopsis'  => [
+						[
+							'type'        => 'assoc',
+							'name'        => 'table-prefix',
+							'description' => 'WP DB table prefix.',
+							'optional'    => false,
+							'repeating'   => false,
+						],
+						[
+							'type'        => 'assoc',
+							'name'        => 'staging-hostname',
+							'description' => "Staging site's hostname -- the site from which this site was cloned.",
+							'optional'    => false,
+							'repeating'   => false,
+						],
 					],
 				],
-			],
+			]
 		];
 	}
 
