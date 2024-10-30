@@ -47,7 +47,7 @@ class MetaToContentMigrator implements WpCliCommandInterface {
 						],
 					],
 				],
-			]
+			],
 		];
 	}
 

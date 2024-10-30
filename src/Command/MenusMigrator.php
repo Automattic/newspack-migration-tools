@@ -1,16 +1,13 @@
 <?php
 
-namespace NewspackCustomContentMigrator\Command\General;
+namespace Newspack\MigrationTools\Command;
 
-use Newspack\MigrationTools\Command\PostsMigrator;
-use Newspack\MigrationTools\Command\WpCliCommandTrait;
-use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
 use WP_CLI;
 
 /**
  * Exports and imports menus and associated content.
  */
-class MenusMigrator implements RegisterCommandInterface {
+class MenusMigrator implements WpCliCommandInterface {
 
 	use WpCliCommandTrait;
 
@@ -22,43 +19,51 @@ class MenusMigrator implements RegisterCommandInterface {
 	/**
 	 * {@inheritDoc}
 	 */
-	public static function register_commands(): void {
-		WP_CLI::add_command( 'newspack-content-migrator export-menus', self::get_command_closure( 'cmd_export_menus' ), [
-			'shortdesc' => 'Exports menu elements of the staging site and associated pages when needed.',
-			'synopsis'  => [
+	public static function get_cli_commands(): array {
+		return [
+			[
+				'newspack-content-migrator export-menus',
+				self::get_command_closure( 'cmd_export_menus' ),
 				[
-					'type'        => 'assoc',
-					'name'        => 'output-dir',
-					'description' => 'Output directory full path (no ending slash).',
-					'optional'    => false,
-					'repeating'   => false,
+					'shortdesc' => 'Exports menu elements of the staging site and associated pages when needed.',
+					'synopsis'  => [
+						[
+							'type'        => 'assoc',
+							'name'        => 'output-dir',
+							'description' => 'Output directory full path (no ending slash).',
+							'optional'    => false,
+							'repeating'   => false,
+						],
+					],
 				],
 			],
-		] );
 
-		WP_CLI::add_command( 'newspack-content-migrator import-menus', self::get_command_closure( 'cmd_import_menus' ), [
-			'shortdesc' => 'Imports custom menus and new pages from the export JSON file.',
-			'synopsis'  => [
+			[
+				'newspack-content-migrator import-menus',
+				self::get_command_closure( 'cmd_import_menus' ),
 				[
-					'type'        => 'assoc',
-					'name'        => 'input-dir',
-					'description' => 'Exported Menus JSON directory.',
-					'optional'    => false,
-					'repeating'   => false,
+					'shortdesc' => 'Imports custom menus and new pages from the export JSON file.',
+					'synopsis'  => [
+						[
+							'type'        => 'assoc',
+							'name'        => 'input-dir',
+							'description' => 'Exported Menus JSON directory.',
+							'optional'    => false,
+							'repeating'   => false,
+						],
+					],
 				],
 			],
-		] );
+		];
 	}
 
 	/**
 	 * Callable for export-menus command.
-	 *
-	 * @param array $args
-	 * @param array $assoc_args
 	 */
 	public function cmd_export_menus( $args, $assoc_args ) {
-		$export_dir = isset( $assoc_args[ 'output-dir' ] ) ? $assoc_args[ 'output-dir' ] : null;
+		$export_dir = $assoc_args['output-dir'];
 		if ( ! is_dir( $export_dir ) ) {
+			// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.directory_mkdir
 			mkdir( $export_dir );
 		}
 
@@ -72,7 +77,7 @@ class MenusMigrator implements RegisterCommandInterface {
 	/**
 	 * Export the site menus into two files: one for the menu info, one for the posts linked in the menu.
 	 *
-	 * @param string $export_dir
+	 * @param string $export_dir Directory to export the menus to.
 	 */
 	public function export_menus( $export_dir ) {
 
@@ -82,7 +87,7 @@ class MenusMigrator implements RegisterCommandInterface {
 			$menu_ids[] = $nav_menu->term_id;
 		}
 		$locations = array_flip( get_nav_menu_locations() );
-		$menus = [];
+		$menus     = [];
 
 		// Get menu items' info.
 		foreach ( $menu_ids as $menu_id ) {
@@ -107,25 +112,23 @@ class MenusMigrator implements RegisterCommandInterface {
 
 		// Export menus to a custom JSON file.
 		$menu_file = $export_dir . '/' . self::MENU_EXPORT_FILE;
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
 		$open_menu_file = fopen( $menu_file, 'w' );
 		if ( ! $open_menu_file ) {
 			WP_CLI::error( 'Error creating or opening output file: ' . $menu_file );
 		}
-		$write = fputs( $open_menu_file, json_encode( $menus ) );
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fputs
+		$write = fputs( $open_menu_file, wp_json_encode( $menus ) );
 		if ( ! $write ) {
 			WP_CLI::error( 'Error writing to output file: ' . $menu_file );
 		}
 		fclose( $open_menu_file );
 
-		// WP_CLI::line( $output );
 		WP_CLI::line( 'Writing to file ' . $menu_file );
 	}
 
 	/**
 	 * Callable for import-menus command.
-	 *
-	 * @param array $args
-	 * @param array $assoc_args
 	 */
 	public function cmd_import_menus( $args, $assoc_args ) {
 		$directory = isset( $assoc_args['input-dir'] ) ? $assoc_args['input-dir'] : null;
@@ -134,13 +137,13 @@ class MenusMigrator implements RegisterCommandInterface {
 		$menu_file = $directory . '/' . self::MENU_EXPORT_FILE;
 		if ( ! is_file( $menu_file ) ) {
 			WP_CLI::warning( sprintf( 'Menus file not found in input-dir %s', $menu_file ) );
-			exit(1);
+			exit( 1 );
 		}
 
 		WP_CLI::line( sprintf( 'Importing menus from ' . $menu_file . '...' ) );
 
 		$this->delete_all_menus();
-		$this->import_menus( $menu_file ) ;
+		$this->import_menus( $menu_file );
 		wp_cache_flush();
 
 		WP_CLI::success( 'Done.' );
@@ -168,6 +171,7 @@ class MenusMigrator implements RegisterCommandInterface {
 	private function import_menus( $menu_file ) {
 		global $wpdb;
 
+		//phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
 		$menu_read = file_get_contents( $menu_file );
 		if ( empty( $menu_read ) ) {
 			WP_CLI::error( 'Error reading from menu file' );
@@ -182,38 +186,46 @@ class MenusMigrator implements RegisterCommandInterface {
 		foreach ( $menus as $menu ) {
 			// Create Menu
 			$menuname = $menu->menu->name;
-			$menu_id = wp_create_nav_menu( $menuname );
+			$menu_id  = wp_create_nav_menu( $menuname );
 			$taxonomy = $menu->menu->taxonomy;
-			$term_taxonomy_id = $wpdb->get_var($wpdb->prepare("SELECT term_taxonomy_id FROM {$wpdb->term_taxonomy} WHERE term_id=%d AND taxonomy='%s' LIMIT 1", $menu_id, $taxonomy ) );
-			$menu_data = array(
-				'menu-name' => $menuname,
-				'description' => $menu->menu->description,
-				'parent' => $menu->menu->parent,
-				'slug' => $menu->menu->slug,
-				'term_taxonomy_id' => $term_taxonomy_id,
-				'taxonomy' => $taxonomy,
-				'term' => $menu->menu->taxonomy,
-				'filter' => $menu->menu->filter,
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			$term_taxonomy_id = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT term_taxonomy_id FROM {$wpdb->term_taxonomy} WHERE term_id=%d AND taxonomy=%s LIMIT 1",
+					$menu_id,
+					$taxonomy 
+				) 
 			);
-			$updated_id = wp_update_nav_menu_object( $menu_id, $menu_data );
+			$menu_data        = array(
+				'menu-name'        => $menuname,
+				'description'      => $menu->menu->description,
+				'parent'           => $menu->menu->parent,
+				'slug'             => $menu->menu->slug,
+				'term_taxonomy_id' => $term_taxonomy_id,
+				'taxonomy'         => $taxonomy,
+				'term'             => $menu->menu->taxonomy,
+				'filter'           => $menu->menu->filter,
+			);
+			$updated_id       = wp_update_nav_menu_object( $menu_id, $menu_data );
 
 			// Save menu items.
 			foreach ( $menu->menu_items as $menu_item ) {
 
-				// For Pages: all migrated pages got the \NewspackCustomContentMigrator\Command\General\PostsMigrator::META_KEY_ORIGINAL_ID meta
+				// For Pages: all migrated pages got the Command\PostsMigrator::META_KEY_ORIGINAL_ID meta
 				// with their original ID. Based on that meta, get the new ID.
 				if ( 'page' === $menu_item->object ) {
+					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 					$result_original_id = $wpdb->get_results(
 						$wpdb->prepare(
 							"SELECT post_id FROM {$wpdb->prefix}postmeta
-								WHERE meta_key = '%s'
-								AND meta_value = %d ;",
+								WHERE meta_key = %s
+								AND meta_value = %d",
 							PostsMigrator::META_KEY_ORIGINAL_ID,
 							$menu_item->object_id
 						),
 						ARRAY_A
 					);
-					if ( ! isset( $result_original_id[0][ 'post_id' ] ) ) {
+					if ( ! isset( $result_original_id[0]['post_id'] ) ) {
 						WP_CLI::line(
 							sprintf(
 								'Error in menu ID %d: (original) item ID %d not found ! Skipping menu item.',
@@ -224,7 +236,7 @@ class MenusMigrator implements RegisterCommandInterface {
 						continue;
 					}
 
-					$current_id = $result_original_id[0][ 'post_id' ];
+					$current_id = $result_original_id[0]['post_id'];
 				} else {
 					$current_id = $menu_item->object_id;
 				}
@@ -239,7 +251,7 @@ class MenusMigrator implements RegisterCommandInterface {
 					? implode( ' ', $menu_item->classes )
 					: '';
 
-				$item_data =  array(
+				$item_data    = array(
 					'menu-item-object-id'   => $current_id,
 					'menu-item-object'      => $menu_item->object,
 					'menu-item-position'    => $menu_item->menu_order,

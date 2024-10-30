@@ -15,6 +15,7 @@ class WpCliCommands {
 			AttachmentsMigrator::class,
 			BlockTransformerCommand::class,
 			CssMigrator::class,
+			MenusMigrator::class,
 			MetaToContentMigrator::class,
 			NewspaperThemeCommand::class,
 			PostsMigrator::class,
