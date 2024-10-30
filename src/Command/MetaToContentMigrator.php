@@ -1,67 +1,64 @@
 <?php
 
-namespace NewspackCustomContentMigrator\Command\General;
+namespace Newspack\MigrationTools\Command;
 
-use Newspack\MigrationTools\Command\WpCliCommandTrait;
-use NewspackCustomContentMigrator\Command\RegisterCommandInterface;
 use WP_CLI;
 
-class MetaToContentMigrator implements RegisterCommandInterface {
-
-	use WpCliCommandTrait;
+class MetaToContentMigrator implements WpCliCommandInterface {
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public static function register_commands(): void {
-		WP_CLI::add_command(
-			'newspack-content-migrator migrate-meta-to-content',
-			[ __CLASS__, 'cmd_migrate_meta_to_content' ],
+	public static function get_cli_commands(): array {
+		return [
 			[
-				'shortdesc' => 'Migrate content stored in post meta into post_content.',
-				'synopsis'  => [
-					[
-						'type'        => 'positional',
-						'name'        => 'meta-keys',
-						'description' => 'Key, or list of keys, of the custom field to convert. A list (comma-separated) will be processed in the order in which they are provided to the command.',
-						'optional'    => false,
-						'repeating'   => false,
-					],
-					[
-						'type'        => 'assoc',
-						'name'        => 'post-id',
-						'description' => 'ID of a specific post to convert.',
-						'optional'    => true,
-						'repeating'   => false,
-					],
-					[
-						'type'        => 'flag',
-						'name'        => 'dry-run',
-						'description' => 'Do a dry run instead of making any actual changes.',
-						'optional'    => true,
-						'repeating'   => false,
-					],
-					[
-						'type'        => 'flag',
-						'name'        => 'verbose',
-						'description' => 'Print/store the whole new content as well as reporting success.',
-						'optional'    => true,
-						'repeating'   => false,
+				'newspack-content-migrator migrate-meta-to-content',
+				[ __CLASS__, 'cmd_migrate_meta_to_content' ],
+				[
+					'shortdesc' => 'Migrate content stored in post meta into post_content.',
+					'synopsis'  => [
+						[
+							'type'        => 'positional',
+							'name'        => 'meta-keys',
+							'description' => 'Key, or list of keys, of the custom field to convert. A list (comma-separated) will be processed in the order in which they are provided to the command.',
+							'optional'    => false,
+							'repeating'   => false,
+						],
+						[
+							'type'        => 'assoc',
+							'name'        => 'post-id',
+							'description' => 'ID of a specific post to convert.',
+							'optional'    => true,
+							'repeating'   => false,
+						],
+						[
+							'type'        => 'flag',
+							'name'        => 'dry-run',
+							'description' => 'Do a dry run instead of making any actual changes.',
+							'optional'    => true,
+							'repeating'   => false,
+						],
+						[
+							'type'        => 'flag',
+							'name'        => 'verbose',
+							'description' => 'Print/store the whole new content as well as reporting success.',
+							'optional'    => true,
+							'repeating'   => false,
+						],
 					],
 				],
 			]
-		);
-
+		];
 	}
 
 	/**
-	 * Migrate content from custom fields to post_content
+	 * Migrate content from custom fields to post_content.
 	 */
-	public static function cmd_migrate_meta_to_content( $args, $assoc_args ) {
+	public static function cmd_migrate_meta_to_content( array $args, array $assoc_args ) {
 
 		// Damage limitation and openness.
-		$dry_run = isset( $assoc_args['dry-run'] ) ? true : false;
-		$verbose = isset( $assoc_args['verbose'] ) ? true : false;
+		$dry_run = isset( $assoc_args['dry-run'] );
+		$verbose = isset( $assoc_args['verbose'] );
 
 		// Get the meta key(s).
 		$meta_keys = explode( ',', $args[0] );
@@ -70,7 +67,7 @@ class MetaToContentMigrator implements RegisterCommandInterface {
 		}
 
 		// Grab the post ID, if there is one.
-		$post_id = isset( $assoc_args[ 'post-id' ] ) ? (int) $assoc_args['post-id'] : false;
+		$post_id = isset( $assoc_args['post-id'] ) ? (int) $assoc_args['post-id'] : false;
 
 		// Grab the posts to convert then.
 		if ( $post_id ) {
@@ -83,17 +80,23 @@ class MetaToContentMigrator implements RegisterCommandInterface {
 			];
 
 			// Add each of the meta keys to the 'OR' part of the query.
-			foreach( $meta_keys as $key ) {
-				$meta_query[] = [ 'key' => $key, 'compare' => 'EXISTS' ];
+			foreach ( $meta_keys as $key ) {
+				$meta_query[] = [
+					'key'     => $key,
+					'compare' => 'EXISTS',
+				];
 			}
 
 			// Get all the posts.
-			$posts = get_posts( [
-				'posts_per_page' => -1,
-				'post_status'    => 'publish',
-				'post_type'      => 'post',
-				// 'meta_query'     => $meta_query,
-			] );
+			$posts = get_posts(
+				[
+					'posts_per_page' => -1,
+					'post_status'    => 'publish',
+					'post_type'      => 'post',
+					// phpcs:ignore Squiz.PHP.CommentedOutCode.Found
+					// 'meta_query'     => $meta_query,
+				]
+			);
 		}
 
 		if ( empty( $posts ) ) {
@@ -138,10 +141,12 @@ class MetaToContentMigrator implements RegisterCommandInterface {
 			}
 
 			// Update in a live run only.
-			$update = ( $dry_run ) ? true : wp_update_post( [
-				'ID'           => $post->ID,
-				'post_content' => $post_content,
-			] );
+			$update = ( $dry_run ) ? true : wp_update_post(
+				[
+					'ID'           => $post->ID,
+					'post_content' => $post_content,
+				]
+			);
 			if ( is_wp_error( $update ) ) {
 				WP_CLI::warning( sprintf( 'Post %d failed to update.', $post->ID ) );
 			} else {
@@ -149,7 +154,7 @@ class MetaToContentMigrator implements RegisterCommandInterface {
 					'Migrated post %d meta keys "%s" in that order into post_content at %s.',
 					$post->ID,
 					implode( ',', $meta_keys ),
-					date('c')
+					gmdate( 'c' )
 				);
 				if ( $verbose ) {
 					$updated_message .= " New content is: \n$post_content\n--------------------------------\n";
@@ -162,11 +167,8 @@ class MetaToContentMigrator implements RegisterCommandInterface {
 				}
 				WP_CLI::success( sprintf( 'Successfully processed post %d', $post->ID ) );
 			}
-
 		}
 
 		wp_cache_flush();
-
 	}
-
 }

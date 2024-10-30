@@ -14,6 +14,8 @@ class WpCliCommands {
 		$classes_with_cli_commands = [
 			AttachmentsMigrator::class,
 			BlockTransformerCommand::class,
+			CssMigrator::class,
+			MetaToContentMigrator::class,
 			NewspaperThemeCommand::class,
 			PostsMigrator::class,
 		];
