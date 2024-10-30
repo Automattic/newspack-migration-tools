@@ -15,6 +15,7 @@ class WpCliCommands {
 			AttachmentsMigrator::class,
 			BlockTransformerCommand::class,
 			NewspaperThemeCommand::class,
+			PostsMigrator::class,
 		];
 
 		return apply_filters( 'newspack_migration_tools_command_classes', $classes_with_cli_commands );
