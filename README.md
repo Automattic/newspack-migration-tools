@@ -9,27 +9,10 @@ The repository contains a set of WP commands to migrate different data to WordPr
 * Minimum PHP version required is 8.1.
 * If you use the JsonIterator class, you must have `jq` installed on your system. See [download instructions](https://jqlang.github.io/jq/download/).
 
-## Logging
-By default the code logs to dev/null (as in – it logs nothing). If you want logging, you can enable it with a filter. There are currently 3 different loggers: A file logger, a CLI logger, and a plain file logger useful for log files with no formatting. You can enable them like this respectively:
-
-```php
-add_filter( 'newspack_migration_tools_enable_file_log', '__return_true' );
-add_filter( 'newspack_migration_tools_enable_cli_log', '__return_true' );
-add_filter( 'newspack_migration_tools_enable_plain_log', '__return_true' );
-```
-Note that the loggers check that filter only on logger creation. There is no support for toggling logging on/of after you have already created the logger. There is a logger that you can use to log to multiple loggers at once. See `MulitLog.php`. The `LoggerManager.php` keeps tabs of all loggers in use and you can get a logger from it by name if you want to use the same logger to log to from mulitple classes/functions in your code.
-
-```php
-
-The loggers that write to file all write to current dir. If you don't like that, you can either pass in an absolute path to a directory to use as the log dir, set the constant `NMT_LOG_DIR` to a dir, or implement your the filter `newspack_migration_tools_log_dir`.
-The log level is configured to `DEBUG` by default. To change it, you can set the constant `NMT_LOG_LEVEL` (see the constructor in [NMT.php](src/NMT.php)).
-
-```php
-
-The loggers are PSR-3 compliant and use [Monolog](https://github.com/Seldaek/monolog). If you want to add loggers or formatters to the logging in this project, please make a pull request! 🙏
+## Documentation for logic and utility classes
+* [Logging](./docs/logging.md)
 
 ## Documentation for Individual Migrators
-
 * Attachments (todo)
 * [Newspaper Theme](./docs/newspaper-theme.md)
 
