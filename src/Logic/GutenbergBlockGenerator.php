@@ -274,7 +274,7 @@ class GutenbergBlockGenerator {
 
 		$caption_tag   = ! empty( $attachment_post->post_excerpt ) ? '<figcaption class="wp-element-caption">' . $attachment_post->post_excerpt . '</figcaption>' : '';
 		$image_alt     = get_post_meta( $attachment_post->ID, '_wp_attachment_image_alt', true );
-		$image_url     = AttachmentHelper::get_attachment_image_src( $attachment_post->ID, $size )[0];
+		$image_url     = Attachments::get_attachment_image_src( $attachment_post->ID, $size )[0];
 		$attachment_id = $attachment_post->ID;
 
 		$attrs = [

@@ -4,7 +4,7 @@ namespace Newspack\MigrationTools\Tests\Logic;
 
 use DOMDocument;
 use DOMXPath;
-use Newspack\MigrationTools\Logic\AttachmentHelper;
+use Newspack\MigrationTools\Logic\Attachments;
 use Newspack\MigrationTools\Logic\GutenbergBlockGenerator;
 use Newspack\MigrationTools\Tests\AttachmentUnitTestTrait;
 use WP_UnitTestCase;
@@ -95,7 +95,7 @@ class GutenbergBlockGeneratorTest extends WP_UnitTestCase {
 
 
 	public function test_get_gallery() {
-		$attachment_id          = AttachmentHelper::import_attachment_for_post(
+		$attachment_id          = Attachments::import_attachment_for_post(
 			$this->test_post_1_id,
 			$this->dummy_image
 		);
@@ -106,7 +106,7 @@ class GutenbergBlockGeneratorTest extends WP_UnitTestCase {
 
 
 	public function test_get_file_pdf() {
-		$attachment_id          = AttachmentHelper::import_attachment_for_post(
+		$attachment_id          = Attachments::import_attachment_for_post(
 			$this->test_post_1_id,
 			'tests/fixtures/test.pdf'
 		);
