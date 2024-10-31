@@ -31,6 +31,7 @@ The loggers are PSR-3 compliant and use [Monolog](https://github.com/Seldaek/mon
 ## Documentation for Individual Migrators
 
 * Attachments (todo)
+* [GhostCMS](./docs/GhostCMS.md)
 * [Newspaper Theme](./docs/newspaper-theme.md)
 
 ## Development
