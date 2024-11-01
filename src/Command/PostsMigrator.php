@@ -3,7 +3,7 @@
 namespace Newspack\MigrationTools\Command;
 
 use Newspack\MigrationTools\Logic\Posts;
-use Newspack\MigrationTools\Util\Log\LegacyLogger;
+use Newspack\MigrationTools\Util\Log\Logger;
 use WP_CLI;
 
 class PostsMigrator implements WpCliCommandInterface {
@@ -31,7 +31,7 @@ class PostsMigrator implements WpCliCommandInterface {
 	private $posts_logic;
 
 	/**
-	 * @var LegacyLogger.
+	 * @var Logger.
 	 */
 	private $logger;
 
@@ -40,7 +40,7 @@ class PostsMigrator implements WpCliCommandInterface {
 	 */
 	private function __construct() {
 		$this->posts_logic = new Posts();
-		$this->logger      = new LegacyLogger();
+		$this->logger      = new Logger();
 	}
 
 	/**

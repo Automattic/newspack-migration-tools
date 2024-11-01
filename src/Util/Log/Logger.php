@@ -12,7 +12,7 @@ use UnhandledMatchError;
  *
  * @deprecated Use the  CliLog, FileLog, and Multilog classes instead.
  */
-class LegacyLogger {
+class Logger {
 
 	const WARNING = 'warning';
 	const LINE    = 'line';
