@@ -30,6 +30,22 @@ $cli_logger->critical( 'This is a log message.' );
 $cli_logger->alert( 'This is a log message.' );
 $cli_logger->emergency( 'This is a log message.' );
 ```
+### No timestamp
+A timestamp is output by default.
+
+For CLI:
+```php
+$logger_no_timestamp = CliLog::get_logger( 'cli-notimestamp-demo', new PlainLineFormatter() );
+// All levels are completely non formatted, i.e. info, debug, ... will all be plain and the same.
+$logger_no_timestamp->info( 'info' );
+```
+
+For file logging, use `PlainFileLog`:
+```php
+$logger_plainfile = PlainFileLog::get_logger( 'plainfile-demo', 'my_PlainFileLog.log' );
+// All levels are completely non formatted, i.e. info, debug, ... will all be plain and the same.
+$logger_plainfile->info( 'info' );
+```
 ### Logging to multiple channels
 ```php
 $logger = MultiLog::get_logger(
