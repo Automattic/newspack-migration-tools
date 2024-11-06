@@ -40,9 +40,15 @@ class CliLog {
 		} else {
 			$handler = new StreamHandler( 'php://stdout', NMT::get_log_level() );
 			if ( null === $formatter ) {
-				$format      = ( defined( 'NMT_CLI_LOG_FORMAT' ) ?? false ) ? NMT_CLI_LOG_FORMAT : LineFormatter::SIMPLE_FORMAT;
-				$date_format = ( defined( 'NMT_CLI_LOG_DATE_FORMAT' ) ?? false ) ? NMT_CLI_LOG_DATE_FORMAT : 'Y-m-d H:i:s';
-				$formatter   = new ColoredLineFormatter(
+				$format      = apply_filters( 'nmt_cli_log_format', LineFormatter::SIMPLE_FORMAT );
+				$date_format = apply_filters( 'nmt_cli_log_date_format', 'Y-m-d H:i:s' );
+				if ( defined( 'NMT_CLI_LOG_FORMAT' ) ) {
+					$format = NMT_CLI_LOG_FORMAT;
+				}
+				if ( defined( 'NMT_CLI_LOG_DATE_FORMAT' ) ) {
+					$date_format = NMT_CLI_LOG_DATE_FORMAT;
+				}
+				$formatter = new ColoredLineFormatter(
 					null,
 					apply_filters( 'nmt_cli_log_format', $format ),
 					apply_filters( 'nmt_cli_log_date_format', $date_format ),
