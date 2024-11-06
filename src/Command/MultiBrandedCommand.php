@@ -10,11 +10,34 @@ namespace Newspack\MigrationTools\Command;
 use UnexpectedValueException;
 use Newspack\MigrationTools\Logic\Posts;
 use Newspack\MigrationTools\Util\Log\CliLog;
-use Newspack\MigrationTools\Util\Log\FileLog;
-use Newspack\MigrationTools\Util\PostSelect;
-use WP;
+use Newspack\MigrationTools\Util\Log\PlainFileLog;
+use Bramus\Monolog\Formatter\ColoredLineFormatter;
 
 class MultiBrandedCommand implements WpCliCommandInterface {
+
+	/**
+	 * CLI logger.
+	 *
+	 * @var CliLog $logger_cli CLI Logger.
+	 */
+	private $logger_cli;
+	
+	/**
+	 * CLI logger plain, just level and message.
+	 *
+	 * @var CliLog $logger_cli_plain CLI Logger.
+	 */
+	private $logger_cli_plain;
+
+	/**
+	 * Constructor.
+	 */
+	public function __construct() {
+		// CLI log, just message.
+		$this->logger_cli = CliLog::get_logger( 'cli' );
+		// CLI log, just level and message.
+		$this->logger_cli_plain = CliLog::get_logger( 'cli-level-message', new ColoredLineFormatter( null, "%level_name%: %message%\n", null, true ) );
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -23,83 +46,101 @@ class MultiBrandedCommand implements WpCliCommandInterface {
 
 		return [
 			[
-				'newspack-migration-tools multi-branded assign-all-posts-from-categories-to-brands',
-				[ __CLASS__, 'cmd_posts_from_categories_to_brands' ],
+				'newspack-migration-tools multi-branded assign-brands-to-all-posts-in-category',
+				[ __CLASS__, 'cmd_assign_brands_to_posts_in_category' ],
 				[
-					'shortdesc' => 'Assigns all the posts from one or more given categories to one or more given brands. Note, this does not assign a category to a brand, but rather assigns all posts from a category to a brand, it assigns individual posts to one or more brands.',
+					'shortdesc' => 'Assigns one or more brands to every individual post in a category.',
 					'synopsis'  => [
 						[
-							'category-id'     => [
+							'category-id' => [
 								'type'        => 'assoc',
-								'name'        => 'category-ids-csv',
-								'description' => 'CSV IDs of categories with all the posts.',
+								'name'        => 'category-id',
+								'description' => 'Category with the posts.',
 								'optional'    => false,
 								'repeating'   => false,
 							],
-							'brand-id'     => [
+							'brand-id'    => [
 								'type'        => 'assoc',
 								'name'        => 'brand-ids-csv',
-								'description' => "CSV IDs of brands to assign to all posts from given category/categories.",
+								'description' => 'CSV IDs of brands to assign to every individual post in category.',
 								'optional'    => false,
 								'repeating'   => false,
 							],
-						]
+						],
 					],
 				],
 			],
 		];
 	}
 
-	public function cmd_posts_from_categories_to_brands( array $pos_args, array $assoc_args ): void {
+	/**
+	 * Assigns one or more brands to every individual post in a category.
+	 *
+	 * @param array $pos_args   Positional arguments.
+	 * @param array $assoc_args Associative arguments.
+	 * 
+	 * @throws UnexpectedValueException If category or brand does not exist.
+	 * 
+	 * @return void
+	 */
+	public function cmd_assign_brands_to_posts_in_category( array $pos_args, array $assoc_args ): void {
 
 		// Get params.
-		$category_ids = explode( ',', $assoc_args['category-ids-csv'] );
+		$category_id = $assoc_args['category-id'];
 		$brand_ids   = explode( ',', $assoc_args['brand-ids-csv'] );
 
-		// Validate categories.
-		$category_ids_to_names = [];
-		foreach ( $category_ids as $category_id ) {
-			$category = get_term( $category_id, 'category' );
-			if ( is_null( $category ) || is_wp_error( $category ) ) {
-				throw new UnexpectedValueException( sprintf( 'Category with ID %d does not exist.', $category_id ) );
-			}
-			$category_ids_to_names[ $category_id ] = $category->name;
+		// Validate category.
+		$category = get_term( $category_id, 'category' );
+		if ( is_null( $category ) || is_wp_error( $category ) ) {
+			throw new UnexpectedValueException( sprintf( 'Category with ID %d does not exist.', wp_kses( $category_id ) ) );
 		}
+		$category_name = $category->name;
 
 		// Validate brands.
 		$brand_ids_to_names = [];
 		foreach ( $brand_ids as $brand_id ) {
 			$brand = get_term( $brand_id, 'brand' );
 			if ( is_null( $brand ) || is_wp_error( $brand ) ) {
-				throw new UnexpectedValueException( sprintf( 'Brand with ID %d does not exist.', $brand_id ) );
+				throw new UnexpectedValueException( sprintf( 'Brand with ID %d does not exist.', wp_kses( $brand_id ) ) );
 			}
 			$brand_ids_to_names[ $brand_id ] = $brand->name;
 		}
 
-		\WP_CLI::line( sprintf(
-			'About to assign all posts from categories `%s` to brands `%s`',
-			implode( ', ', array_values( $category_ids_to_names ) ),
-			implode( ', ', array_values( $brand_ids_to_names ) )
-		) );
-		
-		// Get all posts in category.
-		$posts = new Posts();
-		foreach ( $category_ids as $category_id ) {
-			$post_ids = $posts->get_all_posts_ids_in_category( $category_id );
-			$category_name = get_term( $category_id )->name;
-			$msg = sprintf( 'Updating %d posts in category %d,`%s` ...', count( $post_ids ), $category_id, $category_name );
-			\WP_CLI::line( $msg );
-			file_put_contents( 'cat_posts_to_brands.csv', sprintf( "%s\n", $msg ), FILE_APPEND );
-			foreach ( $post_ids as $post_id ) {
-				// Set brand(s).
-				foreach ( $brand_ids as $key_brand_id => $brand_id ) {
-					$append = $key_brand_id > 0;
-					// wp_set_object_terms takes one term at a time, and it's crucial that it's an integer.
-					wp_set_object_terms( $post_id, (int) $brand_id, 'brand', $append );
-				}
+		// Plain file logger.
+		$log_filename     = 'assign_posts_in_categories_to_brands.log';
+		$logger_plainfile = PlainFileLog::get_logger( 'plainfile-demo', $log_filename );
 
-				file_put_contents( 'cat_posts_to_brands.csv', sprintf( "post_id:%d brand_ids:%s\n", $post_id, implode( ',', $brand_ids ) ), FILE_APPEND );
-			}
+		// Get all posts in category.
+		$posts    = new Posts();
+		$post_ids = $posts->get_all_posts_ids_in_category( $category_id );
+		
+		// Log.
+		$msg = sprintf( 'Assigning brands %s `%s` to %d posts in category %d `%s` ...', implode( ', ', array_keys( $brand_ids_to_names ) ), implode( ', ', array_values( $brand_ids_to_names ) ), count( $post_ids ), $category_id, $category_name );
+		$this->logger_cli->info( $msg );
+		$logger_plainfile->info( $msg );
+
+		// Assign brands to posts.
+		foreach ( $post_ids as $post_id ) {
+			$this->set_brands_to_post( $post_id, $brand_ids );
+			// Log IDs to file.
+			$logger_plainfile->notice( sprintf( 'post_id:%d brand_ids:%s', $post_id, implode( ',', $brand_ids ) ) );
 		}
+
+		$this->logger_cli->info( sprintf( 'Done 👍 Check %s for IDs.', $log_filename ) );
+	}
+
+	/**
+	 * Assigns brands to a post.
+	 * 
+	 * @param int   $post_id     Post ID.
+	 * @param array $brand_ids Brand IDs.
+	 * @return void
+	 */
+	private function set_brands_to_post( int $post_id, array $brand_ids ): void {
+		// Brand IDs passed to wp_set_object_terms must be strictly integers, otherwise they will be
+		// treated as new brand names and created as new brands/terms.
+		$brand_ids = array_map( 'intval', $brand_ids );
+
+		wp_set_object_terms( $post_id, $brand_ids, 'brand' );
 	}
 }
