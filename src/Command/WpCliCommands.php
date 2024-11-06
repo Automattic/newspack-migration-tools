@@ -14,7 +14,15 @@ class WpCliCommands {
 		$classes_with_cli_commands = [
 			AttachmentsMigrator::class,
 			BlockTransformerCommand::class,
+			CampaignsMigrator::class,
+			ContentConverterPluginMigrator::class,
+			CssMigrator::class,
+			MenusMigrator::class,
+			MetaToContentMigrator::class,
 			NewspaperThemeCommand::class,
+			PostsMigrator::class,
+			SettingsMigrator::class,
+			WooCommMigrator::class,
 			MultiBrandedCommand::class,
 		];
 
