@@ -1,8 +1,8 @@
 <?php
 /**
- * Gutenberg Block Transformer.
+ * Commands functionality for Multibranded plugin https://github.com/Automattic/newspack-multibranded-site.
  *
- * Methods for encoding and decoding blocks in posts as base64 to "hide" them from the NCC.
+ * Methods for dealing with multi branded functionality .
  */
 
 namespace Newspack\MigrationTools\Command;
@@ -22,10 +22,6 @@ class MultiBrandedCommand implements WpCliCommandInterface {
 	public static function get_cli_commands(): array {
 
 		return [
-			[
-				'newspack-custom-content-migrator southwestregionalpublishing-dev-helper-get-category-ids',
-				[ __CLASS__, 'cmd_dev_helper_get_category_ids' ],
-			],
 			[
 				'newspack-migration-tools multi-branded assign-all-posts-from-categories-to-brands',
 				[ __CLASS__, 'cmd_posts_from_categories_to_brands' ],
@@ -52,84 +48,6 @@ class MultiBrandedCommand implements WpCliCommandInterface {
 				],
 			],
 		];
-	}
-
-	public function cmd_dev_helper_get_category_ids( array $pos_args, array $assoc_args ): void {
-		global $wpdb;
-
-		$category_names = [
-			'Argo-Summit',
-			'Bedford Park',
-			'Bridgeview',
-			'Brookfield',
-			'Burbank',
-			'Countryside',
-			'DVN business',
-			'DVN Fire',
-			'DVN Government',
-			'DVN police',
-			'DVN sports',
-			'DVN township',
-			'Forest View',
-			'Hodgkins',
-			'LaGrange',
-			'Justice',
-			'Lyons',
-			'McCook',
-			'Stickney',
-			'Willow Springs',
-			'Indian Head Park',
-			'N-H Archer Heights',
-			'N-H Chicago Lawn',
-			'N-H Chicago Lawn',
-			'N-H Events',
-			'N-H Gage Park',
-			'N-H Garfield Ridge',
-			'N-H Government',
-			'N-H Greater Ashburn',
-			'N-H Police',
-			'N-H Township',
-			'N-H Sports',
-			'N-H West Lawn',
-			'Orland Park',
-			'Palos Heights',
-			'Palos Park',
-			'Regional Fire',
-			'Regional Police',
-			'Regional Township',
-			'Regional Sports',
-			'Worth Township',
-			'Chicago Ridge',
-			'Evergreen Park',
-			'Oak Lawn',
-			'Hickory Hills',
-			'Palos Hills',
-			'Reporter Police',
-			'Reporter Fire',
-			'Reporter Township',
-			'Reporter Government',
-			'Reporter Sports',
-		];
-		foreach ($category_names as $category_name) {
-			$term_rows = $wpdb->get_results(
-				$wpdb->prepare( "SELECT t.term_id
-					FROM wp_j5vkbn_terms t
-					JOIN wp_j5vkbn_term_taxonomy tt 
-					ON tt.term_id = t.term_id
-					WHERE t.name = %s
-					AND tt.taxonomy = 'category';",
-					$category_name
-				),
-				ARRAY_A
-			);
-			if ( empty( $term_rows ) ){
-				\WP_CLI::line( $category_name . ',NOT_FOUND' );
-			} else {
-				foreach ( $term_rows as $term_row ) {
-					\WP_CLI::line( $category_name . ',' . $term_row['term_id'] );
-				}
-			}
-		}
 	}
 
 	public function cmd_posts_from_categories_to_brands( array $pos_args, array $assoc_args ): void {
