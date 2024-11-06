@@ -33,6 +33,7 @@ $cli_logger->emergency( 'This is a log message.' );
 ### Customizing CLI output
 A timestamp is output by default with `CliLog`. But it can be easily customized when instantiating the logger by changing the format string; the default format is `"[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n"`. For example, a super simple format using just level and message:
 ```php
+use Bramus\Monolog\Formatter\ColoredLineFormatter;
 $logger_cli_simple = CliLog::get_logger( 'cli-simple', new ColoredLineFormatter( null, "%level_name%: %message%\n", null, true ) );
 $logger_cli_simple->info( 'info' );
 ```
