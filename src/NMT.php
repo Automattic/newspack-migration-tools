@@ -27,7 +27,7 @@ class NMT {
 	 * Private on purpose
 	 */
 	private function __construct() {
-		$this->log_level = Level::fromName( LogLevel::DEBUG );
+		$this->log_level = Level::fromName( LogLevel::INFO );
 
 		if ( defined( 'NMT_LOG_LEVEL' ) && in_array( NMT_LOG_LEVEL, array_map( fn( $value ) => $value->name, Level::cases() ) ) ) {
 			$this->log_level = Level::fromName( NMT_LOG_LEVEL );
