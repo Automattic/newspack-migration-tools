@@ -45,9 +45,10 @@ class ScaffoldTables {
 			FOREIGN KEY (status_id) REFERENCES migration_status_enum(id)
 		) $charset_collate;";
 
-		$migration_objects_table = "CREATE TABLE IF NOT EXISTS migration_objects (
+		$migration_data_containers_table = "CREATE TABLE IF NOT EXISTS migration_data_containers (
 			id bigint(20) NOT NULL AUTO_INCREMENT,
 			migration_id bigint(20) NOT NULL,
+			pointer_to_object_id varchar(255) NOT NULL,
 			json_data longtext NOT NULL,
 			source_type varchar(255) NOT NULL,
 			created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -55,16 +56,15 @@ class ScaffoldTables {
 			FOREIGN KEY (migration_id) REFERENCES migrations(id)
 		) $charset_collate;";
 
-		$migration_object_table = "CREATE TABLE IF NOT EXISTS migration_object (
+		$migration_objects_table = "CREATE TABLE IF NOT EXISTS migration_objects (
     		id bigint(20) NOT NULL AUTO_INCREMENT,
-    		migration_objects_id bigint(20) NOT NULL,
-    		original_object_id_pointer varchar(255) NOT NULL,
+    		migration_data_container_id bigint(20) NOT NULL,
     		original_object_id varchar(255) NOT NULL,
     		json_data longtext NOT NULL,
-    		processed boolean NOT NULL,
+    		processed boolean NOT NULL DEFAULT 0,
     		created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
     		PRIMARY KEY  (id),
-    		FOREIGN KEY (migration_objects_id) REFERENCES migration_objects(id)
+    		FOREIGN KEY (migration_data_container_id) REFERENCES migration_data_containers(id)
 		) $charset_collate;";
 
 		$migration_object_mutation = "CREATE TABLE IF NOT EXISTS migration_object_mutation (
@@ -73,19 +73,19 @@ class ScaffoldTables {
 			json_data longtext NOT NULL,
 			created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
 			PRIMARY KEY  (id),
-			FOREIGN KEY (migration_object_id) REFERENCES migration_object(id)
+			FOREIGN KEY (migration_object_id) REFERENCES migration_objects(id)
 		) $charset_collate;";
 
 		$migration_object_meta = "CREATE TABLE IF NOT EXISTS migration_object_meta (
     		id bigint(20) NOT NULL AUTO_INCREMENT,
-    		migration_objects_id bigint(20) NOT NULL,
+    		migration_data_container_id bigint(20) NOT NULL,
     		migration_object_id bigint(20) NULL DEFAULT NULL,
     		meta_key varchar(255) NOT NULL,
     		meta_value longtext NOT NULL,
     		created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
     		PRIMARY KEY  (id),
-    		FOREIGN KEY (migration_objects_id) REFERENCES migration_objects(id),
-    		FOREIGN KEY (migration_object_id) REFERENCES migration_object(id)
+    		FOREIGN KEY (migration_data_container_id) REFERENCES migration_data_containers(id),
+    		FOREIGN KEY (migration_object_id) REFERENCES migration_objects(id)
 		) $charset_collate;";
 
 		$wordpress_tables = "CREATE TABLE IF NOT EXISTS wordpress_tables (
@@ -114,15 +114,15 @@ class ScaffoldTables {
     		json_path varchar(255) NOT NULL,
     		created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
     		PRIMARY KEY  (id),
-    		FOREIGN KEY (migration_object_id) REFERENCES migration_object(id),
+    		FOREIGN KEY (migration_object_id) REFERENCES migration_objects(id),
     		FOREIGN KEY (wordpress_table_column_id) REFERENCES wordpress_table_columns(id)
 		) $charset_collate;";
 
 		dbDelta( $migration_table );
 		dbDelta( $migration_status_enum_table );
 		dbDelta( $migration_status_table );
+		dbDelta( $migration_data_containers_table );
 		dbDelta( $migration_objects_table );
-		dbDelta( $migration_object_table );
 		dbDelta( $migration_object_mutation );
 		dbDelta( $migration_object_meta );
 		dbDelta( $wordpress_tables );
