@@ -78,11 +78,15 @@ class NMT {
 	 * @return void
 	 */
 	public static function exit_with_message( string $message, array $loggers = [] ): void {
-
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- we are about to shut down, so this is not a performance ding.
 		$backtrace = debug_backtrace();
 		if ( ! empty( $backtrace[1] ) ) {
-			$message .= ' --> ' . $backtrace[1]['file'] . ':' . $backtrace[1]['line'];
+			for ( $i = 1; $i < 5; $i++ ) { // Closures do not have files, so try to find the first file in the backtrace (but cap at 5).
+				if ( ! empty( $backtrace[ $i ]['file'] ) ) {
+					$message .= ' --> ' . $backtrace[ $i ]['file'] . ':' . $backtrace[ $i ]['line'] ?? '';
+					break;
+				}
+			}
 		}
 
 		array_map( fn( LoggerInterface $logger ) => $logger->critical( $message ), $loggers );
