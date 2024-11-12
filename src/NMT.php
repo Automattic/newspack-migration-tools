@@ -5,6 +5,7 @@ namespace Newspack\MigrationTools;
 use Monolog\Level;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
+use UnhandledMatchError;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -29,8 +30,12 @@ class NMT {
 	private function __construct() {
 		$this->log_level = Level::fromName( LogLevel::INFO );
 
-		if ( defined( 'NMT_LOG_LEVEL' ) && in_array( NMT_LOG_LEVEL, array_map( fn( $value ) => $value->name, Level::cases() ) ) ) {
-			$this->log_level = Level::fromName( NMT_LOG_LEVEL );
+		if ( defined( 'NMT_LOG_LEVEL' ) ) {
+			try {
+				$this->log_level = Level::fromName( NMT_LOG_LEVEL );
+			} catch ( UnhandledMatchError $e ) {
+				$this->log_level = Level::fromName( Level::Info );
+			}
 		}
 	}
 
