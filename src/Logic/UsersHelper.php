@@ -229,5 +229,4 @@ class UsersHelper {
 	private static function get_short_sha_from_array( array $data ): string {
 		return substr( sha1( wp_json_encode( $data ) ), 0, 10 );
 	}
-
 }
