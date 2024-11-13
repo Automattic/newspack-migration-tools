@@ -12,7 +12,14 @@ Note that the loggers check that filter only on logger creation. There is no sup
 
 The loggers that write to file all write to current dir. If you don't like that, you can either pass in an absolute path to a directory to use as the log dir, set the constant `NMT_LOG_DIR` to a dir, or implement your the filter `newspack_migration_tools_log_dir`.
 
-The log level is configured to `DEBUG` by default. To change it, you can set the constant `NMT_LOG_LEVEL` (see the constructor in [NMT.php](src/NMT.php)).
+The log level is configured to `INFO` by default. To change it, you can set the constant `NMT_LOG_LEVEL` (see the constructor in [NMT.php](src/NMT.php)).
+
+You can customize the date format and the line output format of the CliLogger with either filters or constants (note that the constants will override the filters). The default format is [Lineformatter.php](https://github.com/Seldaek/monolog/blob/main/src/Monolog/Formatter/LineFormatter.php)'s `SIMPLE_FORMAT`.
+```php
+// Use PHP's date format.
+define( 'NMT_CLI_LOG_DATE_FORMAT', 'H:i:s' );
+define( 'NMT_CLI_LOG_FORMAT', "[%datetime%] %level_name%: %message% %context% %extra%\n" ); 
+```
 
 If you want to add loggers or formatters to the logging in this project, please make a pull request! 🙏
 

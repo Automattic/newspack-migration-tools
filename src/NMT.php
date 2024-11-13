@@ -5,6 +5,7 @@ namespace Newspack\MigrationTools;
 use Monolog\Level;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
+use UnhandledMatchError;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -27,10 +28,14 @@ class NMT {
 	 * Private on purpose
 	 */
 	private function __construct() {
-		$this->log_level = Level::fromName( LogLevel::DEBUG );
+		$this->log_level = Level::fromName( LogLevel::INFO );
 
-		if ( defined( 'NMT_LOG_LEVEL' ) && in_array( NMT_LOG_LEVEL, array_map( fn( $value ) => $value->name, Level::cases() ) ) ) {
-			$this->log_level = Level::fromName( NMT_LOG_LEVEL );
+		if ( defined( 'NMT_LOG_LEVEL' ) ) {
+			try {
+				$this->log_level = Level::fromName( NMT_LOG_LEVEL );
+			} catch ( UnhandledMatchError $e ) {
+				$this->log_level = Level::fromName( Level::Info );
+			}
 		}
 	}
 
@@ -73,6 +78,15 @@ class NMT {
 	 * @return void
 	 */
 	public static function exit_with_message( string $message, array $loggers = [] ): void {
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- we are about to shut down, so this is not a performance ding.
+		$backtrace = debug_backtrace();
+		for ( $i = 0; $i < 5; $i++ ) { // Closures do not have files, so try to find the first file in the backtrace (but cap at 5).
+			if ( ! empty( $backtrace[ $i ]['file'] ) ) {
+				$message .= ' --> ' . $backtrace[ $i ]['file'] . ':' . $backtrace[ $i ]['line'] ?? '';
+				break;
+			}
+		}
+
 		array_map( fn( LoggerInterface $logger ) => $logger->critical( $message ), $loggers );
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		wp_die( $message );
