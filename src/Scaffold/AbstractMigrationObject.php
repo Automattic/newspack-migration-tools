@@ -2,58 +2,60 @@
 
 namespace Newspack\MigrationTools\Scaffold;
 
-use Newspack\MigrationTools\Scaffold\MigrationObject;
+use ArrayAccess;
+use Exception;
+use Newspack\MigrationTools\Scaffold\Contracts\MigrationDataContainer;
+use Newspack\MigrationTools\Scaffold\Contracts\MigrationObject;
 
-abstract class AbstractMigrationObject implements MigrationObject {
+/**
+ * AbstractMigrationObject.
+ */
+abstract class AbstractMigrationObject implements MigrationObject, ArrayAccess {
 
-	protected MigrationRunKey $run_key;
-
+	/**
+	 * The underlying data that needs to be migrated.
+	 *
+	 * @var object|array $data The underlying data that needs to be migrated.
+	 */
 	protected object|array $data;
 
+	/**
+	 * Pointer to the property which uniquely identifies an object.
+	 *
+	 * @var string $pointer_to_identifier Pointer to the identifier.
+	 */
 	protected string $pointer_to_identifier;
 
-	protected bool $processed;
-
-	private \wpdb $wpdb;
-
-	public function __construct( MigrationRunKey $run_key ) {
-		$this->run_key = $run_key;
-		global $wpdb;
-		$this->wpdb = $wpdb;
-	}
+	/**
+	 * Migration Data Set Container.
+	 *
+	 * @var MigrationDataContainer $data_container Migration Data Set Container.
+	 */
+	protected MigrationDataContainer $data_container;
 
 	/**
-	 * @inheritDoc
+	 * Constructor.
+	 *
+	 * @param object|array           $data The underlying data that needs to be migrated.
+	 * @param string                 $pointer_to_identifier Pointer to the identifier.
+	 * @param MigrationDataContainer $data_container Migration Data Set Container.
 	 */
-	public function set_run_key( MigrationRunKey $run_key ): void {
-		// TODO: Implement set_run_key() method.
-	}
-
-	/**
-	 * @inheritDoc
-	 */
-	public function get_run_key(): MigrationRunKey {
-		return $this->run_key;
-	}
-
-	/**
-	 * @inheritDoc
-	 */
-	public function set( object|array $data, string $pointer_to_identifier = 'id' ): void {
+	public function __construct( object|array $data, string $pointer_to_identifier, MigrationDataContainer $data_container ) {
 		$this->data                  = $data;
+		$this->data_container = $data_container;
 		$this->pointer_to_identifier = $pointer_to_identifier;
-		// TODO setting of $processed could be improved by using a cache
-		$this->has_been_processed();
 	}
 
 	/**
-	 * @inheritDoc
+	 * Gets the underlying data that needs to be migrated.
 	 */
 	public function get(): array|object {
 		return $this->data;
 	}
 
 	/**
+	 * Pointer to the property which uniquely identifies an object.
+	 *
 	 * @return string
 	 */
 	public function get_pointer_to_identifier(): string {
@@ -61,107 +63,127 @@ abstract class AbstractMigrationObject implements MigrationObject {
 	}
 
 	/**
-	 * @inheritDoc
+	 * Returns the ID that uniquely identifies the underlying data object.
+	 *
+	 * @return string|int
 	 */
-	public function store(): bool {
-		$insert = $this->wpdb->insert(
-			$this->wpdb->options,
-			[
-				'option_name'  => $this->get_run_key()->get() . '_migration_object_' . $this->get() [ $this->get_pointer_to_identifier() ],
-				'option_value' => wp_json_encode( $this->get() ),
-				'autoload'     => 'no',
-			]
-		);
-
-		if ( ! is_bool( $insert ) ) {
-			return false;
-		}
-
-		return $insert;
+	public function get_data_id(): string|int {
+		return $this->data[ $this->get_pointer_to_identifier() ];
 	}
 
 	/**
-	 * @inheritDoc
+	 * Returns the Migration Data Set Container this Migration Object belongs to.
+	 *
+	 * @return MigrationDataContainer
 	 */
-	public function store_processed_marker(): bool {
-		$insert = $this->wpdb->insert(
-			$this->wpdb->options,
-			[
-				'option_name'  => $this->get_run_key()->get() . '_migration_object_' . $this->get()[ $this->get_pointer_to_identifier() ] . '_processed',
-				'option_value' => '1',
-				'autoload'     => 'no',
-			]
-		);
-
-		if ( ! is_bool( $insert ) ) {
-			return false;
-		}
-
-		if ( $insert ) {
-			$this->processed = true;
-		}
-
-		return $insert;
+	public function get_container(): MigrationDataContainer {
+		return $this->data_container;
 	}
 
 	/**
-	 * @inheritDoc
+	 * Whether a offset exists.
+	 *
+	 * @param mixed $offset An offset to check for.
+	 *
+	 * @return bool
 	 */
-	public function has_been_processed(): bool {
-		if ( ! isset( $this->processed ) ) {
-			// phpcs:disable
-			$options_table = $this->wpdb->options;
-			$this->processed = (bool) $this->wpdb->get_var(
-				$this->wpdb->prepare(
-					"SELECT option_value FROM {$options_table} WHERE option_name = %s",
-					$this->get_run_key()->get() . '_migration_object_' . $this->get()[ $this->get_pointer_to_identifier() ] . '_processed'
-				)
-			);
-			// phpcs:enable
-		}
-
-		return $this->processed;
+	public function offsetExists( mixed $offset ): bool {
+		return $this->__isset( $offset );
 	}
 
 	/**
-	 * @inheritDoc
+	 * Offset to retrieve.
+	 *
+	 * @param mixed $offset The offset to retrieve.
+	 *
+	 * @return MigrationObjectPropertyWrapper|null
 	 */
-	public function record_source( string $table, string $column, int $id, string $source ): bool {
-		$meta_table = match ( $table ) {
-			'wp_users' => $this->wpdb->usermeta,
-			'wp_posts' => $this->wpdb->postmeta,
-			'wp_terms' => $this->wpdb->termmeta,
-			default    => $this->wpdb->options,
-		};
+	public function offsetGet( mixed $offset ): ?MigrationObjectPropertyWrapper {
+		return $this->__get( $offset );
+	}
 
-		$meta_id_name = match ( $table ) {
-			'wp_users' => 'user_id',
-			'wp_posts' => 'post_id',
-			'wp_terms' => 'term_id',
-			default => 'option_id',
-		};
+	/**
+	 * Offset to set.
+	 *
+	 * @param mixed $offset The offset to assign the value to.
+	 * @param mixed $value The value to set.
+	 *
+	 * @return void
+	 * @throws Exception Cannot set values directly on a MigrationObject.
+	 */
+	public function offsetSet( mixed $offset, mixed $value ): void {
+		$this->__set( $offset, $value );
+	}
 
-		$option_name = $this->get_run_key()->get() . '_migration_object_source_' . $this->get()[ $this->get_pointer_to_identifier() ] . "_{$table}_{$column}_{$id}";
-		$insert      = $this->wpdb->insert(
-			$meta_table,
-			[
-				$meta_id_name => $id,
-				'meta_key'    => $option_name,
-				'meta_value'  => wp_json_encode(
-					[
-						'table'  => $table,
-						'column' => $column,
-						'id'     => $id,
-						'source' => $source,
-					]
-				),
-			]
-		);
+	/**
+	 * Offset to unset.
+	 *
+	 * @param mixed $offset The offset to unset.
+	 *
+	 * @return void
+	 * @throws Exception Cannot unset values directly on a MigrationObject.
+	 */
+	public function offsetUnset( mixed $offset ): void {
+		$this->__unset( $offset );
+	}
 
-		if ( ! is_bool( $insert ) ) {
-			return false;
+	/**
+	 * Magic method to get properties.
+	 *
+	 * @param int|string $name Property name.
+	 *
+	 * @return MigrationObjectPropertyWrapper|null
+	 */
+	public function __get( int|string $name ): ?MigrationObjectPropertyWrapper {
+		if ( $this->__isset( $name ) ) {
+			return new MigrationObjectPropertyWrapper( $this->data, [ $name ] );
 		}
 
-		return $insert;
+		return null;
+	}
+
+	/**
+	 * Magic method to set properties.
+	 *
+	 * @param int|string $key Property name.
+	 * @param mixed      $value Property value.
+	 *
+	 * @return void
+	 * @throws Exception Cannot set values directly on a MigrationObject.
+	 */
+	public function __set( int|string $key, mixed $value ): void {
+		throw new Exception( 'MigrationObject is read-only.' );
+	}
+
+	/**
+	 * Magic method to check if a property is set.
+	 *
+	 * @param int|string $key Property name.
+	 *
+	 * @return bool
+	 */
+	public function __isset( int|string $key ): bool {
+		return isset( $this->data[ $key ] );
+	}
+
+	/**
+	 * Magic method to unset properties.
+	 *
+	 * @param int|string $key Property name.
+	 *
+	 * @return void
+	 * @throws Exception Cannot unset values directly on a MigrationObject.
+	 */
+	public function __unset( int|string $key ): void {
+		throw new Exception( 'MigrationObject is read-only.' );
+	}
+
+	/**
+	 * Magic method to convert the object to a string.
+	 *
+	 * @return string
+	 */
+	public function __toString(): string {
+		return '<mig_scaf>' . wp_json_encode( $this->data ) . '</mig_scaf>';
 	}
 }
