@@ -35,7 +35,7 @@ class StartedMigrationState extends AbstractMigrationState {
 	 * @return MigrationState|null
 	 */
 	public function settle(): ?MigrationState {
-		if ( $this->migration_activity->set( $this->previous_run_key, MigrationStatus::STARTED ) ) {
+		if ( $this->migration_activity->set_status( $this->previous_run_key, MigrationStatus::STARTED ) ) {
 
 			$data_container = new UnprocessedMigrationDataContainerWrapper(
 				$this->migration_run_context->get_migration()->get_container(),

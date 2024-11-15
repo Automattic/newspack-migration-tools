@@ -34,7 +34,7 @@ class CompletedMigrationState extends AbstractMigrationState {
 	 * @return MigrationState|null
 	 */
 	public function settle(): ?MigrationState {
-		$this->migration_activity->set( $this->get_run_key(), $this->get_state_status() );
+		$this->migration_activity->set_status( $this->get_run_key(), $this->get_state_status() );
 
 		// TODO - Could add some cool functionality here. Perhaps a ping to #newspack-launch channel when long running migrations are completed?
 

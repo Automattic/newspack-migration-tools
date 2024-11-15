@@ -30,12 +30,12 @@ class StartingMigrationState extends AbstractMigrationState {
 		$latest_activity = $this->migration_activity->get_latest( $this->migration_run_context->get_migration() );
 
 		if ( ! $latest_activity ) {
-			$this->current_run_key = $this->migration_activity->create_initial_record( $this->migration_run_context->get_migration() );
+			$this->current_run_key = $this->migration_activity->create_initial_migration_record( $this->migration_run_context->get_migration() );
 		} else {
 			$current_status = MigrationStatus::tryFrom( $latest_activity->status_id );
 
 			if ( in_array( $current_status, [ MigrationStatus::FAILED, MigrationStatus::COMPLETED ], true ) ) {
-				$this->current_run_key = $this->migration_activity->create_record( $this->migration_run_context->get_migration(), $latest_activity->version + 1 );
+				$this->current_run_key = $this->migration_activity->create_migration_record( $this->migration_run_context->get_migration(), $latest_activity->version + 1 );
 			} else {
 				$this->current_run_key = new FinalMigrationRunKey( $latest_activity->id, $latest_activity->version, $this->migration_run_context->get_migration() );
 			}

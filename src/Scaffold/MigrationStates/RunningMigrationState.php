@@ -34,7 +34,7 @@ class RunningMigrationState extends AbstractMigrationState {
 	 * @return MigrationState|null
 	 */
 	public function settle(): ?MigrationState {
-		$this->migration_activity->set( $this->get_run_key(), $this->get_state_status() );
+		$this->migration_activity->set_status( $this->get_run_key(), $this->get_state_status() );
 
 		return null;
 	}
