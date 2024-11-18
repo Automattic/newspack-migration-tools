@@ -2,6 +2,10 @@
 
 namespace Newspack\MigrationTools\Scaffold\WordPressData;
 
+use DateTime;
+use DateTimeImmutable;
+use DateTimeInterface;
+use DateTimeZone;
 use Exception;
 use Newspack\MigrationTools\Scaffold\Contracts\RunAwareMigrationObject;
 use Newspack\MigrationTools\Scaffold\MigrationObjectPropertyWrapper;
@@ -335,5 +339,67 @@ abstract class AbstractWordPressData {
 	protected function unset_property( string $name ): void {
 		unset( $this->data[ $name ] );
 		unset( $this->data_sources[ $name ] );
+	}
+
+	/**
+	 * Tries to create a DateTimeInterface object from a given date.
+	 *
+	 * @param mixed $date The date.
+	 *
+	 * @return DateTimeInterface
+	 * @throws Exception If the date is not a valid date.
+	 */
+	protected function get_date_time( mixed $date ): DateTimeInterface {
+		if ( $date instanceof DateTimeInterface ) {
+			return $date;
+		}
+
+		if ( $date instanceof MigrationObjectPropertyWrapper ) {
+			if ( $date->get_value() instanceof DateTimeInterface ) {
+				return $date->get_value();
+			}
+
+			return new DateTimeImmutable( $date->get_value() );
+		}
+
+		return new DateTimeImmutable( $date );
+	}
+
+	/**
+	 * This function handles setting a date property.
+	 *
+	 * @param string|MigrationObjectPropertyWrapper|DateTimeInterface $date The date.
+	 * @param string                                                  $property_name The property name.
+	 *
+	 * @return void
+	 * @throws Exception If the date string is malformed.
+	 */
+	protected function set_date_property( string|MigrationObjectPropertyWrapper|DateTimeInterface $date, string $property_name ): void {
+		$date_time = $this->get_date_time( $date );
+
+		$this->set_property( $property_name, $date_time->format( 'Y-m-d H:i:s' ) );
+	}
+
+	/**
+	 * Sets a GMT date property.
+	 *
+	 * @param string|MigrationObjectPropertyWrapper|DateTimeInterface $date The date.
+	 * @param string                                                  $property_name The property name.
+	 *
+	 * @return void
+	 * @throws Exception If the date string is malformed.
+	 */
+	protected function set_gmt_date_property( string|MigrationObjectPropertyWrapper|DateTimeInterface $date, string $property_name ): void {
+		$date_time = $this->get_date_time( $date );
+
+		if ( $date_time->getTimezone() instanceof DateTimeZone ) {
+			if ( $date_time->getTimezone()->getName() !== 'UTC' ) {
+				$copy_date_time = new DateTime( $date_time->format( 'Y-m-d H:i:s' ), $date_time->getTimezone() );
+				$copy_date_time->setTimezone( new DateTimeZone( 'UTC' ) );
+				$date_time = $copy_date_time;
+			}
+		}
+
+		$this->set_property( $property_name, $date_time->format( 'Y-m-d H:i:s' ) );
 	}
 }

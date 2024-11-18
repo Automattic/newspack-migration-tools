@@ -2,10 +2,7 @@
 
 namespace Newspack\MigrationTools\Scaffold\WordPressData;
 
-use DateTime;
-use DateTimeImmutable;
 use DateTimeInterface;
-use DateTimeZone;
 use Exception;
 use Newspack\MigrationTools\Scaffold\MigrationObjectPropertyWrapper;
 use WP_User;
@@ -373,63 +370,5 @@ class WordPressPostsData extends AbstractWordPressData {
 		$this->set_property( 'comment_count', $comment_count );
 
 		return $this;
-	}
-
-	/**
-	 * Tries to create a DateTimeInterface object from a given date.
-	 *
-	 * @param mixed $date The date.
-	 *
-	 * @return DateTimeInterface
-	 * @throws Exception If the date is not a valid date.
-	 */
-	private function get_date_time( mixed $date ): DateTimeInterface {
-		if ( $date instanceof DateTimeInterface ) {
-			return $date;
-		}
-
-		if ( $date instanceof MigrationObjectPropertyWrapper && $date->get_value() instanceof DateTimeInterface ) {
-			return $date->get_value();
-		}
-
-		return new DateTimeImmutable( $date );
-	}
-
-	/**
-	 * This function handles setting a date property.
-	 *
-	 * @param string|MigrationObjectPropertyWrapper|DateTimeInterface $date The date.
-	 * @param string                                                  $property_name The property name.
-	 *
-	 * @return void
-	 * @throws Exception If the date string is malformed.
-	 */
-	private function set_date_property( string|MigrationObjectPropertyWrapper|DateTimeInterface $date, string $property_name ): void {
-		$date_time = $this->get_date_time( $date );
-
-		$this->set_property( $property_name, $date_time->format( 'Y-m-d H:i:s' ) );
-	}
-
-	/**
-	 * Sets a GMT date property.
-	 *
-	 * @param string|MigrationObjectPropertyWrapper|DateTimeInterface $date The date.
-	 * @param string                                                  $property_name The property name.
-	 *
-	 * @return void
-	 * @throws Exception If the date string is malformed.
-	 */
-	private function set_gmt_date_property( string|MigrationObjectPropertyWrapper|DateTimeInterface $date, string $property_name ): void {
-		$date_time = $this->get_date_time( $date );
-
-		if ( $date_time->getTimezone() instanceof DateTimeZone ) {
-			if ( $date_time->getTimezone()->getName() !== 'UTC' ) {
-				$copy_date_time = new DateTime( $date_time->format( 'Y-m-d H:i:s' ), $date_time->getTimezone() );
-				$copy_date_time->setTimezone( new DateTimeZone( 'UTC' ) );
-				$date_time = $copy_date_time;
-			}
-		}
-
-		$this->set_property( $property_name, $date_time->format( 'Y-m-d H:i:s' ) );
 	}
 }
