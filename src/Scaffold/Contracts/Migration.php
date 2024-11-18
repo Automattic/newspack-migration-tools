@@ -33,7 +33,7 @@ interface Migration {
 	/**
 	 * Returns the migration objects.
 	 *
-	 * @return MigrationDataContainer
+	 * @return MigrationDataChest
 	 */
-	public function get_container(): MigrationDataContainer;
+	public function get_container(): MigrationDataChest;
 }

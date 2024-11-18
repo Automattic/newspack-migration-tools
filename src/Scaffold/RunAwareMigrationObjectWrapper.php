@@ -6,7 +6,7 @@ use ArrayAccess;
 use Exception;
 use Newspack\MigrationTools\Scaffold\Contracts\MigrationRunKey;
 use Newspack\MigrationTools\Scaffold\Contracts\MigrationObject;
-use Newspack\MigrationTools\Scaffold\Contracts\RunAwareMigrationDataContainer;
+use Newspack\MigrationTools\Scaffold\Contracts\RunAwareMigrationDataChest;
 use Newspack\MigrationTools\Scaffold\Contracts\RunAwareMigrationObject;
 use wpdb;
 
@@ -32,9 +32,9 @@ class RunAwareMigrationObjectWrapper implements RunAwareMigrationObject, ArrayAc
 	/**
 	 * Migration Data Set Container.
 	 *
-	 * @var RunAwareMigrationDataContainer $data_container Migration Data Set Container.
+	 * @var RunAwareMigrationDataChest $data_container Migration Data Set Container.
 	 */
-	private RunAwareMigrationDataContainer $data_container;
+	private RunAwareMigrationDataChest $data_container;
 
 	/**
 	 * The Migration Run Key.
@@ -107,15 +107,15 @@ class RunAwareMigrationObjectWrapper implements RunAwareMigrationObject, ArrayAc
 	/**
 	 * Returns Migration Data Set Container, the container for the migration objects.
 	 *
-	 * @return RunAwareMigrationDataContainer
+	 * @return RunAwareMigrationDataChest
 	 */
-	public function get_container(): RunAwareMigrationDataContainer {
+	public function get_container(): RunAwareMigrationDataChest {
 		if ( $this->migration_object instanceof RunAwareMigrationObject ) {
 			return $this->migration_object->get_container();
 		}
 
 		if ( ! isset( $this->data_container ) ) {
-			$this->data_container = new UnprocessedMigrationDataContainerWrapper( $this->migration_object->get_container(), $this->run_key );
+			$this->data_container = new UnprocessedMigrationDataChestWrapper( $this->migration_object->get_container(), $this->run_key );
 		}
 
 		return $this->data_container;

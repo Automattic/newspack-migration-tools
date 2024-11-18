@@ -5,7 +5,7 @@ namespace Newspack\MigrationTools\Scaffold\MigrationStates;
 use Newspack\MigrationTools\Scaffold\Contracts\MigrationState;
 use Newspack\MigrationTools\Scaffold\Enum\MigrationStatus;
 use Newspack\MigrationTools\Scaffold\MigrationRunContext;
-use Newspack\MigrationTools\Scaffold\UnprocessedMigrationDataContainerWrapper;
+use Newspack\MigrationTools\Scaffold\UnprocessedMigrationDataChestWrapper;
 
 /**
  * Represents a migration state that has been started.
@@ -37,7 +37,7 @@ class StartedMigrationState extends AbstractMigrationState {
 	public function settle(): ?MigrationState {
 		if ( $this->migration_activity->set_status( $this->previous_run_key, MigrationStatus::STARTED ) ) {
 
-			$data_container = new UnprocessedMigrationDataContainerWrapper(
+			$data_container = new UnprocessedMigrationDataChestWrapper(
 				$this->migration_run_context->get_migration()->get_container(),
 				$this->get_run_key()
 			);

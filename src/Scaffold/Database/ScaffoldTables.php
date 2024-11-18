@@ -45,7 +45,7 @@ class ScaffoldTables {
 			FOREIGN KEY (status_id) REFERENCES migration_status_enum(id)
 		) $charset_collate;";
 
-		$migration_data_containers_table = "CREATE TABLE IF NOT EXISTS migration_data_containers (
+		$migration_data_chests_table = "CREATE TABLE IF NOT EXISTS migration_data_chests (
 			id bigint(20) NOT NULL AUTO_INCREMENT,
 			migration_id bigint(20) NOT NULL,
 			pointer_to_object_id varchar(255) NOT NULL,
@@ -58,13 +58,13 @@ class ScaffoldTables {
 
 		$migration_objects_table = "CREATE TABLE IF NOT EXISTS migration_objects (
     		id bigint(20) NOT NULL AUTO_INCREMENT,
-    		migration_data_container_id bigint(20) NOT NULL,
+    		migration_data_chest_id bigint(20) NOT NULL,
     		original_object_id varchar(255) NOT NULL,
     		json_data longtext NOT NULL,
     		processed boolean NOT NULL DEFAULT 0,
     		created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
     		PRIMARY KEY  (id),
-    		FOREIGN KEY (migration_data_container_id) REFERENCES migration_data_containers(id)
+    		FOREIGN KEY (migration_data_chest_id) REFERENCES migration_data_chests(id)
 		) $charset_collate;";
 
 		$migration_object_mutation = "CREATE TABLE IF NOT EXISTS migration_object_mutation (
@@ -78,13 +78,13 @@ class ScaffoldTables {
 
 		$migration_object_meta = "CREATE TABLE IF NOT EXISTS migration_object_meta (
     		id bigint(20) NOT NULL AUTO_INCREMENT,
-    		migration_data_container_id bigint(20) NOT NULL,
+    		migration_data_chest_id bigint(20) NOT NULL,
     		migration_object_id bigint(20) NULL DEFAULT NULL,
     		meta_key varchar(255) NOT NULL,
     		meta_value longtext NOT NULL,
     		created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
     		PRIMARY KEY  (id),
-    		FOREIGN KEY (migration_data_container_id) REFERENCES migration_data_containers(id),
+    		FOREIGN KEY (migration_data_chest_id) REFERENCES migration_data_chests(id),
     		FOREIGN KEY (migration_object_id) REFERENCES migration_objects(id)
 		) $charset_collate;";
 
@@ -121,7 +121,7 @@ class ScaffoldTables {
 		dbDelta( $migration_table );
 		dbDelta( $migration_status_enum_table );
 		dbDelta( $migration_status_table );
-		dbDelta( $migration_data_containers_table );
+		dbDelta( $migration_data_chests_table );
 		dbDelta( $migration_objects_table );
 		dbDelta( $migration_object_mutation );
 		dbDelta( $migration_object_meta );

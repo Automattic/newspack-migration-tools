@@ -2,8 +2,8 @@
 
 namespace Newspack\MigrationTools\Tests\Scaffold;
 
-use Newspack\MigrationTools\Scaffold\AbstractMigrationDataContainer;
-use Newspack\MigrationTools\Scaffold\Contracts\MigrationDataContainer;
+use Newspack\MigrationTools\Scaffold\AbstractMigrationDataChest;
+use Newspack\MigrationTools\Scaffold\Contracts\MigrationDataChest;
 use Newspack\MigrationTools\Scaffold\Contracts\MigrationObject;
 use Newspack\MigrationTools\Scaffold\MigrationObjectPropertyWrapper;
 use WP_UnitTestCase;
@@ -68,12 +68,12 @@ class MigrationObjectTest extends WP_UnitTestCase {
 	/**
 	 * Returns a Migration Data Container.
 	 *
-	 * @return MigrationDataContainer
+	 * @return MigrationDataChest
 	 */
-	public function get_migration_data_container(): MigrationDataContainer {
+	public function get_migration_data_container(): MigrationDataChest {
 		$raw_data = $this->get_raw_data();
 
-		return new class( $raw_data, 'id' ) extends AbstractMigrationDataContainer {
+		return new class( $raw_data, 'id' ) extends AbstractMigrationDataChest {
 			/**
 			 * Data source type.
 			 *

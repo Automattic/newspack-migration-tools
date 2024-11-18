@@ -2,7 +2,7 @@
 
 namespace Newspack\MigrationTools\Scaffold\Contracts;
 
-interface RunAwareMigrationDataContainer extends MigrationDataContainer {
+interface RunAwareMigrationDataChest extends MigrationDataChest {
 
 	/**
 	 * Returns the Migration Run Key.

@@ -8,7 +8,14 @@ use WP_Filesystem_Base;
 /**
  * JSON Migration Data Container.
  */
-class JSONMigrationDataContainer extends AbstractMigrationDataContainer {
+class JSONMigrationDataChest extends AbstractMigrationDataChest {
+
+	/**
+	 * The source type for the data container.
+	 *
+	 * @var string $source_type The source type for the data container.
+	 */
+	protected string $source_type = 'JSON';
 
 	/**
 	 * Constructor.

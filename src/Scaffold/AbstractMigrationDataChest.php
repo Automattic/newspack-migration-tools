@@ -2,12 +2,12 @@
 
 namespace Newspack\MigrationTools\Scaffold;
 
-use Newspack\MigrationTools\Scaffold\Contracts\MigrationDataContainer;
+use Newspack\MigrationTools\Scaffold\Contracts\MigrationDataChest;
 
 /**
  * Represents a container for migration objects.
  */
-abstract class AbstractMigrationDataContainer implements MigrationDataContainer {
+abstract class AbstractMigrationDataChest implements MigrationDataChest {
 
 	/**
 	 * Data to be used to create the migration objects.

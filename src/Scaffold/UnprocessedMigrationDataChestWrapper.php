@@ -3,15 +3,15 @@
 namespace Newspack\MigrationTools\Scaffold;
 
 use wpdb;
-use Newspack\MigrationTools\Scaffold\Contracts\MigrationDataContainer;
+use Newspack\MigrationTools\Scaffold\Contracts\MigrationDataChest;
 use Newspack\MigrationTools\Scaffold\Contracts\MigrationRunKey;
-use Newspack\MigrationTools\Scaffold\Contracts\RunAwareMigrationDataContainer;
+use Newspack\MigrationTools\Scaffold\Contracts\RunAwareMigrationDataChest;
 use Newspack\MigrationTools\Scaffold\Contracts\RunAwareMigrationObject;
 
 /**
  * UnprocessedMigrationDataContainerWrapper.
  */
-class UnprocessedMigrationDataContainerWrapper implements RunAwareMigrationDataContainer {
+class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest {
 
 	/**
 	 * Database connection.
@@ -23,9 +23,9 @@ class UnprocessedMigrationDataContainerWrapper implements RunAwareMigrationDataC
 	/**
 	 * The Migration Data Set Container.
 	 *
-	 * @var MigrationDataContainer $data_container The Migration Data Set Container.
+	 * @var MigrationDataChest $data_container The Migration Data Set Container.
 	 */
-	private MigrationDataContainer $data_container;
+	private MigrationDataChest $data_container;
 
 	/**
 	 * The migration run key.
@@ -51,10 +51,10 @@ class UnprocessedMigrationDataContainerWrapper implements RunAwareMigrationDataC
 	/**
 	 * Constructor.
 	 *
-	 * @param MigrationDataContainer $data_container The Migration Data Set Container.
-	 * @param MigrationRunKey        $run_key The migration run key.
+	 * @param MigrationDataChest $data_container The Migration Data Set Container.
+	 * @param MigrationRunKey    $run_key The migration run key.
 	 */
-	public function __construct( MigrationDataContainer $data_container, MigrationRunKey $run_key ) {
+	public function __construct( MigrationDataChest $data_container, MigrationRunKey $run_key ) {
 		global $wpdb;
 		$this->wpdb           = $wpdb;
 		$this->run_key        = $run_key;
@@ -94,7 +94,7 @@ class UnprocessedMigrationDataContainerWrapper implements RunAwareMigrationDataC
 	 * @return bool
 	 */
 	public function store(): bool {
-		if ( $this->data_container instanceof RunAwareMigrationDataContainer ) {
+		if ( $this->data_container instanceof RunAwareMigrationDataChest ) {
 			return $this->data_container->store();
 		}
 
@@ -126,7 +126,7 @@ class UnprocessedMigrationDataContainerWrapper implements RunAwareMigrationDataC
 	 * @return bool
 	 */
 	public function has_been_stored(): bool {
-		if ( $this->data_container instanceof RunAwareMigrationDataContainer ) {
+		if ( $this->data_container instanceof RunAwareMigrationDataChest ) {
 			return $this->data_container->has_been_stored();
 		}
 
@@ -173,7 +173,7 @@ class UnprocessedMigrationDataContainerWrapper implements RunAwareMigrationDataC
 	 * @return int
 	 */
 	public function get_id(): int {
-		if ( $this->data_container instanceof RunAwareMigrationDataContainer ) {
+		if ( $this->data_container instanceof RunAwareMigrationDataChest ) {
 			return $this->data_container->get_id();
 		}
 

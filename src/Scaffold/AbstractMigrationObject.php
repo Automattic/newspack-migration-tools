@@ -4,7 +4,7 @@ namespace Newspack\MigrationTools\Scaffold;
 
 use ArrayAccess;
 use Exception;
-use Newspack\MigrationTools\Scaffold\Contracts\MigrationDataContainer;
+use Newspack\MigrationTools\Scaffold\Contracts\MigrationDataChest;
 use Newspack\MigrationTools\Scaffold\Contracts\MigrationObject;
 
 /**
@@ -29,18 +29,18 @@ abstract class AbstractMigrationObject implements MigrationObject, ArrayAccess {
 	/**
 	 * Migration Data Set Container.
 	 *
-	 * @var MigrationDataContainer $data_container Migration Data Set Container.
+	 * @var MigrationDataChest $data_container Migration Data Set Container.
 	 */
-	protected MigrationDataContainer $data_container;
+	protected MigrationDataChest $data_container;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param object|array           $data The underlying data that needs to be migrated.
-	 * @param string                 $pointer_to_identifier Pointer to the identifier.
-	 * @param MigrationDataContainer $data_container Migration Data Set Container.
+	 * @param object|array       $data The underlying data that needs to be migrated.
+	 * @param string             $pointer_to_identifier Pointer to the identifier.
+	 * @param MigrationDataChest $data_container Migration Data Set Container.
 	 */
-	public function __construct( object|array $data, string $pointer_to_identifier, MigrationDataContainer $data_container ) {
+	public function __construct( object|array $data, string $pointer_to_identifier, MigrationDataChest $data_container ) {
 		$this->data                  = $data;
 		$this->data_container = $data_container;
 		$this->pointer_to_identifier = $pointer_to_identifier;
@@ -74,9 +74,9 @@ abstract class AbstractMigrationObject implements MigrationObject, ArrayAccess {
 	/**
 	 * Returns the Migration Data Set Container this Migration Object belongs to.
 	 *
-	 * @return MigrationDataContainer
+	 * @return MigrationDataChest
 	 */
-	public function get_container(): MigrationDataContainer {
+	public function get_container(): MigrationDataChest {
 		return $this->data_container;
 	}
 

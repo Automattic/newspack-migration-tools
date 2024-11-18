@@ -5,7 +5,7 @@ namespace Newspack\MigrationTools\Scaffold;
 use Newspack\MigrationTools\Scaffold\Contracts\Migration;
 use Newspack\MigrationTools\Scaffold\Contracts\MigrationState;
 use Newspack\MigrationTools\Scaffold\Contracts\MigrationRunKey;
-use Newspack\MigrationTools\Scaffold\Contracts\RunAwareMigrationDataContainer;
+use Newspack\MigrationTools\Scaffold\Contracts\RunAwareMigrationDataChest;
 use Newspack\MigrationTools\Scaffold\MigrationStates\RunningMigrationState;
 use Newspack\MigrationTools\Scaffold\MigrationStates\StartedMigrationState;
 
@@ -38,9 +38,9 @@ class MigrationRunContext {
 	/**
 	 * The data container.
 	 *
-	 * @var RunAwareMigrationDataContainer $data_container The data container.
+	 * @var RunAwareMigrationDataChest $data_container The data container.
 	 */
-	private RunAwareMigrationDataContainer $data_container;
+	private RunAwareMigrationDataChest $data_container;
 
 	/**
 	 * Constructor.
@@ -107,11 +107,11 @@ class MigrationRunContext {
 	/**
 	 * Handles the setting of the Migration Data Container. This can only be set if the migration state is Started.
 	 *
-	 * @param RunAwareMigrationDataContainer $data_container The data container.
+	 * @param RunAwareMigrationDataChest $data_container The data container.
 	 *
 	 * @return bool
 	 */
-	public function set_container( RunAwareMigrationDataContainer $data_container ): bool {
+	public function set_container( RunAwareMigrationDataChest $data_container ): bool {
 		if ( $this->migration_state instanceof StartedMigrationState ) {
 			$this->data_container = $data_container;
 			return true;
@@ -123,9 +123,9 @@ class MigrationRunContext {
 	/**
 	 * Returns the Migration Data Container.
 	 *
-	 * @return RunAwareMigrationDataContainer The data container.
+	 * @return RunAwareMigrationDataChest The data container.
 	 */
-	public function get_container(): RunAwareMigrationDataContainer {
+	public function get_container(): RunAwareMigrationDataChest {
 		return $this->data_container;
 	}
 }

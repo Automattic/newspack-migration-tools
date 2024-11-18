@@ -3,13 +3,13 @@
 namespace Newspack\MigrationTools\Scaffold;
 
 use Exception;
-use Newspack\MigrationTools\Scaffold\Contracts\RunAwareMigrationDataContainer;
+use Newspack\MigrationTools\Scaffold\Contracts\RunAwareMigrationDataChest;
 use Newspack\MigrationTools\Scaffold\Contracts\MigrationRunKey;
 
 /**
  * AbstractRunAwareMigrationDataContainer.
  */
-abstract class AbstractRunAwareMigrationDataContainer extends AbstractMigrationDataContainer implements RunAwareMigrationDataContainer {
+abstract class AbstractRunAwareMigrationDataChest extends AbstractMigrationDataChest implements RunAwareMigrationDataChest {
 
 	/**
 	 * Database connection.

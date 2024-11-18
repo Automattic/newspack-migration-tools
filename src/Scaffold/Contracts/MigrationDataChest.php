@@ -2,7 +2,7 @@
 
 namespace Newspack\MigrationTools\Scaffold\Contracts;
 
-interface MigrationDataContainer {
+interface MigrationDataChest {
 
 	/**
 	 * Gets the pointer to the identifier.

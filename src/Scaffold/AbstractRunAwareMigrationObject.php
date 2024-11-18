@@ -5,7 +5,7 @@ namespace Newspack\MigrationTools\Scaffold;
 use Exception;
 use Newspack\MigrationTools\Scaffold\Contracts\RunAwareMigrationObject;
 use Newspack\MigrationTools\Scaffold\Contracts\MigrationRunKey;
-use Newspack\MigrationTools\Scaffold\Contracts\RunAwareMigrationDataContainer;
+use Newspack\MigrationTools\Scaffold\Contracts\RunAwareMigrationDataChest;
 
 /**
  * AbstractRunAwareMigrationObject.
@@ -36,15 +36,15 @@ abstract class AbstractRunAwareMigrationObject extends AbstractMigrationObject i
 	/**
 	 * Constructor.
 	 *
-	 * @param object|array                   $data The underlying data that needs to be migrated.
-	 * @param string                         $pointer_to_identifier Pointer to the data attribute which uniquely identifies underlying data.
-	 * @param RunAwareMigrationDataContainer $data_container Migration Data Set Container.
-	 * @param int|null                       $id The Database ID for this Migration Object.
-	 * @param bool|null                      $stored Flag determining whether this Migration Object was already stored in the Database.
+	 * @param object|array               $data The underlying data that needs to be migrated.
+	 * @param string                     $pointer_to_identifier Pointer to the data attribute which uniquely identifies underlying data.
+	 * @param RunAwareMigrationDataChest $data_container Migration Data Set Container.
+	 * @param int|null                   $id The Database ID for this Migration Object.
+	 * @param bool|null                  $stored Flag determining whether this Migration Object was already stored in the Database.
 	 *
 	 * @throws Exception If the $id does not exist in `migration_object` table.
 	 */
-	public function __construct( object|array $data, string $pointer_to_identifier, RunAwareMigrationDataContainer $data_container, ?int $id = null, ?bool $stored = null ) {
+	public function __construct( object|array $data, string $pointer_to_identifier, RunAwareMigrationDataChest $data_container, ?int $id = null, ?bool $stored = null ) {
 		parent::__construct( $data, $pointer_to_identifier, $data_container );
 
 		global $wpdb;
@@ -77,9 +77,9 @@ abstract class AbstractRunAwareMigrationObject extends AbstractMigrationObject i
 	/**
 	 * Returns the Migration Data Set Container that also has the Migration Run Key.
 	 *
-	 * @return RunAwareMigrationDataContainer
+	 * @return RunAwareMigrationDataChest
 	 */
-	public function get_container(): RunAwareMigrationDataContainer {
+	public function get_container(): RunAwareMigrationDataChest {
 		return $this->data_container;
 	}
 
