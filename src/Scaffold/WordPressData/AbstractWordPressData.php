@@ -276,7 +276,9 @@ abstract class AbstractWordPressData {
 	 * @return void
 	 */
 	public function __set( string $name, mixed $value ) {
-		$this->set_property( $name, $value );
+		$method = "set_$name";
+
+		$this->$method( $value );
 	}
 
 	/**
