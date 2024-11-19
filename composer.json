@@ -13,16 +13,20 @@
         }
     },
     "require": {
-        "php": ">=8.1"
+        "php": ">=8.1",
+        "monolog/monolog": "^3.7",
+        "bramus/monolog-colored-line-formatter": "^3.1",
+        "halaxa/json-machine": "^1.1"
     },
     "require-dev": {
+        "ext-libxml": "*",
+        "ext-dom": "*",
         "wp-coding-standards/wpcs": "^3.0",
         "automattic/vipwpcs": "^3.0",
         "phpcompatibility/phpcompatibility-wp": "*",
         "phpunit/phpunit": "^9.6",
         "yoast/phpunit-polyfills": "^2.0",
-        "php-coveralls/php-coveralls": "^2.7",
-        "halaxa/json-machine": "^1.1"
+        "php-coveralls/php-coveralls": "^2.7"
     },
     "scripts": {
         "phpcs": "./vendor/bin/phpcs",

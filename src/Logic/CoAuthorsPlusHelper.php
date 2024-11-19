@@ -21,7 +21,7 @@ class CoAuthorsPlusHelper {
 	 *
 	 * @var CoAuthors_Guest_Authors
 	 */
-	public $coauthors_guest_authors;
+	public CoAuthors_Guest_Authors $coauthors_guest_authors;
 
 	/**
 	 * CoAuthorPlus constructor.
@@ -29,23 +29,14 @@ class CoAuthorsPlusHelper {
 	 * @throws Exception If CoAuthors Plus is not installed or active.
 	 */
 	public function __construct() {
-		// Set Co-Authors Plus dependencies.
-		global $coauthors_plus;
-
-		$plugin_path = defined( 'WP_PLUGIN_DIR' ) ? WP_PLUGIN_DIR : ABSPATH . 'wp-content/plugins';
-
-		$file_1     = $plugin_path . '/co-authors-plus/co-authors-plus.php';
-		$file_2     = $plugin_path . '/co-authors-plus/php/class-coauthors-guest-authors.php';
-		$included_1 = is_file( $file_1 ) && include_once $file_1;
-		$included_2 = is_file( $file_2 ) && include_once $file_2;
-
-		if ( is_null( $coauthors_plus ) || ( false === $included_1 ) || ( false === $included_2 ) || ( ! $coauthors_plus instanceof CoAuthors_Plus ) ) {
+		if ( ! $this->validate_co_authors_plus_dependencies() ) {
 			// CoAuthors Plus is a dependency, and will have to be installed before the public functions/commands can be used.
 			throw new Exception( 'CoAuthors Plus is not installed or active.' );
 		}
 
+		global $coauthors_plus;
 		$this->coauthors_plus          = $coauthors_plus;
-		$this->coauthors_guest_authors = new \CoAuthors_Guest_Authors();
+		$this->coauthors_guest_authors = $coauthors_plus->guest_authors;
 	}
 
 	/**
@@ -53,8 +44,9 @@ class CoAuthorsPlusHelper {
 	 *
 	 * @return bool Is everything set up OK.
 	 */
-	public function validate_co_authors_plus_dependencies() {
-		if ( ( ! $this->coauthors_plus instanceof CoAuthors_Plus ) || ( ! $this->coauthors_guest_authors instanceof CoAuthors_Guest_Authors ) ) {
+	public function validate_co_authors_plus_dependencies(): bool {
+		global $coauthors_plus;
+		if ( ( ! $coauthors_plus instanceof CoAuthors_Plus ) || ( ! $coauthors_plus->guest_authors instanceof CoAuthors_Guest_Authors ) ) {
 			return false;
 		}
 
@@ -70,7 +62,7 @@ class CoAuthorsPlusHelper {
 	 *
 	 * @return bool Is active.
 	 */
-	public function is_coauthors_active() {
+	public function is_coauthors_active(): bool {
 		$active = false;
 		foreach ( wp_get_active_and_valid_plugins() as $plugin ) {
 			if ( false !== strrpos( $plugin, 'co-authors-plus.php' ) ) {

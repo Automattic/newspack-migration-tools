@@ -1,14 +1,12 @@
 <?php
 /**
  * Helper to consistently handle start and end for commands.
- *
- * @package NewspackCustomContentMigrator
  */
 
 namespace Newspack\MigrationTools\Util;
 
-use WP_CLI;
-use WP_CLI\ExitException;
+use Newspack\MigrationTools\NMT;
+use Newspack\MigrationTools\Util\Log\CliLog;
 
 /**
  * BatchLogic helper to consistently handle start and end for commands.
@@ -56,6 +54,7 @@ class BatchLogic {
 		if ( empty( self::$batch_args ) ) {
 			self::$batch_args = [ self::$start, self::$end, self::$num_items ];
 		}
+
 		return self::$batch_args;
 	}
 
@@ -67,15 +66,18 @@ class BatchLogic {
 	 * @param array $assoc_args Assoc args from a command run.
 	 *
 	 * @return array Array keyed with: start, end, total.
-	 * @throws ExitException If the args were not acceptable.
 	 */
 	public static function validate_and_get_batch_args( array $assoc_args ): array {
+		// Ensure that batch_args is initialized by calling get_batch_args().
+		self::get_batch_args();
+		$cli_logger = CliLog::get_logger( 'batchlogic-validate' );
+
 		$start     = $assoc_args[ self::$batch_args[0]['name'] ] ?? 1;
 		$end       = $assoc_args[ self::$batch_args[1]['name'] ] ?? PHP_INT_MAX;
 		$num_items = $assoc_args[ self::$batch_args[2]['name'] ] ?? false;
 
-		if ( 0 === $start ) {
-			// We don't count from zero here, so if zero is passed, fix it.
+		if ( $start <= 0 ) {
+			// We don't count from zero here, so if zero (or less) is passed, fix it by assuming 1.
 			$start = 1;
 		}
 
@@ -84,10 +86,10 @@ class BatchLogic {
 		}
 
 		if ( ! is_numeric( $start ) || ! is_numeric( $end ) ) {
-			WP_CLI::error( 'Start and end args must be numeric.' );
+			NMT::exit_with_message( 'Start and end args must be numeric.', [ $cli_logger ] );
 		}
 		if ( $end < $start ) {
-			WP_CLI::error( 'End arg must be greater than start arg.' );
+			wp_die( 'End arg must be greater than start arg.' );
 		}
 
 		return [

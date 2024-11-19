@@ -1,16 +1,15 @@
 <?php
 /**
  * Wrapper class for json file iteration using JsonMachine.
- *
- * @package NewspackCustomContentMigrator
  */
 
 namespace Newspack\MigrationTools\Util;
- 
+
 use Exception;
 use JsonMachine\Items;
-use Newspack\MigrationTools\Log\FileLogger;
-use Newspack\MigrationTools\Util\BatchLogic;
+use Monolog\Logger;
+use Newspack\MigrationTools\NMT;
+use Newspack\MigrationTools\Util\Log\FileLog;
 
 /**
  * Class JsonIterator.
@@ -22,25 +21,18 @@ class JsonIterator {
 	/**
 	 * File logger instance.
 	 *
-	 * @var FileLogger.
+	 * @var Logger.
 	 */
-	private FileLogger $file_logger;
-
-	/**
-	 * Log file name.
-	 *
-	 * @var string Log name.
-	 */
-	const LOG_NAME = 'json_iterator.log';
+	private Logger $file_logger;
 
 	/**
 	 * Constructor.
-	 * 
-	 * @param FileLogger $file_logger Optional File logger instance.
+	 *
+	 * @param FileLog|null $file_logger Optional File logger instance.
 	 */
-	public function __construct( FileLogger $file_logger = null ) {
+	public function __construct( FileLog $file_logger = null ) {
 		if ( ! $file_logger ) {
-			$file_logger = new FileLogger();
+			$file_logger = FileLog::get_logger( 'JsonIterator', 'json-iterator.log' );
 		}
 
 		$this->file_logger = $file_logger;
@@ -65,9 +57,9 @@ class JsonIterator {
 	 * The start and end args to get items between start number and end number in the array of data in the json file.
 	 *
 	 * @param string $json_file Path to the json file.
-	 * @param int    $start Start number (inclusive) in the array of data in the json file.
-	 * @param int    $end End number (exclusive) in the array of data in the json file.
-	 * @param array  $options Optional. See items() in this class.
+	 * @param int    $start     Start number (inclusive) in the array of data in the json file.
+	 * @param int    $end       End number (exclusive) in the array of data in the json file.
+	 * @param array  $options   Optional. See items() in this class.
 	 *
 	 * @return iterable
 	 */
@@ -96,7 +88,7 @@ class JsonIterator {
 	 * https://github.com/halaxa/json-machine#json-pointer
 	 *
 	 * @param string $json_file Path to the JSON file – can be a URL too.
-	 * @param array  $options Options to pass to JsonMachine.
+	 * @param array  $options   Options to pass to JsonMachine.
 	 *
 	 * @return iterable
 	 */
@@ -104,18 +96,16 @@ class JsonIterator {
 		$file_exists = str_starts_with( $json_file, 'http' ) ? $this->url_responds( $json_file ) : file_exists( $json_file );
 
 		if ( ! $file_exists ) {
-			$this->file_logger::log( self::LOG_NAME, "Doesn't exist: {$json_file}", FileLogger::ERROR, true );
-
-			return new \EmptyIterator();
+			NMT::exit_with_message( sprintf( 'File does not exist: %s', $json_file ), [ $this->file_logger ] );
 		}
 
 		try {
 			return Items::fromFile( $json_file, $options );
 		} catch ( Exception $o_0 ) {
-			$this->file_logger::log( self::LOG_NAME, "Could not read the JSON from {$json_file}", FileLogger::ERROR, true );
-
-			return new \EmptyIterator();
+			NMT::exit_with_message( sprintf( 'Could not read the JSON from: %s', $json_file ), [ $this->file_logger ] );
 		}
+
+		return new \EmptyIterator();
 	}
 
 	/**
@@ -144,11 +134,11 @@ class JsonIterator {
 	/**
 	 * Will validate and get batch args for a JSON file.
 	 *
-	 * @param string $json_path Path to JSON file.
+	 * @param string $json_path  Path to JSON file.
 	 * @param array  $assoc_args Args from WP CLI command.
 	 *
 	 * @return array
-	 * @throws \WP_CLI\ExitException If the args were not acceptable or the json file not countable.
+	 * @throws Exception If the args were not acceptable or the json file not countable.
 	 */
 	public function validate_and_get_batch_args_for_json_file( string $json_path, array $assoc_args ): array {
 		$batch_args = BatchLogic::validate_and_get_batch_args( $assoc_args );

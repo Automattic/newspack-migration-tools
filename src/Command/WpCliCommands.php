@@ -13,7 +13,16 @@ class WpCliCommands {
 		// Add class names that implement WpCliCommandInterface here to register them with WP CLI.
 		$classes_with_cli_commands = [
 			AttachmentsMigrator::class,
+			BlockTransformerCommand::class,
+			CampaignsMigrator::class,
+			ContentConverterPluginMigrator::class,
+			CssMigrator::class,
+			MenusMigrator::class,
+			MetaToContentMigrator::class,
 			NewspaperThemeCommand::class,
+			PostsMigrator::class,
+			SettingsMigrator::class,
+			WooCommMigrator::class,
 		];
 
 		return apply_filters( 'newspack_migration_tools_command_classes', $classes_with_cli_commands );

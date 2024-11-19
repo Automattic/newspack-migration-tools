@@ -2,12 +2,17 @@
 
 This package is a set of migration tools used to make it easy to migrate content to WordPress.
 
-The repository contains a set of WP commands to migrate different data to WordPress, and helper classes that can be used to develop your own migrators.
+The repository contains a set of WP commands to migrate different data to WordPress, and helper classes that can be used to develop your own migrators. You can use the code from WP_CLI or from just browser WordPress. Think of this as a library that you can build from.
 
-Minimum PHP version required is 8.1.
+## Requirements
+* WordPress
+* Minimum PHP version required is 8.1.
+* If you use the JsonIterator class, you must have `jq` installed on your system. See [download instructions](https://jqlang.github.io/jq/download/).
 
-### Documentation for Individual Migrators
+## Documentation for logic and utility classes
+* [Logging](./docs/logging.md)
 
+## Documentation for Individual Migrators
 * Attachments (todo)
 * [Newspaper Theme](./docs/newspaper-theme.md)
 
@@ -17,32 +22,41 @@ You can load this package in your PHP project as follows:
 
 _composer.json_
 
-```
+```json
 "repositories": [
     {
         "type": "git",
         "url": "https://github.com/Automattic/newspack-migration-tools.git"
     }
 ],
+"require": {
+    "automattic/newspack-migration-tools": "dev-trunk"
+}
 ```
+
+You can either include the `newspack-migration-tools.php` file in your code, use the classes directly, or call `NMT:setup()`.
 
 _my-plugin-file.php_
-
-```
+```php
 // Loading the attachments helper class.
-use Newspack\MigrationTools\Logic\AttachmentHelper;
+use Newspack\MigrationTools\Logic\Attachments;
 // Example call.
-$attachment_id = AttachmentHelper::import_attachment_for_post( ... your arguments here ... );
+$attachment_id = Attachments::import_attachment_for_post( ... your arguments here ... );
 ```
 
 ## Registering the WP CLI commands in this package
 If you want to use the WP CLI commands in this package, you can do so by adding the following code to your plugin:
 ```php
+use Newspack\MigrationTools\Command\WpCliCommands;
+use Newspack\MigrationTools\Command\WpCliCommandInterface;
 
 // Add your command class names in the array.
-$cli_commands = [ Newspack\MigrationTools\Commands\MyCommand::class ];
+$cli_commands = [ MyProject\MyCommand::class ];
 
-foreach ( cli_commands as $command_class ) {
+// Or add all classes:
+// $cli_commands = WpCliCommands::get_classes_with_cli_commands();
+
+foreach ( $cli_commands as $command_class ) {
     if ( is_a( $command_class, WpCliCommandInterface::class, true ) ) {
             array_map( function ( $command ) {
             WP_CLI::add_command( ...$command );
