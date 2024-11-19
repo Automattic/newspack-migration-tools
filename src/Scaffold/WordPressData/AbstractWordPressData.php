@@ -139,15 +139,21 @@ abstract class AbstractWordPressData {
 			$id = $this->wpdb->insert_id;
 
 			foreach ( $this->data_sources as $key => $source ) {
-				$this->wpdb->insert(
-					'migration_destination_sources',
-					[
-						'migration_object_id'       => $this->get_migration_object()->get_id(),
-						'wordpress_table_column_id' => WordPressData::get_instance()->get_column_id( $this->get_table_name(), $key ),
-						'wordpress_object_id'       => $id,
-						'json_path'                 => $source,
-					]
-				);
+				if ( ! is_array( $source ) ) {
+					$source = [ $source ];
+				}
+
+				foreach ( $source as $path ) {
+					$this->wpdb->insert(
+						'migration_destination_sources',
+						[
+							'migration_object_id'       => $this->get_migration_object()->get_id(),
+							'wordpress_table_column_id' => WordPressData::get_instance()->get_column_id( $this->get_table_name(), $key ),
+							'wordpress_object_id'       => $id,
+							'json_path'                 => $path,
+						]
+					);
+				}
 			}
 
 			$this->data             = [];
@@ -318,6 +324,41 @@ abstract class AbstractWordPressData {
 		}
 
 		$this->data[ $name ] = $value;
+	}
+
+	/**
+	 * Facilitates the process of concatenating properties to set other properties, and maintain the original data sources.
+	 *
+	 * @param string $property The property to set.
+	 * @param array  $props The properties to use for concatenation.
+	 * @param string $concatenated_value Optional param to force set the resulting value.
+	 *
+	 * @return void
+	 * @throws Exception If a data property and data property source have not been set.
+	 */
+	protected function concatenate_to_set_property( string $property, array $props, string $concatenated_value = '' ): void {
+		$this->data[ $property ]         = $concatenated_value;
+		$this->data_sources[ $property ] = [];
+
+		foreach ( $props as $prop ) {
+			if ( ! isset( $this->data[ $prop ] ) || ! isset( $this->data_sources[ $prop ] ) ) {
+				throw new Exception( sprintf( '%s has not been set.', $prop ) );
+			}
+
+			if ( empty( $concatenated_value ) ) {
+				$this->data[ $property ] .= $this->data[ $prop ] . ' ';
+			}
+
+			$data_source_path = $this->data_sources[ $prop ];
+
+			if ( ! is_array( $data_source_path ) ) {
+				$data_source_path = [ $data_source_path ];
+			}
+
+			$this->data_sources[ $property ] = array_merge( $this->data_sources[ $property ], $data_source_path );
+		}
+
+		$this->data[ $property ] = trim( $this->data[ $property ] );
 	}
 
 	/**
