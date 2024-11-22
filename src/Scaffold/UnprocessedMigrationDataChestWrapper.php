@@ -100,7 +100,7 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 
 		if ( ! isset( $this->stored ) || ! $this->stored ) {
 			$maybe_inserted = $this->wpdb->insert(
-				'migration_data_containers',
+				'migration_data_chests',
 				[
 					'json_data'            => wp_json_encode( $this->get_raw_data() ),
 					'pointer_to_object_id' => $this->get_pointer_to_identifier(),
@@ -134,7 +134,7 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 			// phpcs:disable
 			$container = $this->wpdb->get_row(
 				$this->wpdb->prepare(
-					'SELECT * FROM migration_data_containers 
+					'SELECT * FROM migration_data_chests 
          				WHERE migration_id = %d 
          				  AND pointer_to_object_id = %s 
          				  ORDER BY created_at DESC',
@@ -183,7 +183,7 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 			// phpcs:disable
 			$this->id = $this->wpdb->get_var(
 				$this->wpdb->prepare(
-					'SELECT id FROM migration_data_containers 
+					'SELECT id FROM migration_data_chests 
 		 				WHERE migration_id = %d 
 		 				  AND pointer_to_object_id = %s 
 		 				  AND json_data = %s 

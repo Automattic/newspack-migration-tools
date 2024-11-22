@@ -48,7 +48,7 @@ abstract class AbstractRunAwareMigrationDataChest extends AbstractMigrationDataC
 		 * @param int|null        $id The Database ID for the migration data set.
 		 * @param bool|null       $stored Whether the data set has been successfully stored or not.
 		 *
-		 * @throws Exception If $id does not exist in `migration_data_containers` table.
+		 * @throws Exception If $id does not exist in `migration_data_chests` table.
 		 */
 	public function __construct( iterable $data, string $pointer_to_identifier, MigrationRunKey $run_key, ?int $id = null, ?bool $stored = null ) {
 		parent::__construct( $data, $pointer_to_identifier );
@@ -61,7 +61,7 @@ abstract class AbstractRunAwareMigrationDataChest extends AbstractMigrationDataC
 			// phpcs:disable
 			$id_exists = $this->wpdb->get_var(
 				$this->wpdb->prepare(
-					'SELECT ID FROM migration_data_containers WHERE ID = %d',
+					'SELECT ID FROM migration_data_chests WHERE ID = %d',
 					$id
 				)
 			);
@@ -110,7 +110,7 @@ abstract class AbstractRunAwareMigrationDataChest extends AbstractMigrationDataC
 		$maybe_stored = false;
 		if ( isset( $this->id ) ) {
 			$maybe_stored = $this->wpdb->update(
-				'migration_data_containers',
+				'migration_data_chests',
 				$store_data,
 				[
 					'id' => $this->get_id(), // At this point, this should not throw an Exception.
@@ -126,7 +126,7 @@ abstract class AbstractRunAwareMigrationDataChest extends AbstractMigrationDataC
 			$store_data['migration_id'] = $this->get_run_key()->get_migration_id();
 
 			$maybe_stored = $this->wpdb->insert(
-				'migration_data_containers',
+				'migration_data_chests',
 				$store_data
 			);
 
@@ -153,7 +153,7 @@ abstract class AbstractRunAwareMigrationDataChest extends AbstractMigrationDataC
 		if ( ! isset( $this->stored ) ) {
 			$data = $this->wpdb->get_var(
 				$this->wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-					'SELECT json_data FROM migration_data_containers WHERE migration_id = %d',
+					'SELECT json_data FROM migration_data_chests WHERE migration_id = %d',
 					$this->get_run_key()->get_migration_id() // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				)
 			);
@@ -178,7 +178,7 @@ abstract class AbstractRunAwareMigrationDataChest extends AbstractMigrationDataC
 				// phpcs:disable
 				$row = $this->wpdb->get_row(
 					$this->wpdb->prepare(
-						'SELECT id FROM migration_data_containers WHERE migration_id = %d ORDER BY created_at DESC',
+						'SELECT id FROM migration_data_chests WHERE migration_id = %d ORDER BY created_at DESC',
 						$this->get_run_key()->get_migration_id()
 					)
 				);
