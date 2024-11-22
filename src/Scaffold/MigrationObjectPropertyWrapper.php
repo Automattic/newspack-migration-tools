@@ -4,11 +4,14 @@ namespace Newspack\MigrationTools\Scaffold;
 
 use ArrayAccess;
 use Exception;
+use IteratorAggregate;
+use ArrayIterator;
+use Traversable;
 
 /**
  * Class MigrationObjectPropertyWrapper.
  */
-class MigrationObjectPropertyWrapper implements ArrayAccess {
+class MigrationObjectPropertyWrapper implements ArrayAccess, IteratorAggregate {
 
 	/**
 	 * Stack containing the different attributes used to reach the current property.
@@ -157,6 +160,31 @@ class MigrationObjectPropertyWrapper implements ArrayAccess {
 	 */
 	public function offsetUnset( mixed $offset ): void {
 		$this->__unset( $offset );
+	}
+
+	/**
+	 * Retrieve an external iterator
+	 *
+	 * @link https://php.net/manual/en/iteratoraggregate.getiterator.php
+	 * @return Traversable An instance of an object implementing Iterator or Traversable
+	 *
+	 * @throws Exception On failure.
+	 */
+	public function getIterator(): Traversable {
+		if ( ! is_array( $this->property ) & ! is_object( $this->property ) ) {
+			throw new Exception( 'Cannot iterate over a non-array or non-object.' );
+		}
+
+		$values = $this->get_value();
+
+		foreach ( $values as $key => $value ) {
+			$established_path   = $this->path;
+			$established_path[] = $this->current;
+			$established_path[] = $key;
+			$values[ $key ]     = new MigrationObjectPropertyWrapper( $value, $established_path );
+		}
+
+		return new ArrayIterator( $values );
 	}
 
 	/**
