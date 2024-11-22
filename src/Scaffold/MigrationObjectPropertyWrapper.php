@@ -88,7 +88,7 @@ class MigrationObjectPropertyWrapper implements ArrayAccess {
 	 *
 	 * @param mixed $offset The offset to check for.
 	 *
-	 * @return bool The return value will be casted to boolean if non-boolean was returned.
+	 * @return bool The return value will be cast to boolean if non-boolean was returned.
 	 */
 	public function offsetExists( mixed $offset ): bool {
 		return $this->__isset( $offset );
