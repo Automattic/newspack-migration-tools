@@ -1,33 +1,44 @@
 <?php
 /**
- * TODO. Explain, link, and credit.
+ * Helper for the great FG migration plugins.
  */
 
 namespace Newspack\MigrationTools\Util;
 
 use Newspack\MigrationTools\NMT;
-use Newspack\MigrationTools\Util\Log\CliLog;
-use Newspack\MigrationTools\Util\Log\FileLog;
-use Newspack\MigrationTools\Util\Log\MultiLog;
-use Psr\Log\LoggerInterface;
 
 class FgHelper {
+
+	/** CMS we are migrating from.
+	 *
+	 * @var string Type of CMS we are migrating from.
+	 */
 	private string $type;
 
-	private LoggerInterface $cli_log;
-	private LoggerInterface $file_log;
-	private LoggerInterface $multilog;
+	/**
+	 * The FG plugins use a prefix based on the CMS it's migrating from, so this holds that for calling functions.
+	 *
+	 * @var string Prefix for the function names.
+	 */
 	private string $function_prefix;
+
+	/**
+	 * The prefix for the import tables in the database. Will default to the CMS type, but can be overridden by a constant in your setup.
+	 *
+	 * @var string Prefix for the import tables.
+	 */
 	private string $db_import_tables_prefix;
 
 	public function __construct( string $type ) {
-		$this->cli_log  = CliLog::get_logger( 'fg-helper' );
-		$this->file_log = FileLog::get_logger( 'fg-helper' );
-		$this->multilog = MultiLog::get_logger( 'fg-multi', [ $this->cli_log, $this->file_log ] );
 
 		$type = strtolower( $type );
 		if ( ! in_array( $type, [ 'drupal', 'joomla' ] ) ) {
-			NMT::exit_with_message( sprintf( 'Invalid type "%s" is not supported', $type ), [ $this->cli_log ] );
+			NMT::exit_with_message( sprintf( 'Invalid migration type "%s" is not supported', $type ) );
+		}
+
+		$supported_cms = [ 'drupal', 'joomla' ];
+		if ( ! in_array( $type, $supported_cms ) ) {
+			NMT::exit_with_message( sprintf( 'Invalid migration type "%s". Only %s are supported as of now.', $type, implode( $supported_cms ) ) );
 		}
 
 		switch ( $type ) {
@@ -39,7 +50,7 @@ class FgHelper {
 			case 'joomla':
 				$this->type                    = 'joomla';
 				$this->function_prefix         = 'fgj2wp';
-				$this->db_import_tables_prefix = 'drupal_';
+				$this->db_import_tables_prefix = 'joomla_';
 				break;
 		}
 
@@ -48,14 +59,16 @@ class FgHelper {
 			$this->db_import_tables_prefix = NCCM_FG_MIGRATOR_PREFIX;
 		}
 
-
 		if ( ! defined( 'NCCM_SOURCE_WEBSITE_URL' ) ) {
-			NMT::exit_with_message( 'NCCM_SOURCE_WEBSITE_URL is not defined in wp-config.php', [ $this->cli_log ] );
+			NMT::exit_with_message( 'NCCM_SOURCE_WEBSITE_URL is not defined in wp-config.php' );
 		}
 
 		$this->type = $type;
 	}
 
+	/**
+	 * Add filter for options.
+	 */
 	private function add_hooks(): void {
 		add_filter( "option_{$this->function_prefix}_options", [ $this, 'filter_options' ] );
 	}
@@ -75,14 +88,13 @@ class FgHelper {
 		do_action( 'fg_helper_pre_import', [ $pos_args, $assoc_args ] );
 
 		// Note that the 'launch' arg is important – without it the hooks above will not be registered.
-
 		\WP_CLI::runcommand( "import-$this->type import", [ 'launch' => false ] );
 	}
 
 	/**
 	 * Override the database connection details with environment variables.
 	 *
-	 * @param array $options Options for the fgj2wp plugin (it's fgj2wp_options in the database).
+	 * @param array $options Options for the fg plugin.
 	 */
 	public function filter_options( $options ): array {
 		$options['hostname'] = getenv( 'DB_HOST' );
@@ -100,7 +112,7 @@ class FgHelper {
 	}
 
 	/**
-	 *
+	 * Get the DB prefix.
 	 *
 	 * @return string
 	 */
