@@ -1,6 +1,8 @@
 <?php
 /**
  * Helper for the great FG migration plugins.
+ *
+ * See ../../docs/fg-helper.md for more information.
  */
 
 namespace Newspack\MigrationTools\Util;
