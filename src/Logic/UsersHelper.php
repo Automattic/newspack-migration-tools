@@ -5,6 +5,7 @@ namespace Newspack\MigrationTools\Logic;
 use Exception;
 use InvalidArgumentException;
 use Newspack\MigrationTools\Util\Log\CliLog;
+use Newspack\MigrationTools\Util\Log\FileLog;
 use WP_User;
 
 class UsersHelper {
@@ -14,9 +15,9 @@ class UsersHelper {
 	 *
 	 * @param array $data Array with one (or more) of the following keys: 'ID', 'user_email', 'user_login', 'user_nicename'.
 	 *
-	 * @return WP_User|false The user if found, false otherwise.
+	 * @return WP_User|bool The user if found, false otherwise.
 	 */
-	public static function get_user( array $data ): WP_User|false {
+	public static function get_user( array $data ): WP_User|bool {
 		$wp_user = false;
 		if ( ! empty( $data['ID'] ) ) {
 			$wp_user = get_user_by( 'ID', $data['ID'] );
@@ -110,7 +111,6 @@ class UsersHelper {
 	public static function nicename_exists( string $nicename ): int {
 		global $wpdb;
 		// We could also use get_user_by( 'slug', $nicename ) but this is probably faster.
-
 		$user_id = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(
 				"SELECT ID FROM {$wpdb->users} WHERE user_nicename = %s LIMIT 1", // phpcs:ignore WordPressVIPMinimum.Variables.RestrictedVariables.user_meta__wpdb__users
@@ -125,6 +125,8 @@ class UsersHelper {
 	 * Create or get a user from an array of data.
 	 *
 	 * The array is the same as wp_insert_user accepts. https://developer.wordpress.org/reference/functions/wp_insert_user
+	 *
+	 * Note that you *have* to provide one of the following fields: 'user_email', 'user_login', 'user_nicename', 'display_name'.
 	 *
 	 * The difference to wp_insert_user is that this method will try to create a user even if the data array is incomplete,
 	 * so email, user login, and user nicename will be generated if not provided. Care is taken to avoid duplicates and user facing
@@ -142,6 +144,13 @@ class UsersHelper {
 
 		// Trim all that we can (so strings).
 		$data = array_map( fn( $value ) => is_string( $value ) ? trim( $value ) : $value, $data );
+
+		$vital_fields = [ 'user_email', 'user_login', 'user_nicename', 'display_name' ];
+		// We need at least one of the above fields to be present, so check that filtering on not empty does not produce an empty array.
+		if ( empty( array_filter( $vital_fields, fn( $field ) => ! empty( $data[ $field ] ) ) ) ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+			throw new InvalidArgumentException( sprintf( 'Data array is missing one or more of the vital fields: %s.', implode( ', ', $vital_fields ) ) );
+		}
 
 		if ( ! empty( $data['role'] ) && null === get_role( $data['role'] ) ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
@@ -162,6 +171,7 @@ class UsersHelper {
 		$user_email    = $data['user_email'] ?? '';
 		$user_nicename = $data['user_nicename'] ?? '';
 		$user_login    = $data['user_login'] ?? '';
+
 
 		// If we don't have an email, we'll create an ugly unusable one so that we can create the user.
 		if ( empty( $user_email ) ) {
@@ -211,10 +221,11 @@ class UsersHelper {
 		}
 		$wp_user = get_user_by( 'ID', $user_id );
 
-		CliLog::get_logger( 'UsersHelper' )->debug(
-			sprintf( 'Created user with ID %d.', $user_id ),
-			array_intersect_key( $wp_user->to_array(), array_flip( [ 'user_login', 'user_email', 'user_nicename', 'display_name', 'role' ] ) )
-		);
+		$log_message      = sprintf( 'Created user with ID %d.', $user_id );
+		$log_array        = array_intersect_key( $wp_user->to_array(), array_flip( [ 'user_login', 'user_email', 'user_nicename', 'display_name', 'role' ] ) );
+		$log_array['url'] = get_author_posts_url( $user_id );
+		CliLog::get_logger( 'users-helper' )->notice( $log_message, [ $log_array['url'] ] );
+		FileLog::get_logger( 'users-helper' )->notice( $log_message, $log_array );
 
 		return $wp_user;
 	}
