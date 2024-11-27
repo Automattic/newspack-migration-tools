@@ -42,9 +42,24 @@ class UsersHelper {
 	 * @return string An unused username.
 	 */
 	public static function get_unused_username( string $desired_username ): string {
+		$original_username = $desired_username;
+		$desired_username  = trim( $desired_username );
+		$max_length        = 60;
+		if ( strlen( $desired_username ) >= $max_length ) {
+			$desired_username = trim( mb_substr( $desired_username, 0, $max_length ) );
+			FileLog::get_logger( 'UsersHelper' )->warning(
+				sprintf(
+					'Shortened username to under %d chars from "%s" to "%s".',
+					$max_length,
+					$original_username,
+					$desired_username
+				)
+			);
+		}
+
 		$i = 0;
 		while ( username_exists( $desired_username ) ) {
-			$desired_username .= ( ++$i );
+			$desired_username = self::append_number_and_ensure_length( $desired_username, ++$i, $max_length );
 		}
 		if ( $i > 0 ) {
 			CliLog::get_logger( 'UsersHelper' )->debug( sprintf( 'Generated username: %s', $desired_username ) );
@@ -63,15 +78,54 @@ class UsersHelper {
 	 * @return string An unused nicename.
 	 */
 	public static function get_unused_nicename( string $desired_nicename ): string {
+		$original_nicename = $desired_nicename;
+		$desired_nicename  = trim( $desired_nicename );
+		$max_length        = 50;
+		if ( strlen( $desired_nicename ) >= 50 ) {
+			$desired_nicename = trim( mb_substr( $desired_nicename, 0, $max_length ) );
+			FileLog::get_logger( 'UsersHelper' )->warning(
+				sprintf(
+					'Shortened nicename to under %d chars from "%s" to "%s".',
+					$max_length,
+					$original_nicename,
+					$desired_nicename
+				)
+			);
+		}
+
 		$i = 0;
 		while ( self::nicename_exists( $desired_nicename ) ) {
-			$desired_nicename .= ( ++$i );
+			$desired_nicename = self::append_number_and_ensure_length( $desired_nicename, ++$i, $max_length );
 		}
 		if ( $i > 0 ) {
 			CliLog::get_logger( 'UsersHelper' )->debug( sprintf( 'Generated nicename: %s', $desired_nicename ) );
 		}
 
-		return mb_substr( $desired_nicename, 0, 50 );
+		return $desired_nicename;
+	}
+
+	/**
+	 * Append a number to a string and ensure it is not longer than a given length.
+	 *
+	 * If the string is too long, characters will be removed from the beginning so we don't
+	 * chop off the incrementor at the end.
+	 *
+	 * @param string $string_to_append_to For example a nicename.
+	 * @param int    $number              The number to append – you are responsible for incrementing it if you need that.
+	 * @param int    $max_length          The maximum length you will allow the string to be.
+	 *
+	 * @return string A maybe truncated string with the number appended.
+	 */
+	private static function append_number_and_ensure_length( string $string_to_append_to, int $number, int $max_length ): string {
+		$string_to_append_to .= $number;
+
+		// If the string is too long, we'll peel off a couple of characters from the beginning
+		$length = strlen( $string_to_append_to );
+		if ( $length >= $max_length ) {
+			$string_to_append_to = mb_substr( $string_to_append_to, ( $length - $max_length ), $length );
+		}
+
+		return $string_to_append_to;
 	}
 
 	/**
@@ -113,7 +167,7 @@ class UsersHelper {
 		// We could also use get_user_by( 'slug', $nicename ) but this is probably faster.
 		$user_id = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->prepare(
-				"SELECT ID FROM {$wpdb->users} WHERE user_nicename = %s LIMIT 1", // phpcs:ignore WordPressVIPMinimum.Variables.RestrictedVariables.user_meta__wpdb__users
+				"SELECT ID FROM $wpdb->users WHERE user_nicename = %s LIMIT 1", // phpcs:ignore WordPressVIPMinimum.Variables.RestrictedVariables.user_meta__wpdb__users
 				$nicename
 			)
 		);
@@ -224,8 +278,8 @@ class UsersHelper {
 		$log_message      = sprintf( 'Created user with ID %d.', $user_id );
 		$log_array        = array_intersect_key( $wp_user->to_array(), array_flip( [ 'user_login', 'user_email', 'user_nicename', 'display_name', 'role' ] ) );
 		$log_array['url'] = get_author_posts_url( $user_id );
-		CliLog::get_logger( 'users-helper' )->notice( $log_message, [ $log_array['url'] ] );
-		FileLog::get_logger( 'users-helper' )->notice( $log_message, $log_array );
+		CliLog::get_logger( 'UsersHelper' )->notice( $log_message, [ $log_array['url'] ] );
+		FileLog::get_logger( 'UsersHelper' )->notice( $log_message, $log_array );
 
 		return $wp_user;
 	}

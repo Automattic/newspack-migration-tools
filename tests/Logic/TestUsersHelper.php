@@ -85,4 +85,48 @@ class TestUsersHelper extends WP_UnitTestCase {
 			]
 		);
 	}
+
+	/**
+	 * Test that a username that is too long is shortened.
+	 *
+	 * Also test that a generated username with an appended number is not too long.
+	 */
+	public function test_too_long_unused_username() {
+		$max_length        = 60;
+		$long_username     = 'this_is_a_very_long_username_that_is_too_long_to_be_used_so_should_come_back_shorter';
+		$should_be_shorter = UsersHelper::get_unused_username( $long_username );
+		$this->assertTrue( strlen( $should_be_shorter ) <= $max_length );
+		$user = UsersHelper::create_or_get_user(
+			[
+				'user_login' => $should_be_shorter,
+			]
+		);
+		$this->assertEquals( $should_be_shorter, $user->user_login );
+
+		$should_also_be_shorter_and_different = UsersHelper::get_unused_username( $long_username );
+		$this->assertTrue( strlen( $should_also_be_shorter_and_different ) <= $max_length );
+		$this->assertNotEquals( $user->user_login, $should_also_be_shorter_and_different );
+	}
+
+	/**
+	 * Test that a nicename that is too long is shortened.
+	 *
+	 * Also test that a generated nicename with an appended number is not too long.
+	 */
+	public function test_too_long_unused_nicename() {
+		$max_length        = 50;
+		$long_nicename     = 'Just such a long nicename that it really will not make sense to use it without shortening it';
+		$should_be_shorter = UsersHelper::get_unused_nicename( $long_nicename );
+		$this->assertTrue( strlen( $should_be_shorter ) <= $max_length );
+		$user        = UsersHelper::create_or_get_user(
+			[
+				'user_nicename' => $should_be_shorter,
+			]
+		);
+		$as_nicename = str_replace( ' ', '-', strtolower( $should_be_shorter ) );
+		$this->assertEquals( $as_nicename, $user->user_nicename );
+
+		$should_also_be_shorter_and_different = UsersHelper::get_unused_nicename( $long_nicename );
+		$this->assertTrue( strlen( $should_also_be_shorter_and_different ) <= $max_length );
+	}
 }
