@@ -36,12 +36,24 @@ use WP_User;
  */
 class WordPressPostsData extends AbstractWordPressData {
 
+	const VALID_USER_CACHE_KEY = 'list_of_valid_user_ids';
+	const CACHE_GROUP = 'migration_scaffold';
+	/**
+	 * The authors to set for a particular post.
+	 *
+	 * @var int[]|WP_User[]|MigrationObjectPropertyWrapper[] $authors The authors of a particular post.
+	 */
+	protected array $authors = [];
+
 	/**
 	 * WordPressPostsData constructor.
 	 */
 	public function __construct() {
 		parent::__construct();
 		$this->primary_key = 'ID';
+		if ( ! wp_cache_get( self::VALID_USER_CACHE_KEY, self::CACHE_GROUP ) ) {
+			wp_cache_set( self::VALID_USER_CACHE_KEY, [], self::CACHE_GROUP, DAY_IN_SECONDS );
+		}
 	}
 
 	/**
@@ -115,13 +127,20 @@ class WordPressPostsData extends AbstractWordPressData {
 	 * @param int|WP_User|MigrationObjectPropertyWrapper $post_author The post author.
 	 *
 	 * @return WordPressPostsData
+	 * @throws Exception
 	 */
 	public function set_post_author( int|WP_User|MigrationObjectPropertyWrapper $post_author ): WordPressPostsData {
 		if ( $post_author instanceof WP_User ) {
 			$post_author = $post_author->ID;
 		}
 
+		if ( $post_author instanceof MigrationObjectPropertyWrapper ) {
+			$post_author = $this->validate_property_is_valid_user( $post_author );
+		}
+
 		$this->set_property( 'post_author', $post_author );
+
+		$this->maintain_authors_array( $post_author );
 
 		return $this;
 	}
@@ -370,5 +389,151 @@ class WordPressPostsData extends AbstractWordPressData {
 		$this->set_property( 'comment_count', $comment_count );
 
 		return $this;
+	}
+
+	/**
+	 * This function will store the list of co-authors to be set upon post creation.
+	 *
+	 * @param int[]|WP_User[]|MigrationObjectPropertyWrapper[] $authors The authors to set for a particular post.
+	 *
+	 * @return WordPressPostsData
+	 * @throws Exception If the author is not a valid user.
+	 */
+	public function set_authors( array $authors ): WordPressPostsData {
+		$this->authors = [];
+
+		if ( isset( $this->post_author ) ) {
+			$this->maintain_authors_array( $this->post_author );
+		}
+
+		foreach ( $authors as $author ) {
+			if ( ! isset( $this->post_author ) ) {
+				$this->set_post_author( $author );
+				continue;
+			}
+
+			$this->maintain_authors_array( $author );
+		}
+
+		return $this;
+	}
+
+	/**
+	 * This function will add an author to the list of co-authors to be set upon post creation.
+	 *
+	 * @param int|WP_User|MigrationObjectPropertyWrapper $author The author to add to the authors array.
+	 *
+	 * @throws Exception If the author is not a valid user.
+	 */
+	public function add_author( int|WP_User|MigrationObjectPropertyWrapper $author ): WordPressPostsData {
+		$this->maintain_authors_array( $author );
+
+		return $this;
+	}
+
+	/**
+	 * Maintains a cached list of valid user IDs.
+	 *
+	 * @param int|WP_User $user The user to validate.
+	 *
+	 * @return bool
+	 */
+	private function is_in_valid_users_cache( int|WP_User $user ): bool {
+		$cached_valid_users = wp_cache_get( self::VALID_USER_CACHE_KEY, self::CACHE_GROUP );
+
+		if ( $user instanceof WP_User ) {
+			if ( ! array_key_exists( $user->ID, $cached_valid_users ) ) {
+				$cached_valid_users[ $user->ID ] = true;
+
+				return wp_cache_set(
+					self::VALID_USER_CACHE_KEY,
+					$cached_valid_users,
+					self::CACHE_GROUP,
+					DAY_IN_SECONDS
+				);
+			}
+
+			return true;
+		}
+
+		$wp_user = get_user_by( 'id', $user );
+
+		if ( false === $wp_user ) {
+			return false;
+		}
+
+		return $this->is_in_valid_users_cache( $wp_user );
+	}
+
+	/**
+	 * Validates whether a valid WP_User can be obtained from the given $property.
+	 *
+	 * @param MigrationObjectPropertyWrapper $property A MigrationObjectPropertyWrapper possibly containing a pointer to a WP_User.
+	 *
+	 * @return MigrationObjectPropertyWrapper
+	 * @throws Exception If a valid WP_User cannot be obtained from the given $property value.
+	 */
+	private function validate_property_is_valid_user( MigrationObjectPropertyWrapper $property ): MigrationObjectPropertyWrapper {
+		$value = $property->get_value();
+
+		if ( $value instanceof WP_User ) {
+			$this->is_in_valid_users_cache( $value );
+
+			return new MigrationObjectPropertyWrapper(
+				$value->ID,
+				explode( '.', $property->get_path() )
+			);
+		}
+
+		if ( is_string( $value ) ) {
+			if ( ! is_numeric( $value ) ) {
+				throw new Exception(
+					sprintf(
+						"A valid user cannot be obtained from this value: '%s'",
+						$value // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+					)
+				);
+			}
+
+			$value = intval( $value );
+		}
+
+		if ( is_int( $value ) ) {
+			if ( ! $this->is_in_valid_users_cache( $value ) ) {
+				// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+				throw new Exception( sprintf( 'User ID: %d does not exist.', $value ) );
+			}
+		}
+
+		return $property;
+	}
+
+	/**
+	 * Maintains a list of authors to be assigned as co-authors upon post creation.
+	 *
+	 * @param int|WP_User|MigrationObjectPropertyWrapper $author The author to maintain in the authors array.
+	 *
+	 * @return void
+	 * @throws Exception Throws exception if the author is not a valid user.
+	 */
+	private function maintain_authors_array( int|WP_User|MigrationObjectPropertyWrapper $author ): void {
+		if ( $author instanceof MigrationObjectPropertyWrapper ) {
+			$author = $this->validate_property_is_valid_user( $author );
+
+			$this->authors[ $author->get_value() ] = $author;
+		} else {
+			$author_id = $author;
+
+			if ( $author instanceof WP_User ) {
+				$author_id = $author->ID;
+			}
+
+			if ( ! $this->is_in_valid_users_cache( $author ) ) {
+				// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+				throw new Exception( sprintf( 'User ID: %d does not exist.', $author ) );
+			}
+
+			$this->authors[ $author_id ] = $author;
+		}
 	}
 }
