@@ -2,9 +2,11 @@
 
 namespace Newspack\MigrationTools\Scaffold\WordPressData;
 
+use CoAuthors_Plus;
 use DateTimeInterface;
 use Exception;
 use Newspack\MigrationTools\Scaffold\MigrationObjectPropertyWrapper;
+use Newspack\MigrationTools\Scaffold\Singletons\WordPressData;
 use WP_User;
 
 /**
@@ -38,6 +40,9 @@ class WordPressPostsData extends AbstractWordPressData {
 
 	const VALID_USER_CACHE_KEY = 'list_of_valid_user_ids';
 	const CACHE_GROUP = 'migration_scaffold';
+
+	protected CoAuthors_Plus $co_authors_plus;
+
 	/**
 	 * The authors to set for a particular post.
 	 *
@@ -50,7 +55,9 @@ class WordPressPostsData extends AbstractWordPressData {
 	 */
 	public function __construct() {
 		parent::__construct();
-		$this->primary_key = 'ID';
+		$this->primary_key     = 'ID';
+		$this->co_authors_plus = new CoAuthors_Plus();
+
 		if ( ! wp_cache_get( self::VALID_USER_CACHE_KEY, self::CACHE_GROUP ) ) {
 			wp_cache_set( self::VALID_USER_CACHE_KEY, [], self::CACHE_GROUP, DAY_IN_SECONDS );
 		}
@@ -429,6 +436,66 @@ class WordPressPostsData extends AbstractWordPressData {
 		$this->maintain_authors_array( $author );
 
 		return $this;
+	}
+
+	/**
+	 * Creates a post with the given data.
+	 *
+	 * @return \WP_Error|int
+	 * @throws Exception If the co-authors cannot be set after post creation.
+	 */
+	public function create(): \WP_Error|int {
+		$copy_migration_object = $this->get_migration_object();
+
+		$result = parent::create();
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		// At this point, $data, $data_sources, $migration_object have been reset.
+
+		if ( ! empty( $this->authors ) ) {
+			$maybe_coauthors_have_been_set = $this->co_authors_plus->add_coauthors(
+				$result,
+				array_keys( $this->authors ),
+				false,
+				'id'
+			);
+
+			if ( ! $maybe_coauthors_have_been_set ) {
+				throw new Exception( 'Unable to set co-authors successfully after post was created.' );
+			}
+
+			foreach ( $this->authors as $author_id => $author ) {
+				$user = get_user_by( 'id', $author_id );
+
+				$guest_authors_enabled = false;
+
+				if ( $guest_authors_enabled ) {
+					$user = $this->co_authors_plus->get_coauthor_by( 'email', $user->user_email );
+				}
+
+				$author_term = $this->co_authors_plus->get_author_term( $user );
+
+				// TODO - we may have to come back to this and rework. `wp_term_relationships` doesn't have a primary key,
+				// like other tables, so the only way to point to a specific author <-> post relationship is by using
+				// both the `object_id` and `term_taxonomy_id` columns.
+				$this->wpdb->insert(
+					'migration_destination_sources',
+					[
+						'migration_object_id'       => $copy_migration_object->get_id(),
+						'wordpress_table_column_id' => WordPressData::get_instance()->get_column_id( 'wp_term_relationships', 'term_taxonomy_id' ),
+						'wordpress_object_id'       => $author_term->term_taxonomy_id,
+						'json_path'                 => $author instanceof MigrationObjectPropertyWrapper ? $author->get_path() : '',
+					]
+				);
+			}
+
+			$this->authors = [];
+		}
+
+		return $result;
 	}
 
 	/**
