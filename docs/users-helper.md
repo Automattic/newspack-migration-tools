@@ -1,10 +1,10 @@
 # Users Helper
-This class exists so that we can get and create users in a consistent way. It takes care to enusre that `user_login`, `user_nicename`, and `user_email` are unique and valid. The idea is that _all_ migration code that creates users should use this class for consistency.
+This class exists so that we can get and create users in a consistent way. It takes care to ensure that `user_login`, `user_nicename`, and `user_email` are unique and valid. The idea is that _all_ migration code that creates users should use this class for consistency.
 
 ## Unique identifier for users
 The class will save a meta value on created users and try to use that to get users. A unique identifier that you pass when creating the user will be your "handle" on the user for the rest of the migration.
 
-The unique identifier is stored in user meta with the key that can be found in the `UsersHelper::UNIQUE_IDENTIFIER_META_KEY` constant. Note that it is your job to ensure that the unique identifier is unique in the data you are migrating – the code will help you check that. It can be any string you choose – as long as its unique for the user. See the `create_or_get_user()` or `get_user_by_unique_identifier()` methods for more information.
+The unique identifier is stored in user meta with the key that can be found in the `UsersHelper::UNIQUE_IDENTIFIER_META_KEY` constant. Note that it is your job to ensure that the unique identifier is unique in the data you are migrating – the code will help you check that. It can be any string you choose – as long as it's unique for the user. See the `create_or_get_user()` or `get_user_by_unique_identifier()` methods for more information.
 
 ## Getting users
 There are a couple of different methods that can get a user. 
