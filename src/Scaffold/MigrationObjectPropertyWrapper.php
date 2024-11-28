@@ -181,7 +181,14 @@ class MigrationObjectPropertyWrapper implements ArrayAccess, IteratorAggregate {
 			$established_path   = $this->path;
 			$established_path[] = $this->current;
 			$established_path[] = $key;
-			$values[ $key ]     = new MigrationObjectPropertyWrapper( $value, $established_path );
+
+			if ( is_array( $value ) ) {
+				$value = [ $key => $value ];
+			} elseif ( is_object( $value ) ) {
+				$value = (object) [ $key => $value ];
+			}
+
+			$values[ $key ] = new MigrationObjectPropertyWrapper( $value, $established_path );
 		}
 
 		return new ArrayIterator( $values );
