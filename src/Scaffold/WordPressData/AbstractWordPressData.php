@@ -109,6 +109,10 @@ abstract class AbstractWordPressData {
 	 * @param RunAwareMigrationObject $migration_object The migration object.
 	 */
 	public function set_migration_object( RunAwareMigrationObject $migration_object ): void {
+		if ( ! $migration_object->has_been_stored() ) {
+			$migration_object->store_original_data();
+		}
+		
 		$this->migration_object = $migration_object;
 	}
 
