@@ -81,6 +81,7 @@ class Migrator {
 
 			// phpcs:ignore Squiz.PHP.CommentedOutCode.Found, Squiz.WhiteSpace.SuperfluousWhitespace.EndLine
 			/* @var RunAwareMigrationObject $migration_object */
+			$migration_object->store_original_data();
 			$result = $migration->command( $migration_object );
 
 			if ( $result instanceof MigrationState ) {
