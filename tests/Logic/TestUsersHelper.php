@@ -8,6 +8,7 @@ use WP_UnitTestCase;
 class TestUsersHelper extends WP_UnitTestCase {
 
 	private int $peter_parker_id;
+	private string $peter_parker_uniqid = '718-808-8342';
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -19,6 +20,9 @@ class TestUsersHelper extends WP_UnitTestCase {
 				'role'          => 'author',
 			]
 		);
+		// Not ideal that we set this here, but since we are using the test user factory, we can't set it at creation time.
+		add_user_meta( $this->peter_parker_id, UsersHelper::UNIQUE_IDENTIFIER_META_KEY, $this->peter_parker_uniqid, true );
+		add_filter( 'newspack_migration_tools_enable_file_log', '__return_true' );
 	}
 
 	public function test_unused_email() {
@@ -59,19 +63,22 @@ class TestUsersHelper extends WP_UnitTestCase {
 		$copycat = UsersHelper::create_or_get_user(
 			[
 				'user_login' => $peter->user_login,
-			]
+			],
+			$this->peter_parker_uniqid
 		);
 		$this->assertEquals( $peter->ID, $copycat->ID );
 		$copycat = UsersHelper::create_or_get_user(
 			[
 				'user_email' => $peter->user_email,
-			]
+			],
+			$this->peter_parker_uniqid
 		);
 		$this->assertEquals( $peter->ID, $copycat->ID );
 		$copycat = UsersHelper::create_or_get_user(
 			[
 				'user_nicename' => $peter->user_nicename,
-			]
+			],
+			$this->peter_parker_uniqid
 		);
 		$this->assertEquals( $peter->ID, $copycat->ID );
 	}
@@ -82,8 +89,27 @@ class TestUsersHelper extends WP_UnitTestCase {
 		UsersHelper::create_or_get_user(
 			[
 				'role' => 'editor',
-			]
+			],
+			'bork'
 		);
+	}
+
+	/**
+	 * Test that when a user is created – the unique identifier is set.
+	 */
+	public function test_create_user_sets_unique_identifier() {
+		$bob = UsersHelper::create_or_get_user(
+			[
+				'user_login' => 'bobby',
+				'first_name' => 'Bob',
+				'last_name'  => ' ', // Empty last name.
+			],
+			'bobsyouruncle'
+		);
+		// Do a quick assert and see that a last name as ' '  will be trimmed away in the nicename.
+		$this->assertEquals( 'bob', $bob->user_nicename );
+		// Now check that the unique identifier was set on the user.
+		$this->assertNotEmpty( get_user_meta( $bob->ID, UsersHelper::UNIQUE_IDENTIFIER_META_KEY, true ) );
 	}
 
 	/**
@@ -99,7 +125,8 @@ class TestUsersHelper extends WP_UnitTestCase {
 		$user = UsersHelper::create_or_get_user(
 			[
 				'user_login' => $should_be_shorter,
-			]
+			],
+			$long_username
 		);
 		$this->assertEquals( $should_be_shorter, $user->user_login );
 
@@ -121,7 +148,8 @@ class TestUsersHelper extends WP_UnitTestCase {
 		$user        = UsersHelper::create_or_get_user(
 			[
 				'user_nicename' => $should_be_shorter,
-			]
+			],
+			$long_nicename
 		);
 		$as_nicename = str_replace( ' ', '-', strtolower( $should_be_shorter ) );
 		$this->assertEquals( $as_nicename, $user->user_nicename );

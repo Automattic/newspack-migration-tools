@@ -6,12 +6,46 @@ use Exception;
 use InvalidArgumentException;
 use Newspack\MigrationTools\Util\Log\CliLog;
 use Newspack\MigrationTools\Util\Log\FileLog;
+use Newspack\MigrationTools\Util\UserMeta;
 use WP_User;
 
+/**
+ * Helper for user getting/creation.
+ *
+ * See https://github.com/Automattic/newspack-migration-tools/tree/trunk/docs/users-helper.md for docs.
+ */
 class UsersHelper {
 
 	/**
+	 * Meta key for the unique identifier for users.
+	 */
+	public const UNIQUE_IDENTIFIER_META_KEY = '_nmt_user_uniqid';
+
+	/**
+	 * Get a user by its unique identifier.
+	 *
+	 * The identifier was set when the user was created (if it was created by this class), so you probably know what it is.
+	 * Make sure you read the docs linked to at the top of the class.
+	 *
+	 * @param string $unique_identifier The unique identifier to search for.
+	 *
+	 * @return WP_User|bool A user object if found, false otherwise.
+	 */
+	public static function get_user_by_unique_identifier( string $unique_identifier ): WP_User|bool {
+		$user_id = UserMeta::get_user_id_from_key_and_value( self::UNIQUE_IDENTIFIER_META_KEY, $unique_identifier );
+		if ( empty( $user_id ) ) {
+			return false;
+		}
+		$wp_user = get_user_by( 'ID', $user_id );
+
+		return $wp_user ?? false;
+	}
+
+	/**
 	 * Get a user by an array that contains either the ID, user_email, user_login or user_nicename.
+	 *
+	 * PLEASE don't use this method if you have a unique identifier for your user. Use `get_user_by_unique_identifier` instead.
+	 * Make sure you read the docs linked to at the top of the class.
 	 *
 	 * @param array $data Array with one (or more) of the following keys: 'ID', 'user_email', 'user_login', 'user_nicename'.
 	 *
@@ -81,7 +115,7 @@ class UsersHelper {
 		$original_nicename = $desired_nicename;
 		$desired_nicename  = trim( $desired_nicename );
 		$max_length        = 50;
-		if ( strlen( $desired_nicename ) >= 50 ) {
+		if ( strlen( $desired_nicename ) >= $max_length ) {
 			$desired_nicename = trim( mb_substr( $desired_nicename, 0, $max_length ) );
 			FileLog::get_logger( 'UsersHelper' )->warning(
 				sprintf(
@@ -105,30 +139,6 @@ class UsersHelper {
 	}
 
 	/**
-	 * Append a number to a string and ensure it is not longer than a given length.
-	 *
-	 * If the string is too long, characters will be removed from the beginning so we don't
-	 * chop off the incrementor at the end.
-	 *
-	 * @param string $string_to_append_to For example a nicename.
-	 * @param int    $number              The number to append – you are responsible for incrementing it if you need that.
-	 * @param int    $max_length          The maximum length you will allow the string to be.
-	 *
-	 * @return string A maybe truncated string with the number appended.
-	 */
-	private static function append_number_and_ensure_length( string $string_to_append_to, int $number, int $max_length ): string {
-		$string_to_append_to .= $number;
-
-		// If the string is too long, we'll peel off a couple of characters from the beginning
-		$length = strlen( $string_to_append_to );
-		if ( $length >= $max_length ) {
-			$string_to_append_to = mb_substr( $string_to_append_to, ( $length - $max_length ), $length );
-		}
-
-		return $string_to_append_to;
-	}
-
-	/**
 	 * Get an email that is not in use from a desired (fake) email – don't use this for actual emails!
 	 *
 	 * The desired email will be prepended with a counter until an unused email is found.
@@ -138,10 +148,11 @@ class UsersHelper {
 	 * @return string An unused email.
 	 */
 	public static function get_unused_fake_email( string $desired_email ): string {
+		$original_email = $desired_email;
 		if ( strlen( $desired_email ) > 100 ) {
 			// If the email is too long, we'll peel off a couple of characters from the beginning.
 			$desired_email = substr( $desired_email, 4 );
-			CliLog::get_logger( 'UsersHelper' )->debug( sprintf( 'Shortened email to under 100 chars: %s.', $desired_email ) );
+			FileLog::get_logger( 'UsersHelper' )->warning( sprintf( 'Shortened email to under 100 chars from "%s" to "%s".', $original_email, $desired_email ) );
 		}
 
 		$i = 0;
@@ -186,12 +197,17 @@ class UsersHelper {
 	 * so email, user login, and user nicename will be generated if not provided. Care is taken to avoid duplicates and user facing
 	 * values that would leak emails or other sensitive information.
 	 *
-	 * @param array $data The data to create the user with. If the 'role' key is present, the user will be assigned that role.
+	 * @param array  $data              The data to create the user with. If the 'role' key is present, the user will be assigned that role.
+	 * @param string $unique_identifier A unique identifier for your user – can be any string, but should be unique.
 	 *
 	 * @throws Exception If the user could not be created.
 	 * @throws InvalidArgumentException If the data array is empty or if the 'role' key is in the array and does not contain a valid role. .
 	 */
-	public static function create_or_get_user( array $data ): WP_User {
+	public static function create_or_get_user( array $data, string $unique_identifier ): WP_User {
+		if ( empty( trim( $unique_identifier ) ) ) {
+			throw new InvalidArgumentException( 'Refusing to create user without a unique identifier.' );
+		}
+
 		if ( empty( $data ) ) {
 			throw new InvalidArgumentException( 'Data array is empty. Refusing to create user from nothing.' );
 		}
@@ -211,11 +227,17 @@ class UsersHelper {
 			throw new InvalidArgumentException( sprintf( 'Role "%s"does not exist.', $data['role'] ) );
 		}
 
-		$wp_user = self::get_user( $data );
+		// First try with the uniqid for the user.
+		$wp_user = self::get_user_by_unique_identifier( $unique_identifier );
+		if ( ! $wp_user ) {
+			// OK, no unique identifier found, let's try to find the user by the data.
+			$wp_user = self::get_user( $data );
+		}
 		if ( $wp_user ) { // Great – we already have the user!
 			if ( ! empty( $data['role'] ) ) {
 				// If the role was passed in the data array – add it before returning.
 				$wp_user->add_role( $data['role'] );
+				FileLog::get_logger( 'UsersHelper' )->notice( sprintf( 'Added role "%s" to existing user with id %d', $data['role'], $wp_user->ID ) );
 			}
 
 			return $wp_user;
@@ -233,10 +255,10 @@ class UsersHelper {
 			$user_email   = self::get_short_sha_from_array( $data ) . '@' . $email_domain;
 		}
 
-		// We insist on setting a nicename to avoid WP setting it to the email sans @.
+		// We insist on setting a nicename to avoid WP setting it to the email without @.
 		if ( empty( $user_nicename ) ) {
-			$user_nicename = ( $data['first_name'] ?? '' ) . ' ' . ( $data['last_name'] ?? '' );
-			if ( ' ' === $user_nicename ) { // Yes, that is a whitespace and not an empty string.
+			$user_nicename = trim( ( $data['first_name'] ?? '' ) . ' ' . ( $data['last_name'] ?? '' ) );
+			if ( empty( $user_nicename ) ) { // Yes, that is a whitespace and not an empty string.
 				if ( ! empty( $data['display_name'] ) ) {
 					$user_nicename = $data['display_name'];
 				} elseif ( ! empty( $user_login ) && ! str_contains( $user_login, '@' ) ) {
@@ -268,6 +290,11 @@ class UsersHelper {
 		$data['user_nicename'] = self::get_unused_nicename( $user_nicename );
 		$data['user_login']    = self::get_unused_username( $user_login );
 
+		// Add the unique identifier to the user's meta so we can find them later.
+		$data['meta_input'][ self::UNIQUE_IDENTIFIER_META_KEY ] = $unique_identifier;
+
+		$data = apply_filters( 'nmt_user_user_pre_insert', $data, $unique_identifier );
+
 		$user_id = wp_insert_user( $data );
 		if ( is_wp_error( $user_id ) ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
@@ -275,13 +302,45 @@ class UsersHelper {
 		}
 		$wp_user = get_user_by( 'ID', $user_id );
 
-		$log_message      = sprintf( 'Created user with ID %d.', $user_id );
-		$log_array        = array_intersect_key( $wp_user->to_array(), array_flip( [ 'user_login', 'user_email', 'user_nicename', 'display_name', 'role' ] ) );
-		$log_array['url'] = get_author_posts_url( $user_id );
-		CliLog::get_logger( 'UsersHelper' )->notice( $log_message, [ $log_array['url'] ] );
-		FileLog::get_logger( 'UsersHelper' )->notice( $log_message, $log_array );
+		FileLog::get_logger( 'UsersHelper' )->notice(
+			'Created user:',
+			[
+				'ID'            => $wp_user->ID,
+				'url'           => get_author_posts_url( $wp_user->ID ),
+				'user_login'    => $wp_user->user_login,
+				'user_nicename' => $wp_user->user_nicename,
+				'display_name'  => $wp_user->display_name,
+				'user_email'    => $wp_user->user_email,
+				'roles'         => $wp_user->roles,
+				'uniqid'        => $unique_identifier,
+			]
+		);
 
 		return $wp_user;
+	}
+
+	/**
+	 * Append a number to a string and ensure it is not longer than a given length.
+	 *
+	 * If the string is too long, characters will be removed from the beginning so we don't
+	 * chop off the incrementor at the end.
+	 *
+	 * @param string $string_to_append_to For example a nicename.
+	 * @param int    $number              The number to append – you are responsible for incrementing it if you need that.
+	 * @param int    $max_length          The maximum length you will allow the string to be.
+	 *
+	 * @return string A maybe truncated string with the number appended.
+	 */
+	private static function append_number_and_ensure_length( string $string_to_append_to, int $number, int $max_length ): string {
+		$string_to_append_to .= $number;
+
+		// If the string is too long, we'll peel off a couple of characters from the beginning
+		$length = strlen( $string_to_append_to );
+		if ( $length >= $max_length ) {
+			$string_to_append_to = mb_substr( $string_to_append_to, ( $length - $max_length ), $length );
+		}
+
+		return $string_to_append_to;
 	}
 
 	/**
