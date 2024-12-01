@@ -112,7 +112,7 @@ abstract class AbstractWordPressData {
 		if ( ! $migration_object->has_been_stored() ) {
 			$migration_object->store_original_data();
 		}
-		
+
 		$this->migration_object = $migration_object;
 	}
 
@@ -130,11 +130,24 @@ abstract class AbstractWordPressData {
 	 * Creates a new record.
 	 *
 	 * @return int|WP_Error The ID of the created record or a WP_Error object.
-	 * @throws Exception If the migration object has not been set.
+	 * @throws Exception If the migration object has not been set, or if a WordPress Object already exists based off of the set Migration Object.
 	 */
 	public function create(): int|WP_Error {
 		if ( ! $this->get_migration_object() ) {
 			throw new Exception( 'MigrationObject has not been set.' );
+		}
+
+		// Ensure we don't already have a pre-exsting WordPress Object from the same Migration Object.
+		$pre_existing_object_id = $this->get_wordpress_object_id_from_migration_object();
+		if ( ! empty( $pre_existing_object_id ) ) {
+			throw new Exception(
+				sprintf(
+					'A `%s`:%d already exists based off of the set Migration Object (Legacy ID: %s)',
+					$this->get_table_name() . '.' . $this->get_primary_key(), // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+					$pre_existing_object_id, // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+					$this->get_migration_object()->get_data_id() // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+				)
+			);
 		}
 
 		$maybe_created = $this->wpdb->insert( $this->get_table_name(), $this->get_data() );
@@ -446,5 +459,62 @@ abstract class AbstractWordPressData {
 		}
 
 		$this->set_property( $property_name, $date_time->format( 'Y-m-d H:i:s' ) );
+	}
+
+	/**
+	 * This function will retrieve the new WordPress object/table ID for a given Legacy ID.
+	 *
+	 * @param int|string $legacy_id The unique identifier from the legacy system.
+	 *
+	 * @return int|null
+	 * @throws Exception If more than one WordPress objects have been created from a single Legacy ID.
+	 */
+	protected function get_wordpress_object_id_from_legacy_id( int|string $legacy_id ): ?int {
+		$table_column_ids             = WordPressData::get_instance()->get_column_ids_for_table( $this->get_table_name() );
+		$table_column_id_placeholders = implode( ',', array_fill( 0, count( $table_column_ids ), '%d' ) );
+
+		// phpcs:disable
+		$distinct_wordpress_object_ids = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT DISTINCT wordpress_object_id 
+				FROM migration_destination_sources 
+				WHERE migration_object_id IN ( 
+				  SELECT id 
+				  FROM migration_objects 
+				  WHERE original_object_id = %s 
+				) AND wordpress_table_column_id IN ($table_column_id_placeholders) ",
+				$legacy_id,
+				...$table_column_ids
+			)
+		);
+		// phpcs:enable
+
+		if ( empty( $distinct_wordpress_object_ids ) ) {
+			return null;
+		}
+
+		if ( count( $distinct_wordpress_object_ids ) > 1 ) {
+			throw new Exception(
+				sprintf(
+					'Multiple %s objects have been created for the given Legacy ID: %s.',
+					$this->get_table_name(), // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+					'' . $legacy_id // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+				)
+			);
+		}
+
+		return intval( $distinct_wordpress_object_ids[0]->wordpress_object_id );
+	}
+
+	/**
+	 * This function will retrieve the new WordPress object/table ID for a given Legacy ID (contained within the Migration Object)
+	 *
+	 * @return int|null
+	 * @throws Exception If more than one WordPress objects have been created from a single Legacy ID.
+	 */
+	protected function get_wordpress_object_id_from_migration_object(): ?int {
+		return $this->get_wordpress_object_id_from_legacy_id(
+			$this->get_migration_object()->get_data_id()
+		);
 	}
 }
