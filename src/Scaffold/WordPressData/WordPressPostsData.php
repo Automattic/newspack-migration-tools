@@ -64,6 +64,27 @@ class WordPressPostsData extends AbstractWordPressData {
 	}
 
 	/**
+	 * Gets the post ID from the legacy ID.
+	 *
+	 * @param int|string $legacy_id The legacy ID.
+	 *
+	 * @return int|null
+	 * @throws Exception If more than one Post ID exists for the given Legacy ID.
+	 */
+	public function get_post_id_from_legacy_id( int|string $legacy_id = '' ): ?int {
+		if ( empty( $legacy_id ) ) { // Allow for ID retrieval if you don't have the Legacy ID in hand.
+			if ( $this->get_migration_object() ) { // The Migration Object should have it.
+				return $this->get_wordpress_object_id_from_migration_object();
+			} else {
+				// If you don't have a Legacy ID, and you don't have a Migration Object, you won't get any further.
+				return null;
+			}
+		}
+
+		return $this->get_wordpress_object_id_from_legacy_id( $legacy_id );
+	}
+
+	/**
 	 * Returns the table name.
 	 *
 	 * @return string The table name.
