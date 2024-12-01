@@ -134,19 +134,26 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 
 		if ( ! isset( $this->stored ) ) {
 			// phpcs:disable
-			$container = $this->wpdb->get_row(
+			$data_chest = $this->wpdb->get_row(
 				$this->wpdb->prepare(
 					'SELECT * FROM migration_data_chests 
          				WHERE migration_id = %d 
          				  AND pointer_to_object_id = %s 
+         				  AND json_data = %s
          				  ORDER BY created_at DESC',
 					$this->get_run_key()->get_migration_id(),
 					$this->get_pointer_to_identifier(),
+					wp_json_encode( $this->get_raw_data() )
 				)
 			);
 			// phpcs:enable
 
-			$this->stored = $container && wp_json_encode( $this->get_raw_data() ) === $container->json_data;
+			if ( null !== $data_chest ) {
+				$this->stored = true;
+				$this->id     = $data_chest->id; // Saves a future DB call, but breaks single responsibility :_(.
+			} else {
+				$this->stored = false;
+			}
 		}
 
 		return $this->stored;
