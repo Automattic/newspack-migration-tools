@@ -164,7 +164,9 @@ class RunAwareMigrationObjectWrapper implements RunAwareMigrationObject, ArrayAc
 	 */
 	public function has_been_processed(): bool {
 		if ( ! isset( $this->processed ) ) {
-			return false;
+			if ( ! $this->has_been_stored() ) {
+				return false;
+			}
 		}
 
 		return $this->processed;
@@ -214,15 +216,22 @@ class RunAwareMigrationObjectWrapper implements RunAwareMigrationObject, ArrayAc
 		}
 
 		if ( ! isset( $this->stored ) ) {
-			$data = $this->wpdb->get_var(
+			$data = $this->wpdb->get_row(
 				$this->wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-					'SELECT json_data FROM migration_objects WHERE migration_data_chest_id = %d AND original_object_id = %s',
+					'SELECT * FROM migration_objects WHERE migration_data_chest_id = %d AND original_object_id = %s',
 					$this->get_container()->get_id(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 					$this->get_data_id(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				)
 			);
 
-			$this->stored = ! empty( $data );
+			if ( ! empty( $data ) ) {
+				$this->stored    = true;
+				$this->id        = intval( $data->id );
+				$this->processed = (bool) $data->processed;
+			} else {
+				$this->stored    = false;
+				$this->processed = false;
+			}
 		}
 
 		return $this->stored;
