@@ -59,6 +59,8 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 		$this->wpdb           = $wpdb;
 		$this->run_key        = $run_key;
 		$this->data_container = $data_container;
+
+		$this->has_been_stored();
 	}
 
 	/**
