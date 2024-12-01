@@ -155,7 +155,7 @@ class WordPressPostsData extends AbstractWordPressData {
 	 * @param int|WP_User|MigrationObjectPropertyWrapper $post_author The post author.
 	 *
 	 * @return WordPressPostsData
-	 * @throws Exception
+	 * @throws Exception If a valid WP_User cannot be obtained.
 	 */
 	public function set_post_author( int|WP_User|MigrationObjectPropertyWrapper $post_author ): WordPressPostsData {
 		if ( $post_author instanceof WP_User ) {
