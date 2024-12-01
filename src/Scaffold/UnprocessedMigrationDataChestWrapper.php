@@ -162,7 +162,7 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 	/**
 	 * Returns the individual data objects that need to be migrated.
 	 *
-	 * @return RunAwareMigrationObject
+	 * @return RunAwareMigrationObject[]
 	 */
 	public function get_all(): iterable {
 		foreach ( $this->data_container->get_all() as $migration_object ) {
@@ -170,8 +170,13 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 				if ( ! $migration_object->has_been_processed() ) {
 					yield $migration_object;
 				}
-			} else {
-				yield new RunAwareMigrationObjectWrapper( $migration_object, $this->get_run_key() );
+			}
+
+			// Here we know that we have an instance of MigrationObject, but not a RunAwareMigrationObject, so let's wrap it.
+			$migration_object = new RunAwareMigrationObjectWrapper( $migration_object, $this->get_run_key() );
+
+			if ( ! $migration_object->has_been_processed() ) {
+				yield $migration_object;
 			}
 		}
 	}
