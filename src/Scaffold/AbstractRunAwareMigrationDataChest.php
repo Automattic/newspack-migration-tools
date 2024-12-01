@@ -151,14 +151,25 @@ abstract class AbstractRunAwareMigrationDataChest extends AbstractMigrationDataC
 	 */
 	public function has_been_stored(): bool {
 		if ( ! isset( $this->stored ) ) {
-			$data = $this->wpdb->get_var(
+			$data_chest = $this->wpdb->get_row(
 				$this->wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-					'SELECT json_data FROM migration_data_chests WHERE migration_id = %d',
-					$this->get_run_key()->get_migration_id() // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+					'SELECT * FROM migration_data_chests 
+         				WHERE migration_id = %d 
+         				  AND pointer_to_object_id = %s 
+         				  AND json_data = %s 
+         				ORDER BY created_at DESC',
+					$this->get_run_key()->get_migration_id(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+					$this->get_pointer_to_identifier(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+					wp_json_encode( $this->get_raw_data() ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				)
 			);
 
-			$this->stored = ! empty( $data ) && json_decode( $data ) === $this->data;
+			if ( null !== $data_chest ) {
+				$this->stored = true;
+				$this->id     = $data_chest->id; // Saves a future DB call, but breaks single responsibility :_(.
+			} else {
+				$this->stored = false;
+			}
 		}
 
 		return $this->stored;
