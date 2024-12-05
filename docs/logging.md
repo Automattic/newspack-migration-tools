@@ -37,6 +37,23 @@ $cli_logger->critical( 'This is a log message.' );
 $cli_logger->alert( 'This is a log message.' );
 $cli_logger->emergency( 'This is a log message.' );
 ```
+### Customizing CLI output
+A timestamp is output by default with `CliLog`. But it can be easily customized when instantiating the logger by changing the format string; the default format is `"[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n"`. For example, a super simple format using just level and message:
+```php
+use Bramus\Monolog\Formatter\ColoredLineFormatter;
+$logger_cli_simple = CliLog::get_logger( 'cli-simple', new ColoredLineFormatter( null, "%level_name%: %message%\n", null, true ) );
+$logger_cli_simple->info( 'info' );
+```
+
+The third argument is the timestamp, `null` in this case. The default would be `"Y-m-d\TH:i:sP"`.
+
+### Plain file logging
+For completely non-formatted file logging, use `PlainFileLog`:
+```php
+$logger_plainfile = PlainFileLog::get_logger( 'plainfile-demo', 'my_PlainFileLog.log' );
+// All logging levels are completely non formatted, i.e. info, debug, ... will all be plain and the same.
+$logger_plainfile->info( 'info' );
+```
 ### Logging to multiple channels
 ```php
 $logger = MultiLog::get_logger(
