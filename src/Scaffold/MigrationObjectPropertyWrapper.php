@@ -3,9 +3,10 @@
 namespace Newspack\MigrationTools\Scaffold;
 
 use ArrayAccess;
+use ArrayIterator;
 use Exception;
 use IteratorAggregate;
-use ArrayIterator;
+use Newspack\MigrationTools\Scaffold\Contracts\MigrationObject;
 use Traversable;
 
 /**
