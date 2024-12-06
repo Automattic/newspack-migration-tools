@@ -42,7 +42,7 @@ abstract class AbstractMigrationObject implements MigrationObject, ArrayAccess {
 	 */
 	public function __construct( object|array $data, string $pointer_to_identifier, MigrationDataChest $data_container ) {
 		$this->data                  = $data;
-		$this->data_container = $data_container;
+		$this->data_container        = $data_container;
 		$this->pointer_to_identifier = $pointer_to_identifier;
 	}
 
