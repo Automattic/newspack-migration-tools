@@ -136,7 +136,7 @@ abstract class AbstractMigrationObject implements MigrationObject, ArrayAccess {
 	 */
 	public function __get( int|string $name ): ?MigrationObjectPropertyWrapper {
 		if ( $this->__isset( $name ) ) {
-			return new MigrationObjectPropertyWrapper( $this->data, [ $name ] );
+			return new MigrationObjectPropertyWrapper( $this->data, [ $name ], $this );
 		}
 
 		return null;

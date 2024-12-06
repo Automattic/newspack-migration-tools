@@ -117,6 +117,8 @@ class MigrationObjectTest extends WP_UnitTestCase {
 			$this->assertInstanceOf( MigrationObjectPropertyWrapper::class, $migration_object->tags[0][0][0][0]['name'] );
 			$this->assertInstanceOf( MigrationObjectPropertyWrapper::class, $migration_object['author'] );
 			$this->assertInstanceOf( MigrationObjectPropertyWrapper::class, $migration_object['categories'][0]['name'] );
+			$this->assertEquals( $migration_object, $migration_object->title->get_migration_object() );
+			$this->assertEquals( $migration_object, $migration_object->categories[0]->created->get_migration_object() );
 			$this->assertNull( $migration_object->non_existent_property );
 			$this->assertNull( $migration_object['non_existent_property'] );
 			$this->assertNull( $migration_object->categories[0]->non_existent_property );
@@ -141,8 +143,15 @@ class MigrationObjectTest extends WP_UnitTestCase {
 			$this->assertTrue( isset( $migration_object['categories'] ) );
 			$this->assertTrue( isset( $migration_object->categories[0] ) );
 			$this->assertTrue( isset( $migration_object['categories'][0] ) );
+
+			foreach ( $migration_object->categories as $category ) {
+				$this->assertInstanceOf( MigrationObjectPropertyWrapper::class, $category );
+				$this->assertEquals( $migration_object, $category->get_migration_object() );
+				$this->assertEquals( $this->get_raw_data()[0]['categories'][0], $category->get_value() );
+			}
+
 			$this->assertEquals( '<mig_scaf>' . wp_json_encode( $this->get_raw_data()[0] ) . '</mig_scaf>', (string) $migration_object );
-			$this->assertEquals( '<mig_scaf><property>' . wp_json_encode( $this->get_raw_data()[0]['categories'] ) . '</property></mig_scaf>', (string) $migration_object->categories );
+			$this->assertEquals( '<mig_scaf><property path="categories">' . wp_json_encode( $this->get_raw_data()[0]['categories'] ) . '</property></mig_scaf>', (string) $migration_object->categories );
 		}
 	}
 

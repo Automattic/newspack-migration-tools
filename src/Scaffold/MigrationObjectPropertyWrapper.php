@@ -36,12 +36,20 @@ class MigrationObjectPropertyWrapper implements ArrayAccess, IteratorAggregate {
 	private mixed $property;
 
 	/**
+	 * The Migration Object this property comes from.
+	 *
+	 * @var MigrationObject $migration_object The Migration Object this property comes from.
+	 */
+	private MigrationObject $migration_object;
+
+	/**
 	 * MigrationObjectPropertyWrapper constructor.
 	 *
-	 * @param mixed $property Property to be wrapped.
-	 * @param array $established_path Stack containing the different attributes used to reach the current property.
+	 * @param mixed           $property Property to be wrapped.
+	 * @param array           $established_path Stack containing the different attributes used to reach the current property.
+	 * @param MigrationObject $migration_object The Migration Object the property comes from.
 	 */
-	public function __construct( mixed $property, array $established_path ) {
+	public function __construct( mixed $property, array $established_path, MigrationObject $migration_object ) {
 		$this->path    = $established_path;
 		$this->current = array_pop( $this->path );
 		$current       = $this->current;
@@ -53,6 +61,8 @@ class MigrationObjectPropertyWrapper implements ArrayAccess, IteratorAggregate {
 		} else {
 			$this->property = $property;
 		}
+
+		$this->migration_object = $migration_object;
 	}
 
 	/**
@@ -81,6 +91,15 @@ class MigrationObjectPropertyWrapper implements ArrayAccess, IteratorAggregate {
 		}
 
 		return $this->property;
+	}
+
+	/**
+	 * Returns the Migration Object this property came from.
+	 *
+	 * @return MigrationObject
+	 */
+	public function get_migration_object(): MigrationObject {
+		return $this->migration_object;
 	}
 
 	/**
@@ -120,9 +139,11 @@ class MigrationObjectPropertyWrapper implements ArrayAccess, IteratorAggregate {
 			$established_path[] = $this->current;
 			if ( ! $this->is_associative( $current_value ) ) {
 				$established_path[] = $offset;
-				return new MigrationObjectPropertyWrapper( $current_value, $established_path );
+
+				return new MigrationObjectPropertyWrapper( $current_value, $established_path, $this->migration_object );
 			}
-			return new MigrationObjectPropertyWrapper( $this->property, $established_path );
+
+			return new MigrationObjectPropertyWrapper( $this->property, $established_path, $this->migration_object );
 		} elseif ( $this->offsetExists( $offset ) ) {
 			return $this->__get( $offset );
 		}
@@ -189,7 +210,7 @@ class MigrationObjectPropertyWrapper implements ArrayAccess, IteratorAggregate {
 				$value = (object) [ $key => $value ];
 			}
 
-			$values[ $key ] = new MigrationObjectPropertyWrapper( $value, $established_path );
+			$values[ $key ] = new MigrationObjectPropertyWrapper( $value, $established_path, $this->migration_object );
 		}
 
 		return new ArrayIterator( $values );
@@ -209,7 +230,7 @@ class MigrationObjectPropertyWrapper implements ArrayAccess, IteratorAggregate {
 			$established_path[] = $this->current;
 			$established_path[] = $name;
 
-			return new MigrationObjectPropertyWrapper( $current_value, $established_path );
+			return new MigrationObjectPropertyWrapper( $current_value, $established_path, $this->migration_object );
 		}
 
 		return null;
