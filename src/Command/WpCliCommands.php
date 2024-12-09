@@ -23,7 +23,6 @@ class WpCliCommands {
 			PostsMigrator::class,
 			SettingsMigrator::class,
 			WooCommMigrator::class,
-			MultiBrandedCommand::class,
 		];
 
 		return apply_filters( 'newspack_migration_tools_command_classes', $classes_with_cli_commands );
