@@ -187,11 +187,24 @@ abstract class AbstractWordPressData {
 	 * Updates an existing record.
 	 *
 	 * @return bool|WP_Error True if the record was updated, a WP_Error object otherwise.
+	 * @throws Exception If more than on WordPress Object are linked to the same Migration Object, or if the primary ID does not match the WordPress Object ID.
 	 */
 	public function update(): bool|WP_Error {
 		if ( null === $this->get_primary_id() ) {
 			// TODO perhaps we use $migration_object to try and obtain a primary ID (via `migration_destination_sources`)?
 			return new WP_Error( 'missing_primary_key', 'Primary key not found in data.' );
+		}
+
+		$pre_existing_object_id = $this->get_wordpress_object_id_from_migration_object();
+		if ( is_int( $pre_existing_object_id ) && $this->get_primary_id() !== $pre_existing_object_id ) {
+			throw new Exception(
+				sprintf(
+					'The Migration Object has created a WordPress Object that does not match the primary ID. (Legacy ID: %s, Primary ID: %d, WordPress Object ID: %d)',
+					$this->get_migration_object()->get_data_id(),
+					$this->get_primary_id(),
+					$this->get_wordpress_object_id_from_migration_object(),
+				)
+			);
 		}
 
 		$update_data = $this->get_data();
