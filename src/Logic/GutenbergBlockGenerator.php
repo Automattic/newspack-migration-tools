@@ -779,7 +779,16 @@ VIDEO;
 	 */
 	private function youtube_block_from_src( $youtube_video_url ) {
 		// Clean the URL from query params as they break the block.
-		$youtube_video_url = strtok( $youtube_video_url, '?' );
+		$parsed_url        = wp_parse_url( $youtube_video_url );
+		$youtube_video_url = $parsed_url['scheme'] . '://' . $parsed_url['host'] . $parsed_url['path'];
+
+		if ( ! empty( $parsed_url['query'] ) ) {
+			$query_params = wp_parse_args( $parsed_url['query'] );
+
+			if ( array_key_exists( 'v', $query_params ) ) {
+				$youtube_video_url .= '?v=' . $query_params['v'];
+			}
+		}
 
 		$inner_html = '<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper">
 		' . $youtube_video_url . '
