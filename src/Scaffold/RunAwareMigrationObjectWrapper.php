@@ -371,10 +371,14 @@ class RunAwareMigrationObjectWrapper implements RunAwareMigrationObject, ArrayAc
 	 *
 	 * @param string $name Property name.
 	 *
-	 * @return MigrationObjectPropertyWrapper
+	 * @return MigrationObjectPropertyWrapper|null
 	 */
-	public function __get( string $name ): MigrationObjectPropertyWrapper {
-		return $this->migration_object->$name;
+	public function __get( string $name ): ?MigrationObjectPropertyWrapper {
+		if ( $this->__isset( $name ) ) {
+			return new MigrationObjectPropertyWrapper( $this->get(), [ $name ], $this );
+		}
+
+		return null;
 	}
 
 	/**
