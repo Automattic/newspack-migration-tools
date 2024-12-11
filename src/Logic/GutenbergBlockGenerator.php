@@ -371,10 +371,10 @@ VIDEO;
 AUDIO;
 
 		return [
-			'blockName'   => 'core/audio',
-			'attrs'       => [],
-			'innerBlocks' => [],
-			'innerHTML'   => $content,
+			'blockName'    => 'core/audio',
+			'attrs'        => [],
+			'innerBlocks'  => [],
+			'innerHTML'    => $content,
 			'innerContent' => [ $content ],
 		];
 	}
