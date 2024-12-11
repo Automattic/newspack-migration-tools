@@ -118,4 +118,49 @@ class GutenbergBlockGeneratorTest extends WP_UnitTestCase {
 		$with_download_link_block = $this->block_generator->get_file_pdf( get_post( $attachment_id ) );
 		$this->assertStringContainsString( 'download', $with_download_link_block['innerHTML'] );
 	}
+
+	public function youtube_url_data_provider() {
+		return [
+			'with_v_param'                       => [
+				'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+			],
+			'with_v_param_and_additional_params' => [
+				'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&param=value&another_param=should-be-removed',
+			],
+			'with_embed_version'                 => [
+				'url' => 'https://www.youtube.com/embed/N5HbZd9aqR4',
+			],
+			'with_youtube_code_only'             => [
+				'url' => 'N5HbZd9aqR4',
+			],
+		];
+	}
+
+	/**
+	 * @dataProvider youtube_url_data_provider
+	 * @return void
+	 */
+	public function test_get_youtube( $url ) {
+		$internal_url = $url;
+		if ( filter_var( $url, FILTER_VALIDATE_URL ) ) {
+			$parsed_url = wp_parse_url( $url );
+
+			$internal_url = $parsed_url['scheme'] . '://' . $parsed_url['host'] . $parsed_url['path'];
+
+			if ( ! empty( $parsed_url['query'] ) ) {
+				$query_params = wp_parse_args( $parsed_url['query'] );
+
+				if ( array_key_exists( 'v', $query_params ) ) {
+					$internal_url .= '?v=' . $query_params['v'];
+				}
+			}
+		} else {
+			$internal_url = 'https://www.youtube.com/watch?v=' . $url;
+		}
+
+		$youtube_block = $this->block_generator->get_youtube( $url );
+		$this->assertEquals( 'core/embed', $youtube_block['blockName'] );
+		$this->assertEquals( $internal_url, $youtube_block['attrs']['url'] );
+		$this->assertStringContainsString( $internal_url, $youtube_block['innerHTML'] );
+	}
 }
