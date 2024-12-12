@@ -2,7 +2,7 @@
 /**
  * Newspack Migration Tools.
  *
- * Version: 0.1.1
+ * Version: 0.1.2
  *
  * This is a library to be included by plugins. See README.md for more information.
  *

@@ -320,11 +320,11 @@ class GutenbergBlockGenerator {
 	/**
 	 * Get a video block.
 	 *
-	 * @param WP_Post $attachment_post The post object of the video.
+	 * @param \WP_Post $attachment_post The post object of the video.
 	 *
 	 * @return array
 	 */
-	public function get_video( WP_Post $attachment_post ): array {
+	public function get_video( \WP_Post $attachment_post ): array {
 		$video_url = wp_get_attachment_url( $attachment_post->ID );
 		$content   = <<<VIDEO
 <figure class="wp-block-video"><video controls src="$video_url"></video></figure>
@@ -332,6 +332,46 @@ VIDEO;
 
 		return [
 			'blockName'    => 'core/video',
+			'attrs'        => [],
+			'innerBlocks'  => [],
+			'innerHTML'    => $content,
+			'innerContent' => [ $content ],
+		];
+	}
+
+	/**
+	 * Get an audio block.
+	 *
+	 * @param string|\WP_Post $audio Audio URL or post object.
+	 * @param string|null     $caption Caption for the audio.
+	 * @param string|null     $description Description for the audio.
+	 * @param bool            $store_locally Whether to store the audio locally or not.
+	 *
+	 * @return array
+	 */
+	public function get_audio( string|\WP_Post $audio, ?string $caption = '', ?string $description = '', bool $store_locally = false ): array {
+		$audio_url = is_string( $audio ) ? $audio : wp_get_attachment_url( $audio->ID );
+
+		if ( is_string( $audio ) && $store_locally ) {
+			$maybe_attachment_id = Attachments::import_external_file( $audio, null, $caption, $description );
+
+			if ( is_wp_error( $maybe_attachment_id ) ) {
+				NMT::exit_with_message( sprintf( 'Error importing audio: %s', $maybe_attachment_id->get_error_message() ) );
+			}
+
+			$audio_url = wp_get_attachment_url( $maybe_attachment_id );
+		}
+
+		if ( ! empty( $caption ) ) {
+			$caption = '<figcaption>' . $caption . '</figcaption>';
+		}
+
+		$content = <<<AUDIO
+<figure class="wp-block-audio"><audio controls src="$audio_url"></audio>$caption</figure>
+AUDIO;
+
+		return [
+			'blockName'    => 'core/audio',
 			'attrs'        => [],
 			'innerBlocks'  => [],
 			'innerHTML'    => $content,
@@ -779,7 +819,16 @@ VIDEO;
 	 */
 	private function youtube_block_from_src( $youtube_video_url ) {
 		// Clean the URL from query params as they break the block.
-		$youtube_video_url = strtok( $youtube_video_url, '?' );
+		$parsed_url        = wp_parse_url( $youtube_video_url );
+		$youtube_video_url = $parsed_url['scheme'] . '://' . $parsed_url['host'] . $parsed_url['path'];
+
+		if ( ! empty( $parsed_url['query'] ) ) {
+			$query_params = wp_parse_args( $parsed_url['query'] );
+
+			if ( array_key_exists( 'v', $query_params ) ) {
+				$youtube_video_url .= '?v=' . $query_params['v'];
+			}
+		}
 
 		$inner_html = '<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper">
 		' . $youtube_video_url . '
