@@ -119,6 +119,33 @@ class GutenbergBlockGeneratorTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'download', $with_download_link_block['innerHTML'] );
 	}
 
+	public function test_get_audio() {
+		$audio_url = 'https://v1.cdnpk.net/videvo_files/audio/premium/audio0060/conversions/mp3_option/CatMeowsPurring PE916904.mp3';
+
+		$attachment_id = Attachments::import_attachment_for_post(
+			$this->test_post_1_id,
+			$audio_url
+		);
+
+		$this->attachment_ids[] = $attachment_id;
+
+		$filename = wp_basename( $audio_url );
+
+		$audio_block = $this->block_generator->get_audio( get_post( $attachment_id ), 'Test Caption', 'Test Description', false );
+		$this->assertEquals( 'core/audio', $audio_block['blockName'] );
+		$this->assertStringContainsString( sanitize_file_name( $filename ), $audio_block['innerHTML'] );
+
+		$audio_block = $this->block_generator->get_audio( $audio_url, 'Another Test Caption', 'Another Test Description', true );
+		$this->assertEquals( 'core/audio', $audio_block['blockName'] );
+		$this->assertStringNotContainsString( $audio_url, $audio_block['innerHTML'] );
+		$this->assertStringContainsString( sanitize_file_name( $filename ), $audio_block['innerHTML'] );
+
+		$audio_block = $this->block_generator->get_audio( $audio_url, 'Final Test Caption', 'Final Test Description', false );
+		$this->assertEquals( 'core/audio', $audio_block['blockName'] );
+		$this->assertStringContainsString( $audio_url, $audio_block['innerHTML'] );
+		$this->assertStringContainsString( 'Final Test Caption', $audio_block['innerHTML'] );
+	}
+
 	public function youtube_url_data_provider() {
 		return [
 			'with_v_param'                       => [
