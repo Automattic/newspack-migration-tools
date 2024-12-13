@@ -38,7 +38,7 @@ class StartedMigrationState extends AbstractMigrationState {
 		if ( $this->migration_activity->set_status( $this->previous_run_key, MigrationStatus::STARTED ) ) {
 
 			$data_container = new UnprocessedMigrationDataChestWrapper(
-				$this->migration_run_context->get_migration()->get_container(),
+				$this->migration_run_context->get_migration()->get_data_chest(),
 				$this->get_run_key()
 			);
 
