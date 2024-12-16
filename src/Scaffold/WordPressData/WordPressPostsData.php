@@ -477,6 +477,9 @@ class WordPressPostsData extends AbstractWordPressData {
 		// At this point, $data, $data_sources, $migration_object have been reset.
 
 		if ( ! empty( $this->authors ) ) {
+
+			// TODO add check to see if full CAP is being used, or using just guest-contributors.
+
 			$maybe_coauthors_have_been_set = $this->co_authors_plus->add_coauthors(
 				$result,
 				array_keys( $this->authors ),
