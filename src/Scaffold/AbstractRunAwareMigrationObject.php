@@ -79,7 +79,7 @@ abstract class AbstractRunAwareMigrationObject extends AbstractMigrationObject i
 	 *
 	 * @return RunAwareMigrationDataChest
 	 */
-	public function get_container(): RunAwareMigrationDataChest {
+	public function get_data_chest(): RunAwareMigrationDataChest {
 		return $this->data_container;
 	}
 
@@ -89,7 +89,7 @@ abstract class AbstractRunAwareMigrationObject extends AbstractMigrationObject i
 	 * @return MigrationRunKey
 	 */
 	public function get_run_key(): MigrationRunKey {
-		return $this->get_container()->get_run_key();
+		return $this->get_data_chest()->get_run_key();
 	}
 
 	/**
@@ -108,7 +108,7 @@ abstract class AbstractRunAwareMigrationObject extends AbstractMigrationObject i
 			$maybe_stored = $this->wpdb->insert(
 				'migration_object',
 				[
-					'migration_data_chest_id' => $this->get_container()->get_id(),
+					'migration_data_chest_id' => $this->get_data_chest()->get_id(),
 					'original_object_id'      => $this->get_data_id(),
 					'json_data'               => wp_json_encode( $this->data ),
 				]
@@ -138,7 +138,7 @@ abstract class AbstractRunAwareMigrationObject extends AbstractMigrationObject i
 			$data = $this->wpdb->get_row(
 				$this->wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 					'SELECT * FROM migration_objects WHERE migration_data_chest_id = %d AND original_object_id = %s',
-					$this->get_container()->get_id(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+					$this->get_data_chest()->get_id(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 					$this->get_data_id(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				)
 			);
@@ -208,7 +208,7 @@ abstract class AbstractRunAwareMigrationObject extends AbstractMigrationObject i
 						'SELECT id FROM migration_object 
           					WHERE migration_data_chest_id = %d 
           					  AND original_object_id = %s',
-						$this->get_container()->get_id(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+						$this->get_data_chest()->get_id(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 						$this->get_data_id() // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 					)
 				);
@@ -242,7 +242,7 @@ abstract class AbstractRunAwareMigrationObject extends AbstractMigrationObject i
 		$maybe_inserted = $this->wpdb->insert(
 			'migration_object_meta',
 			[
-				'migration_data_chest_id' => $this->get_container()->get_id(),
+				'migration_data_chest_id' => $this->get_data_chest()->get_id(),
 				'migration_object_id'     => $this->get_id(),
 				'meta_key'                => $key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
 				'meta_value'              => $value, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value

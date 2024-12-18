@@ -76,7 +76,7 @@ abstract class AbstractMigrationObject implements MigrationObject, ArrayAccess {
 	 *
 	 * @return MigrationDataChest
 	 */
-	public function get_container(): MigrationDataChest {
+	public function get_data_chest(): MigrationDataChest {
 		return $this->data_container;
 	}
 

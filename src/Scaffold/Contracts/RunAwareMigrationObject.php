@@ -9,7 +9,7 @@ interface RunAwareMigrationObject extends MigrationObject {
 	 *
 	 * @return RunAwareMigrationDataChest
 	 */
-	public function get_container(): RunAwareMigrationDataChest;
+	public function get_data_chest(): RunAwareMigrationDataChest;
 
 	/**
 	 * Returns the Migration Run Key.

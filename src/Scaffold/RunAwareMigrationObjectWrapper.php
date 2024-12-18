@@ -109,13 +109,13 @@ class RunAwareMigrationObjectWrapper implements RunAwareMigrationObject, ArrayAc
 	 *
 	 * @return RunAwareMigrationDataChest
 	 */
-	public function get_container(): RunAwareMigrationDataChest {
+	public function get_data_chest(): RunAwareMigrationDataChest {
 		if ( $this->migration_object instanceof RunAwareMigrationObject ) {
-			return $this->migration_object->get_container();
+			return $this->migration_object->get_data_chest();
 		}
 
 		if ( ! isset( $this->data_container ) ) {
-			$this->data_container = new UnprocessedMigrationDataChestWrapper( $this->migration_object->get_container(), $this->run_key );
+			$this->data_container = new UnprocessedMigrationDataChestWrapper( $this->migration_object->get_data_chest(), $this->run_key );
 		}
 
 		return $this->data_container;
@@ -189,9 +189,9 @@ class RunAwareMigrationObjectWrapper implements RunAwareMigrationObject, ArrayAc
 		$maybe_stored = $this->wpdb->insert(
 			'migration_objects',
 			[
-				'migration_data_chest_id' => $this->get_container()->get_id(),
-				'original_object_id'          => $this->get_data_id(),
-				'json_data'                   => wp_json_encode( $this->get() ),
+				'migration_data_chest_id' => $this->get_data_chest()->get_id(),
+				'original_object_id'      => $this->get_data_id(),
+				'json_data'               => wp_json_encode( $this->get() ),
 			]
 		);
 
@@ -219,7 +219,7 @@ class RunAwareMigrationObjectWrapper implements RunAwareMigrationObject, ArrayAc
 			$data = $this->wpdb->get_row(
 				$this->wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 					'SELECT * FROM migration_objects WHERE migration_data_chest_id = %d AND original_object_id = %s',
-					$this->get_container()->get_id(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+					$this->get_data_chest()->get_id(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 					$this->get_data_id(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				)
 			);
@@ -259,10 +259,10 @@ class RunAwareMigrationObjectWrapper implements RunAwareMigrationObject, ArrayAc
 		$maybe_inserted = $this->wpdb->insert(
 			'migration_object_meta',
 			[
-				'migration_data_chest_id' => $this->get_container()->get_id(),
-				'migration_object_id'         => $this->get_id(),
-				'meta_key'                    => $key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
-				'meta_value'                  => $value, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+				'migration_data_chest_id' => $this->get_data_chest()->get_id(),
+				'migration_object_id'     => $this->get_id(),
+				'meta_key'                => $key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+				'meta_value'              => $value, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
 			]
 		);
 

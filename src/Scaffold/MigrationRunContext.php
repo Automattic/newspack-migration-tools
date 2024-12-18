@@ -125,7 +125,7 @@ class MigrationRunContext {
 	 *
 	 * @return RunAwareMigrationDataChest The data container.
 	 */
-	public function get_container(): RunAwareMigrationDataChest {
+	public function get_data_chest(): RunAwareMigrationDataChest {
 		return $this->data_container;
 	}
 }

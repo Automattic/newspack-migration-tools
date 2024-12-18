@@ -66,7 +66,7 @@ class Migrator {
 		$migration_run_context->settle();
 
 		$need_to_run_only_once = true;
-		foreach ( $migration_run_context->get_container()->get_all() as $migration_object ) {
+		foreach ( $migration_run_context->get_data_chest()->get_all() as $migration_object ) {
 
 			if ( $need_to_run_only_once ) {
 				$migration_run_context->transition( new RunningMigrationState( $migration_run_context ) );
