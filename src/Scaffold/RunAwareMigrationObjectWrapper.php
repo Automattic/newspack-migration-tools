@@ -320,7 +320,7 @@ class RunAwareMigrationObjectWrapper implements RunAwareMigrationObject, ArrayAc
 	}
 
 	/**
-	 * Whether a offset exists.
+	 * Whether an offset exists.
 	 *
 	 * @param mixed $offset An offset to check for.
 	 *
