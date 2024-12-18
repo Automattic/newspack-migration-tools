@@ -390,7 +390,7 @@ class RunAwareMigrationObjectWrapper implements RunAwareMigrationObject, ArrayAc
 	 * @return void
 	 * @throws Exception Cannot set values directly on a MigrationObject.
 	 */
-	public function __set( int|string $key, $value ): void {
+	public function __set( int|string $key, mixed $value ): void {
 		throw new Exception( 'RunAwareMigrationObjectWrapper is read-only' );
 	}
 

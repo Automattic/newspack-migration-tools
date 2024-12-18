@@ -45,7 +45,7 @@ class StartedMigrationState extends AbstractMigrationState {
 			$data_container->store();
 
 			if ( $data_container->has_been_stored() ) {
-				$this->migration_run_context->set_container(
+				$this->migration_run_context->set_data_chest(
 					$data_container
 				);
 			}

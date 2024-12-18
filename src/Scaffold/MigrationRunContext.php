@@ -111,7 +111,7 @@ class MigrationRunContext {
 	 *
 	 * @return bool
 	 */
-	public function set_container( RunAwareMigrationDataChest $data_container ): bool {
+	public function set_data_chest( RunAwareMigrationDataChest $data_container ): bool {
 		if ( $this->migration_state instanceof StartedMigrationState ) {
 			$this->data_container = $data_container;
 			return true;
