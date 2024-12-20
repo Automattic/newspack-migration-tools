@@ -933,8 +933,8 @@ HTML;
 	 * Generate a Newspack Iframe block.
 	 *
 	 * @param string $src    URL.
-	 * @param string $width  Width.
-	 * @param string $height Height.
+	 * @param int $width Width.
+	 * @param int $height Height.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
@@ -944,11 +944,11 @@ HTML;
 		];
 
 		if ( $width ) {
-			$attrs['width'] = $width;
+			$attrs['width'] = intval( $width );
 		}
 
 		if ( $height ) {
-			$attrs['height'] = $height;
+			$attrs['height'] = intval( $height );
 		}
 
 		return [
