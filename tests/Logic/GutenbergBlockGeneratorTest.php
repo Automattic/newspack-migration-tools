@@ -26,7 +26,7 @@ class GutenbergBlockGeneratorTest extends WP_UnitTestCase {
 			[
 				'post_title'   => 'Test Post 1',
 				'post_content' => 'This is the content for Test Post 1.',
-			] 
+			]
 		);
 	}
 
@@ -189,5 +189,44 @@ class GutenbergBlockGeneratorTest extends WP_UnitTestCase {
 		$this->assertEquals( 'core/embed', $youtube_block['blockName'] );
 		$this->assertEquals( $internal_url, $youtube_block['attrs']['url'] );
 		$this->assertStringContainsString( $internal_url, $youtube_block['innerHTML'] );
+	}
+
+	public function test_get_details() {
+		// Test with a simple paragraph block inside
+		$summary         = 'Test Summary';
+		$paragraph_block = $this->block_generator->get_paragraph( 'Test content' );
+		$block           = $this->block_generator->get_details( $summary, [ $paragraph_block ] );
+
+		$html = serialize_block( $block );
+		$this->assertStringStartsWith( '<!-- wp:details', $html );
+		$this->assert_xpath_node_exists( $html, '//details/summary[contains(text(), "' . $summary . '")]' );
+		$this->assert_xpath_node_exists( $html, '//details/p[contains(text(), "Test content")]' );
+
+		// Test with multiple blocks and show_content=true
+		$image_block = $this->block_generator->get_image(
+			get_post( $this->create_dummy_attachment() )
+		);
+		$blocks      = [ $paragraph_block, $image_block ];
+		$block       = $this->block_generator->get_details( $summary, $blocks, true );
+
+		$html = serialize_block( $block );
+		$this->assertStringContainsString( '"show_content":true', $html );
+		$this->assert_xpath_node_exists( $html, '//details[@open]' );
+		$this->assert_xpath_node_exists( $html, '//details/p' );
+		$this->assert_xpath_node_exists( $html, '//details//figure[contains(@class, "wp-block-image")]' );
+	}
+
+	/**
+	 * Helper method to create a dummy attachment for testing.
+	 *
+	 * @return int Attachment ID
+	 */
+	private function create_dummy_attachment(): int {
+		$attachment_id          = Attachments::import_attachment_for_post(
+			$this->test_post_1_id,
+			$this->dummy_image
+		);
+		$this->attachment_ids[] = $attachment_id;
+		return $attachment_id;
 	}
 }
