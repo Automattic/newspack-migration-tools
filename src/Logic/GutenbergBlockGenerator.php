@@ -933,8 +933,8 @@ HTML;
 	 * Generate a Newspack Iframe block.
 	 *
 	 * @param string $src    URL.
-	 * @param int $width Width.
-	 * @param int $height Height.
+	 * @param int    $width Width.
+	 * @param int    $height Height.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
@@ -1120,6 +1120,37 @@ HTML;
 			'innerBlocks'  => [],
 			'innerHTML'    => '',
 			'innerContent' => [],
+		];
+	}
+
+	/**
+	 * Generate a Details Block.
+	 *
+	 * @param string $summary      The summary/title text for the details block.
+	 * @param array  $blocks       Inner blocks to be displayed in the details content.
+	 * @param bool   $show_content Whether the details should be open by default.
+	 *
+	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 */
+	public function get_details( $summary, array $blocks, bool $show_content = false ): array {
+		$attrs = [];
+		if ( $show_content ) {
+			$attrs['show_content'] = true;
+		}
+
+		$open_attr = $show_content ? ' open' : '';
+
+		// Inner content
+		$inner_content = array_fill( 1, count( $blocks ), null );
+		array_unshift( $inner_content, '<details class="wp-block-details"' . $open_attr . '><summary>' . $summary . '</summary>' );
+		array_push( $inner_content, '</details>' );
+
+		return [
+			'blockName'    => 'core/details',
+			'attrs'        => $attrs,
+			'innerBlocks'  => $blocks,
+			'innerHTML'    => '<details class="wp-block-details"' . $open_attr . '><summary>' . $summary . '</summary></details>',
+			'innerContent' => $inner_content,
 		];
 	}
 }
