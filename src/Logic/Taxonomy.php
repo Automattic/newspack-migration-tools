@@ -6,6 +6,8 @@
 namespace Newspack\MigrationTools\Logic;
 
 use InvalidArgumentException;
+use RuntimeException;
+use WP_Term;
 
 /**
  * Taxonomy logic
@@ -332,5 +334,90 @@ class Taxonomy {
 				$assigned_to_max_num_posts
 			)
 		);
+	}
+
+	/**
+	 * Sets a new top parent category for a post, moving all categories under the new top parent.
+	 * 
+	 * *** WARNING *** only run this method once on a post! If ran more times, it will create duplicately nested categories.
+	 * 
+	 * @param int $post_id                    Post ID.
+	 * @param int $new_top_parent_category_id New top parent category ID.
+	 * 
+	 * @throws \InvalidArgumentException      If the post or new top parent category does not exist.
+	 * 
+	 * @return bool|null                      true if successful, null if no categories were assigned to the post.
+	 */
+	public function move_category_tree_under_new_top_parent( int $post_id, int $new_top_parent_category_id ) {
+		$post = get_post( $post_id );
+		if ( ! $post ) {
+			throw new InvalidArgumentException( 'Invalid post_id.' );
+		}
+		$category = get_category( $new_top_parent_category_id );
+		if ( ! $category ) {
+			throw new InvalidArgumentException( 'Invalid new_top_parent_category.' );
+		}
+
+		// Get all categories assigned to the post.
+		$categories = get_the_category( $post_id );
+		if ( empty( $categories ) ) {
+			return null;
+		}
+
+		// Process each assigned category so that its tree becomes nested under the given new top parent category.
+		$new_category_ids = [];
+		foreach ( $categories as $category ) {
+			$new_category_ids[] = $this->recreate_category_tree( $category, $new_top_parent_category_id );
+		}
+
+		// Update post categories.
+		wp_set_post_categories( $post_id, $new_category_ids );
+
+		return true;
+	}
+
+	/**
+	 * Gets or creates a category under a new parent, respecting the original hierarchy.
+	 * 
+	 * $category is the category to recreate under the new parent, along with its full category tree.
+	 * E.g., if the existing category is "Child Category < Parent Category",
+	 * the newly created category tree will be nested as "Parent Category < Child Category < New Top Parent".
+	 * 
+	 * @param WP_Term $category Category to recreate.
+	 * @param int     $parent_id    New parent category ID.
+	 * 
+	 * @throws \RuntimeException If the category cannot be created.
+	 * 
+	 * @return int              New category ID.
+	 */
+	public function recreate_category_tree( WP_Term $category, int $parent_id ) {
+		// Recursively create the parent categories first.
+		if ( $category->parent ) {
+			$parent_category = get_category( $category->parent );
+			$parent_id       = $this->recreate_category_tree( $parent_category, $parent_id );
+		}
+
+		// Check if the current category already exists under the new parent.
+		$existing_category = term_exists( $category->name, 'category', $parent_id );
+		if ( ! $existing_category ) {
+			// Create the current category under the new parent.
+			$new_category = wp_insert_term(
+				$category->name,
+				'category',
+				[
+					'parent' => $parent_id,
+					'slug'   => $category->slug,
+				]
+			);
+			if ( is_wp_error( $new_category ) ) {
+				throw new RuntimeException( 'Failed to create category: ' . wp_kses_allowed_html( $new_category->get_error_message() ) );
+			}
+
+			$new_category_id = $new_category['term_id'];
+		} else {
+			$new_category_id = $existing_category['term_id'];
+		}
+
+		return $new_category_id;
 	}
 }
