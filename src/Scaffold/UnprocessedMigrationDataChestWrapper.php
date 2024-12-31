@@ -28,11 +28,11 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 	private MigrationDataChest $data_container;
 
 	/**
-	 * The migration run key.
+	 * The migration run context.
 	 *
-	 * @var MigrationRunKey $run_key The migration run key.
+	 * @var MigrationRunContext $run_context The migration run context.
 	 */
-	private MigrationRunKey $run_key;
+	private MigrationRunContext $run_context;
 
 	/**
 	 * The Database ID for the underlying Migration Data Set Container.
@@ -51,13 +51,13 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 	/**
 	 * Constructor.
 	 *
-	 * @param MigrationDataChest $data_container The Migration Data Set Container.
-	 * @param MigrationRunKey    $run_key The migration run key.
+	 * @param MigrationDataChest  $data_container The Migration Data Set Container.
+	 * @param MigrationRunContext $run_context The migration run key.
 	 */
-	public function __construct( MigrationDataChest $data_container, MigrationRunKey $run_key ) {
+	public function __construct( MigrationDataChest $data_container, MigrationRunContext $run_context ) {
 		global $wpdb;
 		$this->wpdb           = $wpdb;
-		$this->run_key        = $run_key;
+		$this->run_context = $run_context;
 		$this->data_container = $data_container;
 
 		$this->has_been_stored();
@@ -73,12 +73,21 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 	}
 
 	/**
+	 * Returns the Migration Run Context.
+	 *
+	 * @return MigrationRunContext
+	 */
+	public function get_run_context(): MigrationRunContext {
+		return $this->run_context;
+	}
+
+	/**
 	 * Returns the Migration Run Key.
 	 *
 	 * @return MigrationRunKey
 	 */
 	public function get_run_key(): MigrationRunKey {
-		return $this->run_key;
+		return $this->run_context->get_run_key();
 	}
 
 	/**

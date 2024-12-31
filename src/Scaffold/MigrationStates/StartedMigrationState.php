@@ -39,7 +39,7 @@ class StartedMigrationState extends AbstractMigrationState {
 
 			$data_container = new UnprocessedMigrationDataChestWrapper(
 				$this->migration_run_context->get_migration()->get_data_chest(),
-				$this->get_run_key()
+				$this->migration_run_context
 			);
 
 			$data_container->store();
