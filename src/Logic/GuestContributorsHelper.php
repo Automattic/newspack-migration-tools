@@ -6,14 +6,15 @@ use Newspack\Guest_Contributor_Role;
 
 class GuestContributorsHelper {
 
+	const CREATE_WP_USER_EXISTS = 'create_wp_user_exists';
+
 	/**
 	 * Constructor.
 	 *
 	 * @param bool $validate Set to 'false' if needed in order to instantiate class without dependency validation.
-	 * @throws \Exception If validate (default true) and Newspack Plugin's Guest Contributors feature not active.
+	 * @throws \Exception If $validate (default true) and Newspack Plugin's Guest Contributors feature not active.
 	 */
 	public function __construct( $validate = true ) {
-		
 		if ( $validate && ! $this->is_guest_contributors_active() ) {
 			throw new \Exception( "Guest Contributors feature is not active: Newspack Plugin version >= 5.3.0 is required." );
 		}
@@ -30,7 +31,7 @@ class GuestContributorsHelper {
 			return false;
 		}
 
-		// Validate role is defined and exists in WP.
+		// Validate role is defined and loaded in WP.
 
 		$role_const = '\Newspack\Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME';
 
@@ -46,7 +47,7 @@ class GuestContributorsHelper {
 	}
 
 	/**
-	 * Gets existing GA by display_name, or creates a new Guest Author if it doesn't exist.
+	 * Gets existing WP_User by display_name, or creates a new Guest Author if it doesn't exist.
 	 *
 	 * @param array $args         {
 	 *                            The $args param for the \CoAuthors_Guest_Authors::create method.
@@ -67,6 +68,16 @@ class GuestContributorsHelper {
 	 */
 	public function create_guest_contributor( array $args ) {
 
+		// Check for existing user.
+		$existing_user = get_user_by( 'login', $user_login );
+		if ( $existing_user !== false ) {
+			return $existing_user->ID;
+		}
+		$existing_user = get_user_by( 'display_name', $user_login );
+		$existing_user = get_user_by( 'user_email', $user_login );
+
+		// check if a GA has this display name (URL slug??)
+
 		// what to do if: attempting to add GC who is already a Subscriber/Customer with one post?
 			// see: backfill_non_editing_contributor: add_role( \Newspack\Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME );
 		
@@ -75,7 +86,43 @@ class GuestContributorsHelper {
 
 		// Actually you could probably just copy here...
 
+		$user_data = [
+			'user_email'      => \Newspack\Guest_Contributor_Role::get_dummy_email_address( '_migrated-' . $guest_author->ID . '-' . $user_login );
+			'user_login'      => 
+			'user_nicename'   => 
+			'user_url'        => 
+			'user_pass'       => wp_generate_password(),
+			'role'            => \Newspack\Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME,
+			'display_name'    => 
+			'first_name'      => 
+			'last_name'       => 
+			'description'     => 
+			'user_registered' => 
+			'meta_input'      => [],
+		];
 
+		// Check if a user with this email address already exists (they might be a Subscriber).
+		$user = get_user_by( 'email', $user_data['user_email'] );
+		if ( $user !== false ) {
+			$new_email_address = '_migrated-' . $guest_author->ID . '-' . $user_data['user_email'];
+			if ( self::$verbose ) {
+				WP_CLI::line( sprintf( 'User with email %s already exists, email address will be updated to %s.', $user_data['user_email'], $new_email_address ) );
+			}
+			// Update the new user (non-editing contributor) email address.
+			// Since they won't need to log in, this email address does not have to be real.
+			$user_data['user_email'] = $new_email_address;
+		}
+
+		$user_id = \wp_insert_user( $user_data );
+		if ( is_wp_error( $user_id ) ) {
+			WP_CLI::error( sprintf( 'Could not create user: %s', $user_id->get_error_message() ) );
+			exit();
+		}
+		return $user_id;
+
+
+
+		// CAP below...
 		
 
 
