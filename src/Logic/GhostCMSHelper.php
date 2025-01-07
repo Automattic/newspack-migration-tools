@@ -10,11 +10,13 @@
 namespace Newspack\MigrationTools\Logic;
 
 use Exception;
-use Newspack\MigrationTools\Logic\AttachmentHelper;
-use Newspack\MigrationTools\Logic\CoAuthorsPlusHelper;
+use Newspack\MigrationTools\NMT;
 use Newspack\MigrationTools\Util\Log\CliLog;
 use Newspack\MigrationTools\Util\Log\FileLog;
+use Newspack\MigrationTools\Util\Log\MultiLog;
+use Monolog\Level;
 use Psr\Log\LogLevel;
+use UnhandledMatchError;
 use WP_Error;
 
 /**
@@ -60,6 +62,13 @@ class GhostCMSHelper {
 	private string $log_slug;
 
 	/**
+	 * Logger.
+	 *
+	 * @var string $logger
+	 */
+	private string $logger;
+
+	/**
 	 * Lookup to convert json tags to wp categories.
 	 * 
 	 * Note: json tag_id key may exist, but if tag visibility was not public, value will be 0
@@ -86,6 +95,15 @@ class GhostCMSHelper {
 
 		// Set log slug from args.
 		$this->log_slug = $log_slug;
+
+		$this->logger = MultiLog::get_logger( 
+			'multi-' . $this->log_slug,
+			[
+				CliLog::get_logger( $this->log_slug ),
+				FileLog::get_logger( $this->log_slug )
+			]
+		);
+
 
 		// CoAuthorsPlus is required.
 		try {
@@ -183,7 +201,8 @@ class GhostCMSHelper {
 			
 				$this->log( 'Skip JSON post (review by hand -skips.log): ' . $skip_reason, LogLevel::WARNING );
 
-				$this->log_to_skips_file( json_encode( array( $skip_reason, $json_post ) ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
+				FileLog::get_logger( $this->log_slug . '-skips' )->notice( json_encode( array( $skip_reason, $json_post ) ) );
 
 				continue;
 
@@ -338,7 +357,7 @@ class GhostCMSHelper {
 		}
 
 		// this function will check if existing, but only after re-downloading.
-		return AttachmentHelper::import_external_file( $path, $title, $caption, $description, $alt, $post_id );
+		return Attachments::import_external_file( $path, $title, $caption, $description, $alt, $post_id );
 	}
 
 	/**
@@ -476,50 +495,16 @@ class GhostCMSHelper {
 	 * @return void
 	 */
 	private function log( string $message, string $level = 'info', bool $exit_on_error = false ): void {
-
-		// Turn on logging to /wp-content/ folder.
-		add_filter( 'newspack_migration_tools_enable_cli_log', '__return_true' );
-		add_filter( 'newspack_migration_tools_enable_file_log', '__return_true' );
-		add_filter( 'newspack_migration_tools_log_dir', fn() => WP_CONTENT_DIR );
-
-		$file_logger = FileLog::get_logger( $this->log_slug . '.log', $this->log_slug . '.log' );
-		$cli_logger  = CliLog::get_logger( $this->log_slug . '-cli' );
-
-		switch ( $level ) {
-			case 'info':
-				$file_logger->info( $message );
-				$cli_logger->info( $message );
-				break;
-			case 'warning':
-				$file_logger->warning( $message );
-				$cli_logger->warning( $message );
-				break;
-			case 'error':
-				$file_logger->error( $message );
-				$cli_logger->error( $message );
-				break;
+		try {
+			$level = Level::fromName( $level );
+		} catch ( UnhandledMatchError $e ) {
+			$level = Level::fromName( Level::Info );
 		}
+		$this->logger->log( $level, $message );
 
 		if ( $exit_on_error ) {
-			wp_die( ' -- exit_on_error --' );
-		}
-	}
-
-	/**
-	 * Log function that will log to a "skips" file with no CLI output.
-	 *
-	 * @param string $message The message to log.
-	 * @return void
-	 */
-	private function log_to_skips_file( string $message ): void {
-		
-		// Turn on logging to /wp-content/ folder.
-		add_filter( 'newspack_migration_tools_enable_file_log', '__return_true' );
-		add_filter( 'newspack_migration_tools_log_dir', fn() => WP_CONTENT_DIR );
-
-		// Append "-skips.log" to slug for skips logging.
-		$file_logger = FileLog::get_logger( $this->log_slug . '-skips.log', $this->log_slug . '-skips.log' );
-		$file_logger->info( $message );
+			NMT::exit_with_message( $message, [ $this->logger ] );
+		}			
 	}
 
 	/**

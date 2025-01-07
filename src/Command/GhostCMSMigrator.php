@@ -12,6 +12,7 @@ namespace Newspack\MigrationTools\Command;
 use Newspack\MigrationTools\Logic\GhostCMSHelper;
 use Newspack\MigrationTools\Util\Log\CliLog;
 use Newspack\MigrationTools\Util\Log\FileLog;
+use Newspack\MigrationTools\Util\Log\MultiLog;
 
 /**
  * GhostCMS general Migrator command class.
@@ -74,21 +75,20 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 	 */
 	public static function cmd_ghostcms_import( array $pos_args, array $assoc_args ): void {
 
-		// Turn on logging to /wp-content/ folder.
-		add_filter( 'newspack_migration_tools_enable_cli_log', '__return_true' );
-		add_filter( 'newspack_migration_tools_enable_file_log', '__return_true' );
-		add_filter( 'newspack_migration_tools_log_dir', fn() => WP_CONTENT_DIR );
-
-		// Set log slug to class name (namespace removed) and function: "GhostCMSMigrator_cmd_ghostcms_import" .
+		// Set log slug: Class name without namespace plus function: "GhostCMSMigrator_cmd_ghostcms_import" .
 		$log_slug = str_replace( __NAMESPACE__ . '\\', '', __CLASS__ ) . '_' . __FUNCTION__;
 
-		$file_logger = FileLog::get_logger( $log_slug . '.log', $log_slug . '.log' );
-		$cli_logger  = CliLog::get_logger( $log_slug . '-cli' );
+		$logger = MultiLog::get_logger( 
+			'multi-' . $log_slug,
+			[
+				CliLog::get_logger( $log_slug ),
+				FileLog::get_logger( $log_slug )
+			]
+		);
+		
+		$logger->info( 'Starting CLI - GhostCMS Import...' );
 
-		$info = 'Starting CLI - GhostCMS Import...';
-		$file_logger->info( $info );
-		$cli_logger->info( $info );
-
+		// Do helper.
 		$helper = new GhostCMSHelper();
 		$helper->ghostcms_import( $pos_args, $assoc_args, $log_slug );
 	}
