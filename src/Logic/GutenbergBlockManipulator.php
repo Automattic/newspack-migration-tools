@@ -1,8 +1,6 @@
 <?php
 /**
  * Helper functions for manipulating Gutenberg block content.
- *
- * @package NewspackCustomContentMigrator
  */
 
 namespace Newspack\MigrationTools\Logic;

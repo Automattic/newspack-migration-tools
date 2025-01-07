@@ -1,8 +1,6 @@
 <?php
 /**
  * Helper to consistently handle start and end for commands.
- *
- * @package NewspackCustomContentMigrator
  */
 
 namespace Newspack\MigrationTools\Util;
@@ -56,6 +54,7 @@ class BatchLogic {
 		if ( empty( self::$batch_args ) ) {
 			self::$batch_args = [ self::$start, self::$end, self::$num_items ];
 		}
+
 		return self::$batch_args;
 	}
 

@@ -44,7 +44,7 @@ class CoAuthorsPlusHelper {
 	 *
 	 * @return bool Is everything set up OK.
 	 */
-	public function validate_co_authors_plus_dependencies() {
+	public function validate_co_authors_plus_dependencies(): bool {
 		global $coauthors_plus;
 		if ( ( ! $coauthors_plus instanceof CoAuthors_Plus ) || ( ! $coauthors_plus->guest_authors instanceof CoAuthors_Guest_Authors ) ) {
 			return false;

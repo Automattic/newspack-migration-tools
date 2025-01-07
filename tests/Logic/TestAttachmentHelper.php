@@ -2,7 +2,7 @@
 
 namespace Newspack\MigrationTools\Tests\Logic;
 
-use Newspack\MigrationTools\Logic\AttachmentHelper;
+use Newspack\MigrationTools\Logic\Attachments;
 use Newspack\MigrationTools\Tests\AttachmentUnitTestTrait;
 use WP_UnitTestCase;
 
@@ -36,9 +36,9 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 			$desired_file_name
 		);
 
-		$found_attachment_id = AttachmentHelper::get_attachment_id_by_filename( $desired_file_name );
+		$found_attachment_id = Attachments::get_attachment_id_by_filename( $desired_file_name );
 		$this->assertEquals( $attachment_id, $found_attachment_id, 'Found attachment ID matches' );
-		$should_not_find_attachment_id = AttachmentHelper::get_attachment_id_by_filename( uniqid() . 'nonexistent.jpg' );
+		$should_not_find_attachment_id = Attachments::get_attachment_id_by_filename( uniqid() . 'nonexistent.jpg' );
 		$this->assertEmpty( $should_not_find_attachment_id );
 	}
 

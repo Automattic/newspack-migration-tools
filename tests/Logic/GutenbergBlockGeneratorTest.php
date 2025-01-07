@@ -4,7 +4,7 @@ namespace Newspack\MigrationTools\Tests\Logic;
 
 use DOMDocument;
 use DOMXPath;
-use Newspack\MigrationTools\Logic\AttachmentHelper;
+use Newspack\MigrationTools\Logic\Attachments;
 use Newspack\MigrationTools\Logic\GutenbergBlockGenerator;
 use Newspack\MigrationTools\Tests\AttachmentUnitTestTrait;
 use WP_UnitTestCase;
@@ -26,7 +26,7 @@ class GutenbergBlockGeneratorTest extends WP_UnitTestCase {
 			[
 				'post_title'   => 'Test Post 1',
 				'post_content' => 'This is the content for Test Post 1.',
-			] 
+			]
 		);
 	}
 
@@ -95,7 +95,7 @@ class GutenbergBlockGeneratorTest extends WP_UnitTestCase {
 
 
 	public function test_get_gallery() {
-		$attachment_id          = AttachmentHelper::import_attachment_for_post(
+		$attachment_id          = Attachments::import_attachment_for_post(
 			$this->test_post_1_id,
 			$this->dummy_image
 		);
@@ -106,7 +106,7 @@ class GutenbergBlockGeneratorTest extends WP_UnitTestCase {
 
 
 	public function test_get_file_pdf() {
-		$attachment_id          = AttachmentHelper::import_attachment_for_post(
+		$attachment_id          = Attachments::import_attachment_for_post(
 			$this->test_post_1_id,
 			'tests/fixtures/test.pdf'
 		);
@@ -117,5 +117,116 @@ class GutenbergBlockGeneratorTest extends WP_UnitTestCase {
 
 		$with_download_link_block = $this->block_generator->get_file_pdf( get_post( $attachment_id ) );
 		$this->assertStringContainsString( 'download', $with_download_link_block['innerHTML'] );
+	}
+
+	public function test_get_audio() {
+		$audio_url = 'https://v1.cdnpk.net/videvo_files/audio/premium/audio0060/conversions/mp3_option/CatMeowsPurring PE916904.mp3';
+
+		$attachment_id = Attachments::import_attachment_for_post(
+			$this->test_post_1_id,
+			$audio_url
+		);
+
+		$this->attachment_ids[] = $attachment_id;
+
+		$filename = wp_basename( $audio_url );
+
+		$audio_block = $this->block_generator->get_audio( get_post( $attachment_id ), 'Test Caption', 'Test Description', false );
+		$this->assertEquals( 'core/audio', $audio_block['blockName'] );
+		$this->assertStringContainsString( sanitize_file_name( $filename ), $audio_block['innerHTML'] );
+
+		$audio_block = $this->block_generator->get_audio( $audio_url, 'Another Test Caption', 'Another Test Description', true );
+		$this->assertEquals( 'core/audio', $audio_block['blockName'] );
+		$this->assertStringNotContainsString( $audio_url, $audio_block['innerHTML'] );
+		$this->assertStringContainsString( sanitize_file_name( $filename ), $audio_block['innerHTML'] );
+
+		$audio_block = $this->block_generator->get_audio( $audio_url, 'Final Test Caption', 'Final Test Description', false );
+		$this->assertEquals( 'core/audio', $audio_block['blockName'] );
+		$this->assertStringContainsString( $audio_url, $audio_block['innerHTML'] );
+		$this->assertStringContainsString( 'Final Test Caption', $audio_block['innerHTML'] );
+	}
+
+	public function youtube_url_data_provider() {
+		return [
+			'with_v_param'                       => [
+				'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+			],
+			'with_v_param_and_additional_params' => [
+				'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&param=value&another_param=should-be-removed',
+			],
+			'with_embed_version'                 => [
+				'url' => 'https://www.youtube.com/embed/N5HbZd9aqR4',
+			],
+			'with_youtube_code_only'             => [
+				'url' => 'N5HbZd9aqR4',
+			],
+		];
+	}
+
+	/**
+	 * @dataProvider youtube_url_data_provider
+	 * @return void
+	 */
+	public function test_get_youtube( $url ) {
+		$internal_url = $url;
+		if ( filter_var( $url, FILTER_VALIDATE_URL ) ) {
+			$parsed_url = wp_parse_url( $url );
+
+			$internal_url = $parsed_url['scheme'] . '://' . $parsed_url['host'] . $parsed_url['path'];
+
+			if ( ! empty( $parsed_url['query'] ) ) {
+				$query_params = wp_parse_args( $parsed_url['query'] );
+
+				if ( array_key_exists( 'v', $query_params ) ) {
+					$internal_url .= '?v=' . $query_params['v'];
+				}
+			}
+		} else {
+			$internal_url = 'https://www.youtube.com/watch?v=' . $url;
+		}
+
+		$youtube_block = $this->block_generator->get_youtube( $url );
+		$this->assertEquals( 'core/embed', $youtube_block['blockName'] );
+		$this->assertEquals( $internal_url, $youtube_block['attrs']['url'] );
+		$this->assertStringContainsString( $internal_url, $youtube_block['innerHTML'] );
+	}
+
+	public function test_get_details() {
+		// Test with a simple paragraph block inside
+		$summary         = 'Test Summary';
+		$paragraph_block = $this->block_generator->get_paragraph( 'Test content' );
+		$block           = $this->block_generator->get_details( $summary, [ $paragraph_block ] );
+
+		$html = serialize_block( $block );
+		$this->assertStringStartsWith( '<!-- wp:details', $html );
+		$this->assert_xpath_node_exists( $html, '//details/summary[contains(text(), "' . $summary . '")]' );
+		$this->assert_xpath_node_exists( $html, '//details/p[contains(text(), "Test content")]' );
+
+		// Test with multiple blocks and show_content=true
+		$image_block = $this->block_generator->get_image(
+			get_post( $this->create_dummy_attachment() )
+		);
+		$blocks      = [ $paragraph_block, $image_block ];
+		$block       = $this->block_generator->get_details( $summary, $blocks, true );
+
+		$html = serialize_block( $block );
+		$this->assertStringContainsString( '"show_content":true', $html );
+		$this->assert_xpath_node_exists( $html, '//details[@open]' );
+		$this->assert_xpath_node_exists( $html, '//details/p' );
+		$this->assert_xpath_node_exists( $html, '//details//figure[contains(@class, "wp-block-image")]' );
+	}
+
+	/**
+	 * Helper method to create a dummy attachment for testing.
+	 *
+	 * @return int Attachment ID
+	 */
+	private function create_dummy_attachment(): int {
+		$attachment_id          = Attachments::import_attachment_for_post(
+			$this->test_post_1_id,
+			$this->dummy_image
+		);
+		$this->attachment_ids[] = $attachment_id;
+		return $attachment_id;
 	}
 }
