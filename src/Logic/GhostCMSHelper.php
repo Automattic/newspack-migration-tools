@@ -62,13 +62,6 @@ class GhostCMSHelper {
 	private string $log_slug;
 
 	/**
-	 * Logger.
-	 *
-	 * @var string $logger
-	 */
-	private string $logger;
-
-	/**
 	 * Lookup to convert json tags to wp categories.
 	 * 
 	 * Note: json tag_id key may exist, but if tag visibility was not public, value will be 0
@@ -95,15 +88,6 @@ class GhostCMSHelper {
 
 		// Set log slug from args.
 		$this->log_slug = $log_slug;
-
-		$this->logger = MultiLog::get_logger( 
-			'multi-' . $this->log_slug,
-			[
-				CliLog::get_logger( $this->log_slug ),
-				FileLog::get_logger( $this->log_slug )
-			]
-		);
-
 
 		// CoAuthorsPlus is required.
 		try {
@@ -199,7 +183,7 @@ class GhostCMSHelper {
 			$skip_reason = $this->skip( $json_post );
 			if ( ! empty( $skip_reason ) ) {
 			
-				$this->log( 'Skip JSON post (review by hand -skips.log): ' . $skip_reason, LogLevel::WARNING );
+				$this->log( 'Skip JSON post (review by hand -skips.log): ' . $skip_reason, LogLevel::NOTICE );
 
 				// phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
 				FileLog::get_logger( $this->log_slug . '-skips' )->notice( json_encode( array( $skip_reason, $json_post ) ) );
@@ -255,7 +239,7 @@ class GhostCMSHelper {
 
 		}
 
-		$this->log( 'Done.', LogLevel::INFO );
+		$this->log( 'Done.' );
 	}
 
 	/**
@@ -495,15 +479,25 @@ class GhostCMSHelper {
 	 * @return void
 	 */
 	private function log( string $message, string $level = 'info', bool $exit_on_error = false ): void {
+		
+		$logger = MultiLog::get_logger( 
+			'multi-' . $this->log_slug,
+			[
+				CliLog::get_logger( $this->log_slug ),
+				FileLog::get_logger( $this->log_slug )
+			]
+		);
+
 		try {
 			$level = Level::fromName( $level );
 		} catch ( UnhandledMatchError $e ) {
 			$level = Level::fromName( Level::Info );
 		}
-		$this->logger->log( $level, $message );
+		
+		$logger->log( $level, $message );
 
 		if ( $exit_on_error ) {
-			NMT::exit_with_message( $message, [ $this->logger ] );
+			NMT::exit_with_message( $message, [ $logger ] );
 		}			
 	}
 
