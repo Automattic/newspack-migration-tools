@@ -484,7 +484,7 @@ class GhostCMSHelper {
 			'multi-' . $this->log_slug,
 			[
 				CliLog::get_logger( $this->log_slug ),
-				FileLog::get_logger( $this->log_slug )
+				FileLog::get_logger( $this->log_slug ),
 			]
 		);
 
@@ -498,7 +498,7 @@ class GhostCMSHelper {
 
 		if ( $exit_on_error ) {
 			NMT::exit_with_message( $message, [ $logger ] );
-		}			
+		}           
 	}
 
 	/**

@@ -82,7 +82,7 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 			'multi-' . $log_slug,
 			[
 				CliLog::get_logger( $log_slug ),
-				FileLog::get_logger( $log_slug )
+				FileLog::get_logger( $log_slug ),
 			]
 		);
 		
