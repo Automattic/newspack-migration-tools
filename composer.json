@@ -29,8 +29,8 @@
         "php-coveralls/php-coveralls": "^2.7"
     },
     "scripts": {
-        "phpcs": "./vendor/bin/phpcs",
-        "phpcbf": "./vendor/bin/phpcbf",
+        "phpcs": "./vendor/bin/phpcs --standard=phpcs.xml",
+        "phpcbf": "./vendor/bin/phpcbf --standard=phpcs.xml",
         "phpunit": "./vendor/bin/phpunit",
         "code-coverage": "export XDEBUG_MODE=coverage && ./vendor/bin/phpunit --coverage-clover build/logs/clover.xml",
         "build-release": [
