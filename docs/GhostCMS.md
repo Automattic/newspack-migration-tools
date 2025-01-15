@@ -27,7 +27,7 @@ Command: `wp newspack-migration-tools ghostcms-import`
 
 ## Fatal Conflicts:
 
-If Newpack Plugin is also active, and the following error is encountored:
+If the Newspack Plugin is also active, and the following error has encountered:
 
 ```
 Error: CoAuthorsPlusHelper construct threw exception: CoAuthors Plus is not installed or active. --> /newspack-repos/newspack-custom-content-migrator/dev/newspack-migration-tools/src/Logic/GhostCMSHelper.php:500
