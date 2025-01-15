@@ -24,3 +24,17 @@ Command: `wp newspack-migration-tools ghostcms-import`
 
 * `GhostCMSMigrator_cmd_ghostcms_import.log` - Be sure to review for warning and error lines.
 * `GhostCMSMigrator_cmd_ghostcms_import.log-skips.log` - Be sure to review for any posts that should have been added but were skipped.
+
+## Fatal Conflicts:
+
+If Newpack Plugin is also active, and the following error is encountored:
+
+```
+Error: CoAuthorsPlusHelper construct threw exception: CoAuthors Plus is not installed or active. --> /newspack-repos/newspack-custom-content-migrator/dev/newspack-migration-tools/src/Logic/GhostCMSHelper.php:500
+```
+
+Please do [this fix](https://github.com/Automattic/newspack-migration-tools/issues/41):
+
+`wp config set NEWSPACK_ENABLE_CAP_GUEST_AUTHORS true --raw --type=constant`
+
+
