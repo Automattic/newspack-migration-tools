@@ -56,14 +56,14 @@ class DrupalMigrator implements WpCliCommandInterface {
 		CliLog::get_logger( 'drupal-migrator' )->info( 'Use ^^ in hooks. See DrupalMigration::add_fg_hooks().' );
 
 		// Add our customizations.
-		self::add_fg_hooks( $migration_name );
+		add_filter( 'option_fgd2wp_options',         [ __CLASS__, 'option_fgd2wp_options' ] );
+		add_filter( 'default_option_fgd2wp_options', [ __CLASS__, 'option_fgd2wp_options' ] );
+
+		// Make it possible for implementing code to customize the migration.
+		do_action( 'nmt_drupal_migrator_add_fg_hooks_' . $migration_name );
 
 		// Note that the 'launch' arg is important – without it the hooks above will not be registered.
 		WP_CLI::runcommand( 'import-drupal import', [ 'launch' => false ] );
-	}
-
-	public static function run_migration( string $migration_name ): void {
-		self::cmd_wrap_drupal_import( [ $migration_name ], [] );
 	}
 
 	public static function check_requirements() {
@@ -77,28 +77,16 @@ class DrupalMigrator implements WpCliCommandInterface {
 	}
 
 	/**
-	 * Make the migration extendable.
-	 *
-	 * @param string $migration_name Name of the migration. Will be used to call hooks.
-	 *
-	 * @return void
-	 */
-	public static function add_fg_hooks( string $migration_name ): void {
-		add_filter( 'option_fgd2wp_options', [ __CLASS__, 'filter_fgd2wp_options' ] );
-
-		// Make it possible for implementing code to customize the migration.
-		do_action( 'nmt_drupal_migrator_add_fg_hooks_' . $migration_name );
-	}
-
-	/**
 	 * Filter the options for the FG Drupal to WP plugin to use environment variables for the database connection.
 	 * Put these variables in your .env file locally (or comment out locally).
 	 *
-	 * @param array $options The options to filter.
-	 *
-	 * @return array The filtered options.
+	 * @param  array|false $options The options array to filter or boolean false if database option doesn't exist.
+	 * @return array                The filtered options.
 	 */
-	public static function filter_fgd2wp_options( array $options ): array {
+	public static function option_fgd2wp_options( array|false $options ): array {
+		
+		if( false === $options ) $options = [];
+
 		$options['hostname'] = getenv( 'DB_HOST' );
 		$options['database'] = getenv( 'DB_NAME' );
 		$options['username'] = getenv( 'DB_USER' );
