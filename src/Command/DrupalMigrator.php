@@ -97,6 +97,8 @@ class DrupalMigrator implements WpCliCommandInterface {
 
 		$options['prefix'] = DrupalHelper::get_tables_prefix();
 
+		$options['url'] = NMT_DRUPAL_MIGRATOR_SOURCE_URL;
+
 		return $options;
 	}
 
