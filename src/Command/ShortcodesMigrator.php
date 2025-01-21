@@ -3,6 +3,8 @@
 namespace Newspack\MigrationTools\Command;
 
 use Newspack\MigrationTools\Logic\Posts as PostsLogic;
+use ShortcodeReplacementInterface;
+use ReflectionMethod;
 use WP_CLI;
 
 /**
@@ -34,7 +36,6 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 			[
 				'newspack-content-migrator remove-shortcodes-from-post-body',
 				self::get_command_closure( 'remove_shortcodes_from_post_body' ),
-
 				[
 					'shortdesc' => 'Remove shortcodes from post body.',
 					'synopsis'  => array(
@@ -62,7 +63,62 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 					),
 				],
 			],
+			[
+				'newspack-content-migrator replace-shortcodes-in-post-body',
+				self::get_command_closure( 'replace_shortcodes_in_posts' ),
+				[
+					'shortdesc' => 'Replaces shortcodes from post body of all published posts and pages.',
+					'synopsis'  => [
+						[
+							'type'        => 'assoc',
+							'name'        => 'shortcode',
+							'description' => 'Shortcode name to replace, e.g. --shortcode=shortcode1 .',
+							'optional'    => false,
+							'repeating'   => false,
+						],
+						[
+							'type'        => 'assoc',
+							'name'        => 'replace-callback',
+							'description' => 'Fully qualified path to a callback method which will be used to generate a replacement. E.g. --replace-callback="Vendor\Package\ClassA::myShortcodeReplacementMethod" . Must implement ShortcodeReplacementInterface.',
+							'optional'    => false,
+							'repeating'   => false,
+						],
+						[
+							'type'        => 'flag',
+							'name'        => 'dry-run',
+							'description' => 'Do a dry run simulation and don\'t actually edit the posts content.',
+							'optional'    => true,
+							'repeating'   => false,
+						],
+						[
+							'type'        => 'assoc',
+							'name'        => 'post-ids',
+							'description' => 'Optional, if not provided will replace for all posts and pages. IDs of posts and pages to remove shortcodes from their content separated by a comma (e.g. 123,456)',
+							'optional'    => true,
+							'repeating'   => false,
+						],
+					],
+				],
+			],
 		];
+	}
+	
+	public function replace_shortcodes_in_posts( $args, $assoc_args ) {
+		$shortcode        = $assoc_args['shortcode'];
+		$replace_callback = $assoc_args['replace-callback'];
+		$post_ids         = isset( $assoc_args['post-ids'] ) ? explode( ',', $assoc_args['post-ids'] ) : null;
+		$dry_run          = isset( $assoc_args['dry-run'] ) ? true : false;
+
+		WP_CLI::line( '> replace_shortcodes_in_posts' );
+		
+		$post_id = 123;
+		
+		// Invoke the replacement method with arguments (see inteface ShortcodeReplacementInterface for the arguments).
+		list( $class_name, $method_name ) = explode( '::', $replace_callback );
+		$reflection_method                = new ReflectionMethod( $class_name, $method_name );
+		$class_instance                   = new $class_name();		$result                           = $reflection_method->invoke( $class_instance, $shortcode, $post_id );
+
+		WP_CLI::line( 'end.' );
 	}
 
 	/**
