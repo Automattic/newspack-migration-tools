@@ -2,6 +2,8 @@
 
 namespace Newspack\MigrationTools\Logic;
 
+use UnexpectedValueException;
+
 /**
  * Shortcodes logic class.
  */
@@ -48,6 +50,8 @@ class Shortcodes {
 	 * 
 	 * @param string $shortcode Shortcode string.
 	 * 
+	 * @throws UnexpectedValueException If the shortcode format is invalid.
+	 * 
 	 * @return array Keys are shortcode attribute names.
 	 *               Values are null where a shortcode attribute has no value, e.g. [customshort myattribute]
 	 *               or strings if they do have values, e.g. [customshort myattribute="somevalue"].
@@ -63,76 +67,22 @@ class Shortcodes {
 	 *               ```
 	 */
 	public function get_all_shortcode_attributes( string $shortcode ): array {
-		
-		/**
-		 * Uses the built in shortcode_parse_atts() function, however at the time of writing this
-		 * the shortcode_parse_atts() seems to return incorrect results for the final attribute with a value.
-		 * For example, `shortcode_parse_atts( '[customshort attr1="val1" attr2="val2" "attr3="val3"]' )` will return:
-		 * ```
-		 * array(4) {
-		 *   [0] => "[customshort"
-		 *   'attr1' => "val1"
-		 *   'attr2' => "val2"
-		 *   [1]     => "attr3="val3"]"
-		 * }
-		 * ```
-		 * Note that the attr3 is not parsed correctly.
-		 *
-		 * By adding a space just before the ending `]` character and then running shortcode_parse_atts(),
-		 * the final element can be returned correctly, however an empty parameter will be added at the end.
-		 * For example, and note the space before ending `]`, `shortcode_parse_atts( '[customshort attr1="val1" attr2="val2" attr3="val3" ]' )`
-		 * will return:
-		 * ```
-		 * array(5) {
-		 *   [0] => "[customshort"
-		 *   'attr1' => "val1"
-		 *   'attr2' => "val2"
-		 *   'attr3' => "val3"
-		 *   [1] => "]"
-		 * }
-		 * ```
-		 *
-		 * Conclusion -- we'll add a space before the ending `]` character, then run the parse method,
-		 * then remove both starting and the ending element from the resulting array, and we'll end up with the correct result.
-		 *
-		 * Also confirming that the same works for attributes with no values, e.g. `shortcode_parse_atts( '[customshort attr1 attr2]' )`:
-		 * ```
-		 * array(3) {
-		 *   [0] => "[customshort"
-		 *   [1] => "attr1"
-		 *   [2] => "attr2]"
-		 * }
-		 * ```
-		 * and with added space before ending `]`, e.g. `[customshort attr1 attr2 ]`, result is:
-		 * ```
-		 * array(4) {
-		 *   [0] => "[customshort"
-		 *   [1] => "attr1"
-		 *   [2] => "attr2"
-		 *   [3] => "]"
-		 * }
-		 * ```
-		 *
-		 * Therefore, adding a space before the ending `]`, and cleaning up the trailing element, will give
-		 * the correct list of parameters.
-		 */
 
-		// Add a space character just before the ending `]`.
-		if ( ' ' !== substr( $shortcode, -2, 1 ) ) {
-			$shortcode = substr( $shortcode, 0, -1 ) . ' ]'; 
+		// Get the shortcode arguments list for shortcode_parse_atts().
+		$text = trim( $shortcode );
+		// Remove evertything before and including the first space.
+		$text = substr( $text, strpos( $text, ' ' ) + 1 );
+		// Remove ending `]`.
+		if ( ']' !== substr( $text, -1 ) ) {
+			// Shouldn't happen, but better safe than sorry.
+			throw new UnexpectedValueException( 'Invalid shortcode format. Ending `]` not found.' );
 		}
-		
+		$text = substr( $text, 0, -1 );
+
 		// Parse.
-		$attributes = shortcode_parse_atts( $shortcode );
+		$attributes = shortcode_parse_atts( $text );
 
-		// Remove 0th element, shortcode name.
-		unset( $attributes[0] );
-
-		// Remove the final element from array -- the trailing element from when we added the space.
-		$last_key = array_key_last( $attributes );
-		unset( $attributes[ $last_key ] );
-
-		// For attributes without value, make the key attribute name, and value null.
+		// For attributes without value, make the array key equal attribute name, and the array value equal null.
 		foreach ( $attributes as $key => $value ) {
 			// If the key is integer, that's an attribute without value.
 			if ( is_int( $key ) ) {
@@ -151,8 +101,8 @@ class Shortcodes {
 	 * @param string $attribute_name Name of the attribute.
 	 * @param string $shortcode Shortcode string.
 	 *
-	 * @return mixed The attribute value if it's a key-value pair, 
-	 *               true if it's a boolean attribute (no value), 
+	 * @return mixed string attribute value if it's a key-value pair.
+	 *               true if it's an attribute without a value.
 	 *               false if the attribute is not found.
 	 */
 	public function get_shortcode_attribute( string $attribute_name, string $shortcode ): mixed {
