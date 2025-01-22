@@ -85,6 +85,37 @@ class DrupalMigrator implements WpCliCommandInterface {
 	 */
 	public static function option_fgd2wp_options( array|false $options ): array {
 		
+		// Options / Default values / FG plugin version 3.85.2
+		// $this->plugin_options = array(
+		// 	'automatic_empty'			=> 0,
+		// 	'url'						=> null,
+		// 	'download_protocol'			=> 'http',
+		// 	'base_dir'					=> '',
+		// 	'driver'					=> 'mysql',
+		// 	'hostname'					=> 'localhost',
+		// 	'port'						=> 3306,
+		// 	'database'					=> null,
+		// 	'username'					=> 'root',
+		// 	'password'					=> '',
+		// 	'sqlite_file'				=> '',
+		// 	'prefix'					=> '',
+		// 	'summary'					=> 'in_content',
+		// 	'skip_media'				=> 0,
+		// 	'file_public_path_source'	=> 'default',
+		// 	'file_public_path'			=> 'sites/default/files',
+		// 	'file_private_path_source'	=> 'default',
+		// 	'file_private_path'			=> 'sites/default/private/files',
+		// 	'featured_image'			=> 'featured',
+		// 	'only_featured_image'		=> 0,
+		// 	'remove_first_image'		=> 0,
+		// 	'skip_thumbnails'			=> 0,
+		// 	'import_external'			=> 0,
+		// 	'import_duplicates'			=> 0,
+		// 	'force_media_import'		=> 0,
+		// 	'timeout'					=> 20,
+		// 	'logger_autorefresh'		=> 1,
+		// );
+
 		if( false === $options ) $options = [];
 
 		$options['hostname'] = getenv( 'DB_HOST' );
@@ -97,7 +128,11 @@ class DrupalMigrator implements WpCliCommandInterface {
 
 		$options['prefix'] = DrupalHelper::get_tables_prefix();
 
+		// @todo Verify url define exists or fail gracefully.
 		$options['url'] = NMT_DRUPAL_MIGRATOR_SOURCE_URL;
+
+		// @todo Should this go into Publisher specific migrator instead?
+		$options['summary'] = 'in_excerpt'; // otherwise excerpt will go in top of content with <!--more--> link
 
 		return $options;
 	}
