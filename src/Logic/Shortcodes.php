@@ -42,4 +42,31 @@ class Shortcodes {
 
 		return $shortcodes_found;
 	}
+
+	/**
+	 * Parse shortcode attributes using `shortcode_parse_atts`. A memo helper wrapper method.
+	 * 
+	 * @param string $shortcode
+	 * @return array Response from shortcode_parse_atts(). Here's how `shortcode_parse_atts` will parse
+	 *               attributes which do have and do not have values:
+	 *               e.g. for following shortcode:
+	 *               ```
+	 *               [customshort attr1="value1" attr2 attr3="value3" attr4 attr5]
+	 *               ```
+	 *               the resulting array will be:
+	 *               ```
+	 *               array(6) {
+	 *                   [0]     => "[customshort"
+	 *                   'attr1' => "value1"
+	 *                   [1]     => "attr2"
+	 *                   'attr3' => "value3"
+	 *                   [2]     => "attr4"
+	 *                   [3]     => "attr5]"
+	 *               }
+	 *               ```
+	 */
+	public function get_shortcode_attributes( string $shortcode ): array {
+		$attrs = shortcode_parse_atts( $shortcode );
+		return $attrs;
+	}
 }
