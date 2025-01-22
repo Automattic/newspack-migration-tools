@@ -68,7 +68,7 @@ class DrupalMigrator implements WpCliCommandInterface {
 
 	public static function check_requirements() {
 		if ( ! is_plugin_active( "fg-drupal-to-wp-premium/fg-drupal-to-wp-premium.php" ) ) {
-			NMT::exit_with_message( '"FG" plugin not found. Install and activate it before using this class.' );
+			NMT::exit_with_message( 'FG Drupal to WP Premium plugin not found. Install and activate it before using this class.' );
 		}
 
 		if ( ! defined( 'NMT_DRUPAL_MIGRATOR_SOURCE_URL' ) ) {
