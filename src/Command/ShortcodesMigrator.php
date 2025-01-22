@@ -3,8 +3,10 @@
 namespace Newspack\MigrationTools\Command;
 
 use Newspack\MigrationTools\Logic\Posts as PostsLogic;
-use ShortcodeReplacementInterface;
+use Newspack\MigrationTools\Logic\Shortcodes;
+use Newspack\MigrationTools\Command\ShortcodeReplacementInterface;
 use ReflectionMethod;
+use ReflectionException;
 use WP_CLI;
 
 /**
@@ -20,12 +22,20 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 	 * @var PostsLogic.
 	 */
 	private $posts_logic;
+	
+	/**
+	 * Shortcodes logic.
+	 * 
+	 * @var Shortcodes $shortcodes Shortcodes logic.
+	 */
+	private $shortcodes;
 
 	/**
 	 * Constructor.
 	 */
 	private function __construct() {
 		$this->posts_logic = new PostsLogic();
+		$this->shortcodes  = new Shortcodes();
 	}
 
 	/**
@@ -103,22 +113,96 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 		];
 	}
 	
-	public function replace_shortcodes_in_posts( $args, $assoc_args ) {
+	/**
+	 * Callable for `newspack-content-migrator replace-shortcodes-in-post-body`.
+	 *
+	 * @param array $args_pos   Positional arguments.      
+	 * @param array $assoc_args Associative arguments.
+	 * @return void
+	 */
+	public function replace_shortcodes_in_posts( array $args_pos, array $assoc_args ): void {
+		global $wpdb;
+		
 		$shortcode        = $assoc_args['shortcode'];
 		$replace_callback = $assoc_args['replace-callback'];
 		$post_ids         = isset( $assoc_args['post-ids'] ) ? explode( ',', $assoc_args['post-ids'] ) : null;
 		$dry_run          = isset( $assoc_args['dry-run'] ) ? true : false;
 
-		WP_CLI::line( '> replace_shortcodes_in_posts' );
-		
-		$post_id = 123;
-		
-		// Invoke the replacement method with arguments (see inteface ShortcodeReplacementInterface for the arguments).
+		// Get the replacement class method.
 		list( $class_name, $method_name ) = explode( '::', $replace_callback );
-		$reflection_method                = new ReflectionMethod( $class_name, $method_name );
-		$class_instance                   = new $class_name();		$result                           = $reflection_method->invoke( $class_instance, $shortcode, $post_id );
+		try {
+			$reflection_method = new ReflectionMethod( $class_name, $method_name );
+		} catch ( ReflectionException $e ) {
+			WP_CLI::error( sprintf( 'Invalid provided replacement callback `%s`. See comment description for example usage.', $replace_callback ) );
+			exit(1);
+		}
+		
+		// Check if $class_instance is instance of ShortcodeReplacementInterface.
+		$class_instance = new $class_name();
+		if ( ! $class_instance instanceof ShortcodeReplacementInterface ) {
+			WP_CLI::error( sprintf( 'The class `%s` with method `%s` does not implement ShortcodeReplacementInterface.', $class_name, $method_name ) );
+			exit(1);
+		}
+	
+		// Replace in all posts IDs.
+		$post_ids = $this->posts_logic->get_all_posts_ids( [ 'post', 'page' ], [ 'publish' ] );
+		foreach ( $post_ids as $key => $post_id ) {
+			WP_CLI::line( sprintf( "ID %d %d/%d", $post_id, $key + 1, count($post_ids) ) );
+			
+			$post_content = $wpdb->get_var( $wpdb->prepare( "SELECT post_content FROM $wpdb->posts WHERE ID = %d", $post_id ) );
+			if ( empty( $post_content ) || ! $this->shortcodes->has_shortcode( $shortcode, $post_content ) ) {
+				continue;
+			}
+			
+			// Parse post content with parse_blocks() -- will handle both raw HTML and shortcode blocks.
+			$content_blocks = parse_blocks( $post_content );
+			$content_blocks_updated = [];
+			foreach ( $content_blocks as $content_block ) {
+				
+				/**
+				 * If it's a shortcode block, replace the entire block.
+				 */
+				if ( 'core/shortcode' === $content_block['blockName'] ) {
+					$found_shortcode = trim( $content_block['innerHTML'] );
 
-		WP_CLI::line( 'end.' );
+					// Get replacement.
+					$replacement = $reflection_method->invoke( $class_instance, $found_shortcode, $post_id );
+
+					// TODO: Replace the found shortcode block with the replacement.
+
+				} elseif (
+					( 'core/html' === $content_block['blockName'] )
+					|| ( 'core/paragraph' === $content_block['blockName'] )
+					|| ( ! $content_block['blockName'] )
+				) {
+
+					/**
+					 * If it's inside one of these blocks (Core HTML, Paragraph, Classic blocks, and NULL 'blockName' is raw HTML),
+					 * replace inside that block.
+					 */
+
+					$found_shortcodes = $this->shortcodes->get_all_shortcodes_from_content( $shortcode, $content_block['innerHTML'] );
+					if ( ! $found_shortcodes ) {
+						$content_blocks_updated[] = $content_block;
+						continue;
+					}
+					
+					foreach ( $found_shortcodes as $found_shortcode ) {
+						// Get replacement.
+						$replacement = $reflection_method->invoke( $class_instance, $found_shortcode, $post_id );
+					}
+
+					// TODO: Replace the found shortcodes with the replacement.
+					
+				}
+			}
+		}
+
+		// TODO: Save.
+		if ( ! $dry_run ) {
+		}
+
+		// TODO: Check total count after replacements, warn if some shortcodes were not replaced.
 	}
 
 	/**
