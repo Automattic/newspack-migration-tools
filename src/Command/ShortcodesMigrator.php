@@ -176,6 +176,11 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 
 					// Get replacement.
 					$replacement_for_shortcode = $reflection_method->invoke( $class_instance, $found_shortcode, $post_id );
+					if ( false === $replacement_for_shortcode ) {
+						WP_CLI::warning( sprintf( 'No replacement generated for shortcode: %s', $found_shortcode ) );
+						$content_blocks_updated[] = $content_block;
+						continue;
+					}
 
 					// Replace the whole shortcode block with a new replacement block.
 					$replacement_block        = [
@@ -213,8 +218,15 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 						// Output message just once in innerHTML, no need to repeat same finds in innerContent.
 						WP_CLI::line( sprintf( 'ID %d, replacing shortcode: %s', $post_id, $found_shortcode ) );
 
-						// Get and do replacement.
-						$replacement_for_shortcode      = $reflection_method->invoke( $class_instance, $found_shortcode, $post_id );
+						// Get replacement.
+						$replacement_for_shortcode = $reflection_method->invoke( $class_instance, $found_shortcode, $post_id );
+						if ( false === $replacement_for_shortcode ) {
+							WP_CLI::warning( sprintf( 'No replacement generated for shortcode: %s', $found_shortcode ) );
+							$content_blocks_updated[] = $content_block;
+							continue;
+						}
+	
+						// Do replacement.
 						$replacement_block['innerHTML'] = str_replace( $found_shortcode, $replacement_for_shortcode, $replacement_block['innerHTML'] );
 					}
 
@@ -223,8 +235,15 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 						$found_shortcodes = $this->shortcodes->get_all_shortcodes_from_content( $shortcode, $inner_content );
 
 						foreach ( $found_shortcodes as $found_shortcode ) {
-							// Get and do replacement.
-							$replacement_for_shortcode                              = $reflection_method->invoke( $class_instance, $found_shortcode, $post_id );
+							// Get replacement.
+							$replacement_for_shortcode = $reflection_method->invoke( $class_instance, $found_shortcode, $post_id );
+							if ( false === $replacement_for_shortcode ) {
+								WP_CLI::warning( sprintf( 'No replacement generated for shortcode: %s', $found_shortcode ) );
+								$content_blocks_updated[] = $content_block;
+								continue;
+							}
+							
+							// Do replacement.
 							$replacement_block['innerContent'][ $key_iner_content ] = str_replace( $found_shortcode, $replacement_for_shortcode, $replacement_block['innerContent'][ $key_iner_content ] );
 						}
 					}
@@ -276,7 +295,7 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 		if ( ! empty( $post_ids_qa ) ) {
 			WP_CLI::warning(
 				sprintf(
-					'Some shortcodes were not replaced in total %d posts of post_type `%s` and post_status `%s`. Example first 10 IDs to check: %s',
+					'Some shortcodes were not replaced in total %d posts of post_type `%s` and post_status `%s`. Example first 10 post IDs: %s',
 					count( $post_ids_qa ),
 					implode( ',', $post_types ),
 					implode( ',', $post_statuses ),
