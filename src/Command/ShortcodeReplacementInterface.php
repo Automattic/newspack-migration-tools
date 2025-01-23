@@ -11,7 +11,7 @@ interface ShortcodeReplacementInterface {
 	/**
 	 * Return a replacement for a shortcode.
 	 *
-	 * @param string $shortcode Shortcode string.
+	 * @param string $shortcode The whole shortcode text string.
 	 * @param int    $post_id   Post ID where the shortcode is being replaced. Use for more context if needed,
 	 *                          e.g. to get the post author, title, or anything that might be required
 	 *                          to generate the replacement.
