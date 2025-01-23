@@ -161,7 +161,7 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 				continue;
 			}
 			
-			// Look blocks, parse_blocks() handles both raw HTML and shortcode blocks.
+			// Replace in post_content, parse_blocks() handles both raw HTML and shortcode blocks.
 			$content_blocks         = parse_blocks( $post_content );
 			$content_blocks_updated = [];
 			foreach ( $content_blocks as $content_block ) {
@@ -172,13 +172,12 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 				if ( 'core/shortcode' === $content_block['blockName'] ) {
 
 					$found_shortcode = trim( $content_block['innerHTML'] );
-					
 					WP_CLI::line( sprintf( 'ID %d, replacing shortcode: %s', $post_id, $found_shortcode ) );
 
 					// Get replacement.
 					$replacement_for_shortcode = $reflection_method->invoke( $class_instance, $found_shortcode, $post_id );
 
-					// Replace the found shortcode block data with the replacement block.
+					// Replace the whole shortcode block with a new replacement block.
 					$replacement_block        = [
 						'blockName'    => null,
 						'attrs'        => [],
@@ -197,13 +196,12 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 				) {
 
 					/**
-					* If the shortcode is inside one of these blocks (Core HTML, Paragraph, Classic blocks, and NULL 'blockName' is raw HTML),
-					* do replacements inside those blocks.
+					* If the shortcode is inside any of these blocks -- Core HTML, Paragraph, Classic blocks,
+					* and NULL 'blockName' which is raw HTML -- do replacements inside these blocks.
 					*/
-
 					$replacement_block = $content_block;
 
-					// Get all shortcodes in block.
+					// Get all shortcodes.
 					$found_shortcodes = $this->shortcodes->get_all_shortcodes_from_content( $shortcode, $replacement_block['innerHTML'] );
 					if ( ! $found_shortcodes ) {
 						$content_blocks_updated[] = $replacement_block;
@@ -220,7 +218,7 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 						$replacement_block['innerHTML'] = str_replace( $found_shortcode, $replacement_for_shortcode, $replacement_block['innerHTML'] );
 					}
 
-					// Replace shortcodes in innerContent.
+					// Also replace shortcodes in innerContent.
 					foreach ( $replacement_block['innerContent'] as $key_iner_content => $inner_content ) {
 						$found_shortcodes = $this->shortcodes->get_all_shortcodes_from_content( $shortcode, $inner_content );
 
@@ -253,10 +251,12 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 		// For $wpdb->update() to sink in.
 		wp_cache_flush();
 
-		// Do an extra QA and check if all shortcodes were replaced.
+		/**
+		 * Do an extra QA and check if all shortcodes were replaced.
+		 */
 		$post_types_placeholders  = implode( ',', array_fill( 0, count( $post_types ), '%s' ) );
 		$post_status_placeholders = implode( ',', array_fill( 0, count( $post_statuses ), '%s' ) );
-		// phpcs:disable -- $wpdb->prepare is used and all params are prepared.
+		// phpcs:disable -- $wpdb->prepare is used and all params are prepared and escaped.
 		// Remember, double %% is used to escape % in LIKE query.
 		$post_ids_qa = $wpdb->get_col(
 			$wpdb->prepare(
