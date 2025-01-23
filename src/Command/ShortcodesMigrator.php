@@ -253,7 +253,7 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 		// For $wpdb->update() to sink in.
 		wp_cache_flush();
 
-		// Extra QA, check total count after replacements, warn if some shortcodes were not replaced.
+		// Do an extra QA and check if all shortcodes were replaced.
 		$post_types_placeholders  = implode( ',', array_fill( 0, count( $post_types ), '%s' ) );
 		$post_status_placeholders = implode( ',', array_fill( 0, count( $post_statuses ), '%s' ) );
 		// phpcs:disable -- $wpdb->prepare is used and all params are prepared.
