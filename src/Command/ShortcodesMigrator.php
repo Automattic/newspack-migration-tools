@@ -116,7 +116,7 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 	/**
 	 * Callable for `newspack-content-migrator replace-shortcodes-in-post-body`.
 	 *
-	 * @param array $args_pos   Positional arguments.      
+	 * @param array $args_pos   Positional arguments.
 	 * @param array $assoc_args Associative arguments.
 	 * @return void
 	 */
@@ -134,28 +134,32 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 			$reflection_method = new ReflectionMethod( $class_name, $method_name );
 		} catch ( ReflectionException $e ) {
 			WP_CLI::error( sprintf( 'Invalid provided replacement callback `%s`. See comment description for example usage.', $replace_callback ) );
-			exit(1);
+			exit( 1 );
 		}
 		
 		// Check if $class_instance is instance of ShortcodeReplacementInterface.
 		$class_instance = new $class_name();
 		if ( ! $class_instance instanceof ShortcodeReplacementInterface ) {
 			WP_CLI::error( sprintf( 'The class `%s` with method `%s` does not implement ShortcodeReplacementInterface.', $class_name, $method_name ) );
-			exit(1);
+			exit( 1 );
 		}
 	
+		// Get posts.
+		if ( is_null( $post_ids ) ) {
+			$post_ids = $this->posts_logic->get_all_posts_ids( [ 'post', 'page' ], [ 'publish' ] );
+		}
+		WP_CLI::line( sprintf( 'Searching total %s posts for shortodes and replacing them...', count( $post_ids ) ) );
+
 		// Replace in all posts IDs.
-		$post_ids = $this->posts_logic->get_all_posts_ids( [ 'post', 'page' ], [ 'publish' ] );
 		foreach ( $post_ids as $key => $post_id ) {
-			WP_CLI::line( sprintf( "ID %d %d/%d", $post_id, $key + 1, count($post_ids) ) );
 			
-			$post_content = $wpdb->get_var( $wpdb->prepare( "SELECT post_content FROM $wpdb->posts WHERE ID = %d", $post_id ) );
+			$post_content = $wpdb->get_var( $wpdb->prepare( "SELECT post_content FROM $wpdb->posts WHERE ID = %d", $post_id ) ); // phpcs:ignore -- WordPress.DB.DirectDatabaseQuery.NoCaching
 			if ( empty( $post_content ) || ! $this->shortcodes->has_shortcode( $shortcode, $post_content ) ) {
 				continue;
 			}
 			
-			// Parse post content with parse_blocks() -- will handle both raw HTML and shortcode blocks.
-			$content_blocks = parse_blocks( $post_content );
+			// Look blocks, parse_blocks() handles both raw HTML and shortcode blocks.
+			$content_blocks         = parse_blocks( $post_content );
 			$content_blocks_updated = [];
 			foreach ( $content_blocks as $content_block ) {
 				
@@ -163,12 +167,25 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 				 * If it's a shortcode block, replace the entire block.
 				 */
 				if ( 'core/shortcode' === $content_block['blockName'] ) {
+
 					$found_shortcode = trim( $content_block['innerHTML'] );
+					
+					WP_CLI::line( sprintf( 'ID %d, replacing shortcode: %s', $post_id, $found_shortcode ) );
 
 					// Get replacement.
-					$replacement = $reflection_method->invoke( $class_instance, $found_shortcode, $post_id );
+					$replacement_for_shortcode = $reflection_method->invoke( $class_instance, $found_shortcode, $post_id );
 
-					// TODO: Replace the found shortcode block with the replacement.
+					// Replace the found shortcode block data with the replacement block.
+					$replacement_block        = [
+						'blockName'    => null,
+						'attrs'        => [],
+						'innerBlocks'  => [],
+						'innerHTML'    => $replacement_for_shortcode,
+						'innerContent' => [
+							$replacement_for_shortcode,
+						],
+					];
+					$content_blocks_updated[] = $replacement_block;
 
 				} elseif (
 					( 'core/html' === $content_block['blockName'] )
@@ -177,30 +194,61 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 				) {
 
 					/**
-					 * If it's inside one of these blocks (Core HTML, Paragraph, Classic blocks, and NULL 'blockName' is raw HTML),
-					 * replace inside that block.
-					 */
+					* If the shortcode is inside one of these blocks (Core HTML, Paragraph, Classic blocks, and NULL 'blockName' is raw HTML),
+					* do replacements inside those blocks.
+					*/
 
-					$found_shortcodes = $this->shortcodes->get_all_shortcodes_from_content( $shortcode, $content_block['innerHTML'] );
+					$replacement_block = $content_block;
+
+					// Get all shortcodes in block.
+					$found_shortcodes = $this->shortcodes->get_all_shortcodes_from_content( $shortcode, $replacement_block['innerHTML'] );
 					if ( ! $found_shortcodes ) {
-						$content_blocks_updated[] = $content_block;
+						$content_blocks_updated[] = $replacement_block;
 						continue;
 					}
 					
+					// Replace shortcodes in innerHTML.
 					foreach ( $found_shortcodes as $found_shortcode ) {
-						// Get replacement.
-						$replacement = $reflection_method->invoke( $class_instance, $found_shortcode, $post_id );
+						// Output message just once in innerHTML, no need to repeat same finds in innerContent.
+						WP_CLI::line( sprintf( 'ID %d, replacing shortcode: %s', $post_id, $found_shortcode ) );
+
+						// Get and do replacement.
+						$replacement_for_shortcode      = $reflection_method->invoke( $class_instance, $found_shortcode, $post_id );
+						$replacement_block['innerHTML'] = str_replace( $found_shortcode, $replacement_for_shortcode, $replacement_block['innerHTML'] );
 					}
 
-					// TODO: Replace the found shortcodes with the replacement.
-					
+					// Replace shortcodes in innerContent.
+					foreach ( $replacement_block['innerContent'] as $key_iner_content => $inner_content ) {
+						$found_shortcodes = $this->shortcodes->get_all_shortcodes_from_content( $shortcode, $inner_content );
+
+						foreach ( $found_shortcodes as $found_shortcode ) {
+							// Get and do replacement.
+							$replacement_for_shortcode                              = $reflection_method->invoke( $class_instance, $found_shortcode, $post_id );
+							$replacement_block['innerContent'][ $key_iner_content ] = str_replace( $found_shortcode, $replacement_for_shortcode, $replacement_block['innerContent'][ $key_iner_content ] );
+						}
+					}
+
+					$content_blocks_updated[] = $replacement_block;
+				}
+			}
+
+			// Save.
+			if ( $content_blocks_updated !== $content_blocks ) {
+				if ( ! $dry_run ) {
+					$post_content_updated = serialize_blocks( $content_blocks_updated );
+					// phpcs:disable -- WordPress.DB.DirectDatabaseQuery.NoCaching
+					$wpdb->update(
+						$wpdb->prefix . 'posts',
+						[ 'post_content' => $post_content_updated ],
+						[ 'ID' => $post_id ]
+					);
+					// phpcs:enable
 				}
 			}
 		}
 
-		// TODO: Save.
-		if ( ! $dry_run ) {
-		}
+		// For $wpdb->update() to sink in.
+		wp_cache_flush();
 
 		// TODO: Check total count after replacements, warn if some shortcodes were not replaced.
 	}
