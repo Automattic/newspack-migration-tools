@@ -128,6 +128,9 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 		$post_ids         = isset( $assoc_args['post-ids'] ) ? explode( ',', $assoc_args['post-ids'] ) : null;
 		$dry_run          = isset( $assoc_args['dry-run'] ) ? true : false;
 
+		$post_types    = [ 'post', 'page' ];
+		$post_statuses = [ 'publish' ];
+
 		// Get the replacement class method.
 		list( $class_name, $method_name ) = explode( '::', $replace_callback );
 		try {
@@ -146,7 +149,7 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 	
 		// Get posts.
 		if ( is_null( $post_ids ) ) {
-			$post_ids = $this->posts_logic->get_all_posts_ids( [ 'post', 'page' ], [ 'publish' ] );
+			$post_ids = $this->posts_logic->get_all_posts_ids( $post_types, $post_statuses );
 		}
 		WP_CLI::line( sprintf( 'Searching total %s posts for shortodes and replacing them...', count( $post_ids ) ) );
 
@@ -250,7 +253,37 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 		// For $wpdb->update() to sink in.
 		wp_cache_flush();
 
-		// TODO: Check total count after replacements, warn if some shortcodes were not replaced.
+		// Extra QA, check total count after replacements, warn if some shortcodes were not replaced.
+		$post_types_placeholders  = implode( ',', array_fill( 0, count( $post_types ), '%s' ) );
+		$post_status_placeholders = implode( ',', array_fill( 0, count( $post_statuses ), '%s' ) );
+		// phpcs:disable -- $wpdb->prepare is used and all params are prepared.
+		// Remember, double %% is used to escape % in LIKE query.
+		$post_ids_qa = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT ID
+				FROM $wpdb->posts
+				WHERE post_content LIKE '%%%s%%'
+				AND post_type IN ($post_types_placeholders)
+				AND post_status IN ($post_status_placeholders)",
+				array_merge(
+					[ '[' . $shortcode ],
+					$post_types,
+					$post_statuses
+				)
+			)
+		);
+		// phpcs:enable
+		if ( ! empty( $post_ids_qa ) ) {
+			WP_CLI::warning(
+				sprintf(
+					'Some shortcodes were not replaced in total %d posts of post_type `%s` and post_status `%s`. Example first 10 IDs to check: %s',
+					count( $post_ids_qa ),
+					implode( ',', $post_types ),
+					implode( ',', $post_statuses ),
+					implode( ',', array_slice( $post_ids_qa, 0, 10 ) )
+				) 
+			);
+		}
 	}
 
 	/**
