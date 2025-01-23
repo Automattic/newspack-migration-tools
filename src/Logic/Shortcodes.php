@@ -68,21 +68,40 @@ class Shortcodes {
 	 */
 	public function get_all_shortcode_attributes( string $shortcode ): array {
 
-		// Get the shortcode arguments list for shortcode_parse_atts().
-		$text = trim( $shortcode );
+		/**
+		 * Validate shortcode a bit.
+		 */
+		$shortcode_trimmed   = trim( $shortcode );
+		$starts_with_bracket = '[' === substr( $shortcode_trimmed, 0, 1 );
+		$ends_in_bracket     = ']' === substr( $shortcode_trimmed, -1 );
+		if ( ! $starts_with_bracket || ! $ends_in_bracket ) {
+			// Shouldn't happen, but better safe than sorry.
+			throw new UnexpectedValueException( sprintf( 'Invalid shortcode format `%s`', esc_html( $shortcode ) ) );
+		}
+
+		/**
+		 * If the shortcode has no attributes, return an empty array.
+		 */
+		if ( strpos( $shortcode_trimmed, ' ' ) === false ) {
+			return [];
+		}
+
+		/**
+		 * Get the shortcode arguments list needed for `shortcode_parse_atts( $text )`.
+		 */
+		$text = $shortcode_trimmed;
 		// Remove evertything before and including the first space.
 		$text = substr( $text, strpos( $text, ' ' ) + 1 );
-		// Remove ending `]`.
-		if ( ']' !== substr( $text, -1 ) ) {
-			// Shouldn't happen, but better safe than sorry.
-			throw new UnexpectedValueException( 'Invalid shortcode format. Ending `]` not found.' );
-		}
+		// Remove the ending `]`.
 		$text = substr( $text, 0, -1 );
-
 		// Parse.
+		$text       = trim( $text );
 		$attributes = shortcode_parse_atts( $text );
 
-		// For attributes without value, make the array key equal attribute name, and the array value equal null.
+		/**
+		 * For attributes without value, make the array key equal to the attribute name,
+		 * and the array value equal to null.
+		 */
 		foreach ( $attributes as $key => $value ) {
 			// If the key is integer, that's an attribute without value.
 			if ( is_int( $key ) ) {
@@ -90,6 +109,9 @@ class Shortcodes {
 				unset( $attributes[ $key ] );
 			}
 		}
+
+		// Sort by keys, keeping values.
+		ksort( $attributes );
 
 		return $attributes;
 	}
