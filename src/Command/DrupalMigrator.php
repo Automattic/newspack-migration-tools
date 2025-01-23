@@ -134,6 +134,11 @@ class DrupalMigrator implements WpCliCommandInterface {
 		// @todo Should this go into Publisher specific migrator instead?
 		$options['summary'] = 'in_excerpt'; // otherwise excerpt will go in top of content with <!--more--> link
 
+		// @todo should we turn this on for images with the same filenames?
+		// how are these store in drupal? in wordpress the same filename could be used if in different /year/mon/ folders...
+		// but what about if the import was restarted...will images be fetched again and given unique -abc at the end?
+		// import_duplicates = 1;
+
 		return $options;
 	}
 
