@@ -80,6 +80,8 @@ class DrupalMigrator implements WpCliCommandInterface {
 	 * Filter the options for the FG Drupal to WP plugin to use environment variables for the database connection.
 	 * Put these variables in your .env file locally (or comment out locally).
 	 *
+	 * Keep default: 'force_media_import' => 0 so that already downloaded images aren't fetched again from Live site.
+	 * 
 	 * @param  array|false $options The options array to filter or boolean false if database option doesn't exist.
 	 * @return array                The filtered options.
 	 */
