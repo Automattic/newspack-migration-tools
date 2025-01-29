@@ -10,7 +10,7 @@ use ReflectionException;
 use WP_CLI;
 
 /**
- * Custom migration scripts for Posts' content.
+ * Custom shortcodes functionality.
  */
 class ShortcodesMigrator implements WpCliCommandInterface {
 
