@@ -56,8 +56,7 @@ class FgHelper {
 				break;
 		}
 
-		// If a constant is defined, use it as the prefix for the import tables.
-		// @todo: allow blank - verify with Camilla (CarsonNow & UgObserver)
+		// If a constant is defined, use it as the prefix for the import tables. (Blank prefix is OK).
 		if ( defined( 'NCCM_FG_MIGRATOR_PREFIX' ) ) {
 			$this->db_import_tables_prefix = NCCM_FG_MIGRATOR_PREFIX;
 		}
@@ -125,60 +124,8 @@ class FgHelper {
 		$options['prefix'] = $this->get_import_tables_prefix();
 
 		$options['url'] = NCCM_SOURCE_WEBSITE_URL;
-
-		// filter by reference
-		if ( 'drupal' == $this->type ) $this->filter_options_drupal( $options );
 		
 		return $options;
-	}
-
-	/**
-	 * Filter Drupal specific options by reference
-	 */
-	private function filter_options_drupal( &$options ) {
-
-		// Default values from FG plugin version 3.85.2
-		// $this->plugin_options = array(
-		// 	'automatic_empty'			=> 0,
-		// 	'url'						=> null,
-		// 	'download_protocol'			=> 'http',
-		// 	'base_dir'					=> '',
-		// 	'driver'					=> 'mysql',
-		// 	'hostname'					=> 'localhost',
-		// 	'port'						=> 3306,
-		// 	'database'					=> null,
-		// 	'username'					=> 'root',
-		// 	'password'					=> '',
-		// 	'sqlite_file'				=> '',
-		// 	'prefix'					=> '',
-		// 	'summary'					=> 'in_content',
-		// 	'skip_media'				=> 0,
-		// 	'file_public_path_source'	=> 'default',
-		// 	'file_public_path'			=> 'sites/default/files',
-		// 	'file_private_path_source'	=> 'default',
-		// 	'file_private_path'			=> 'sites/default/private/files',
-		// 	'featured_image'			=> 'featured',
-		// 	'only_featured_image'		=> 0,
-		// 	'remove_first_image'		=> 0,
-		// 	'skip_thumbnails'			=> 0,
-		// 	'import_external'			=> 0,
-		// 	'import_duplicates'			=> 0,
-		// 	'force_media_import'		=> 0,
-		// 	'timeout'					=> 20,
-		// 	'logger_autorefresh'		=> 1,
-		// );
-
-
-		// Keep default: 'force_media_import' => 0 so that already downloaded images aren't fetched again from Live site.
-		$options['force_media_import'] = 0;
-
-		// @todo Should this go into Publisher specific migrator instead?
-		$options['summary'] = 'in_excerpt'; // otherwise excerpt will go in top of content with <!--more--> link
-
-		// @todo should we turn this on for images with the same filenames?
-		// how are these store in drupal? in wordpress the same filename could be used if in different /year/mon/ folders...
-		// but what about if the import was restarted...will images be fetched again and given unique -abc at the end?
-		// import_duplicates = 1;
 	}
 
 	/**

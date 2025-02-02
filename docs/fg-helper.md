@@ -2,20 +2,32 @@
 This is a helper class that provides some useful functions for the migration process with the FG plugins from [the great Frédéric Giles](https://www.fredericgilles.net). Thank you for your work, Frédéric!
 
 - [Premium Support / Knowledge Base](https://www.fredericgilles.net/support/)
-
-Drupal:
-
 - [FG Drupal to WordPress (free)](https://wordpress.org/plugins/fg-drupal-to-wp/) 
 - [FG Drupal to WordPress Premium](https://www.fredericgilles.net/fg-drupal-to-wordpress/)
-- NMT has been tested with FG Drupal to WP Premium 3.85.2.
 
 ## How to use
 
+## WP Admin:
+
+### Plugins:
+
+Upload and activate the FG (Drupal|Joomla) to WP Premium plugin.
+- FgHelper has been tested with FG Drupal to WP Premium version 3.85.2.
+
+### Settings:
+
+FG plugin will create a settings page at wp-admin > tools > import > drupal|joomla. You do not need to adjust these settings.  All settings (options) will be set by the migrator when it's run.  Be advised that any FG options set in the wp-admin may be overwritten by the migrator. It's best to not set any settings via wp-admin and just let the migrator set them instead.
+
+If you set options in wp-admin and want to remove them, you can run:
+```
+wp db query "delete from wp_options where option_name like 'fg_2wp%';"
+```
+
 ### Database:
 
-Import the live database (drupal/joomla) backup into a mysql database (it can be the same database as wordpress if desired).
+Import the live database (drupal|joomla) backup into a mysql database (it can be the same database as wordpress).
 
-### Constants / WP Config:
+### WP Config Constants:
 
 ```
 define( 'NCCM_SOURCE_WEBSITE_URL', '[ live site url ]' );
@@ -26,55 +38,15 @@ You _have to_ define the url of the original site you are migrating away from: `
 
 You can customize the table prefix for the tables that contain the old data with this constant: `NCCM_FG_MIGRATOR_PREFIX`.
 
-Set environment values.  For local Newspack Docker, set the values in .env file:
+Set environment values (for local Newspack Docker, set the values in .env file):
 ```
-DB_HOST=$MYSQL_HOST
-DB_USER=$MYSQL_USER
-DB_PASSWORD=$MYSQL_PASSWORD
-DB_NAME=[ your db name ]
+DB_HOST=$MYSQL_HOST (or different host)
+DB_USER=$MYSQL_USER (or different user)
+DB_PASSWORD=$MYSQL_PASSWORD (or different pass)
+DB_NAME=[ your db name ] (can be same database as wordpress)
 ```
 
 ### Commands
-
-Only for testing:
-```
-wp import-drupal empty all
-```
-
-If you use wp-admin > tools > import > drupal settings, then you can run the command directly:
-```
-wp import-drupal import
-```
-
-Otherwise without the admin settings you'll need to set some filters and run via NCCM or NMT.
-
-Assuming all config values are set in CLI, be sure to clear out any wp-admin > tools > import > Drupal settings:
-```
-select * from wp_options where option_name like 'fgd2wp%';
-delete from wp_options where option_name like 'fgd2wp%';
-```
-
-To clear out the logs:
-```
-rm wp-content/uploads/fgd2wp*
-```
-
-All in one command to clear test - LOCAL/TESTING ONLY:
-```
-wp import-drupal empty all ; git checkout wp-content/debug.log ; git clean -fd wp-content/uploads/fgd2wp* ; wp db query "delete from wp_options where option_name like 'fgd2wp%';" ; git status ;
-```
-
-_don't clean out the uploaded images as FG plugin won't re-fetch already saved images (`'force_media_import' => 0`)_
-
-Set options via:
-```
-add_filter( 'option_fgd2wp_options', ....
-```
-
-`wp newspack-migration-tools drupal-import [name]`
-
-- name is unique identifier.
-
 
 The wrapper simplifies running the importer from the CLI, so to run it do something like this:
 ```php
@@ -84,23 +56,44 @@ public function cmd_run_my_custom_import( array $pos_args, array $assoc_args ): 
 }
 ```
 
+This will ultimately cause FG's CLI command `wp import-{drupal|joomla} import` to be run, but using our filters and options.
+
 
 ### Logging
 
-Keep track of FG Drupal plugin's output file `wp-content/uploads/fgd2wpp-progress.json` - this stores the current progress ~~which will be needed for Content Refresh~~.  This actually stores the total number of "items" and a running count of "items" imported: `{"total":475101,"current":1440}` used for progress bar display.
+FG will log to CLI, `wp-content/debug.log`, and `wp-content/uploads/fg{d|j}2wp-{random}.logs`. FG will also log to `wp-content/uploads/fg{d|j|2wp{p}-progress.json` - this stores the total number of items to migrate and a running count of items imported (example: `{"total":475101,"current":1440}`), it's used for CLI progress bar display.
 
-The "last article node id" is in the options table: `fgd2wp_last_node_article_id`. If this option value is deleted, then the plugin will no longer run.  The only way to get it to run again would be to add the option by hand and set it's value to the last article id that was imported (either MAX or MIN value of `_fgd2wp_old_node_id` from the postmeta table depending on if importing newest or oldest first).
+Note: The "last article node id" is in the options table `fgd2wp_last_node_article_id`. If this option value is deleted, then the plugin will no longer run. The only way to get the migrator to run again would be to add the option by hand and set it's value to the last article id that was imported (either MAX or MIN value of `_fgd2wp_old_node_id` from the postmeta table depending on if importing newest or oldest ids first).
 
+### Re-running:
+
+In staging|production, you can just restart the migration. There is no need to run any of the following commands. They are only needed for local testing or if you really need to wipe out previously imported data for some reason.
+
+Typically you'll never need to clean out the uploaded images between each run. FG plugin won't re-fetch already saved images. This is due to `$options['force_media_import'] = 0`. This is what we want so that we don't keep fetching Live images with each run. Once an image is fetched and saved to `wp-content/uploads/` there is no reason to fetch again. So leave images alone between runs. If you realy want to force re-fetching of images then go ahead and run `git clean -fd wp-content/uploads/` to wipe them out.
+
+List of clean up commands that are only needed for local testing:
+
+```
+# Clean out all wordpress content. EVEN content that existed prior to migration!
+wp import-{drupal|joomla} empty all
+
+# Clean out logs.
+git checkout wp-content/debug.log
+git clean -fd wp-content/uploads/fg*2wp*
+
+# Clean out all options and migration counters.
+# This wipes out by-hand settings in wp-admin > tools > import > drupal|joomla - which are not needed anyway.
+wp db query "delete from wp_options where option_name like 'fg_2wp%';"
+```
 
 ## Development
 
 In the FG plugins, do a search for add_filter, add_action, apply_filters, do_action and see if you find something you can use. Files are well organized.
 
-
 ### Drupal Notes:
 
-- `nid` Node ID (url: `/node/123` ) (like post id in WP)
-- Delta: For fields that can be repeated, this is the ordering. For example:
+- `nid` Node id can be used in url `/node/123` to redirect to node's web page.
+- `delta` is used for that can be repeated, this is the ordering. For example:
 ```
 Field Images:
     [0] mug.jpg
@@ -108,11 +101,23 @@ Field Images:
     [2] things.jpg
     ... etc
 ```
-- `fid` File id. See (table file_managed)
+- `fid` File id. DB table `file_managed` is the "canonical" place files live in the DB.
 - `entity_id` Often a node, but can also be a managed file or other things.
-- Fields (applies to Drupal 8 and up) If you have the `config` folder (it's in the code download in backups), you can get a list of all fields on a node type by going to the `config` folder. Let's say you want to see all fields on a node type `book_review` then list al files like `ls field.field.node.book_review.*`
+- Fields (applies to Drupal 8 and up) If you have the `config` folder (it's in the code download in backups), you can get a list of all fields on a node type by going to the `config` folder. Let's say you want to see all fields on a node type `book_review` then list files like `ls field.field.node.book_review.*`.  These will be imported into `postmeta`.
 - Images: If you have the `config` folder, look at `field_image` for book_review: `cat field.field.node.book_review.field_image.yml`.
-- DB table `file_managed` - The "canonical" place files live in the DB
-- sql get all roles: `SELECT DISTINCT(roles_target_id) FROM user__roles;`
-- sql get all taxonomies`SELECT DISTINCT(vid) FROM taxonomy_term_data;`
-- sql get content types (node types) `SELECT DISTINCT(type) FROM node;`
+
+#### Helpful Drupal sql:
+
+```
+# get all roles:
+SELECT DISTINCT(roles_target_id) FROM user__roles;
+
+# get all taxonomies:
+SELECT DISTINCT(vid) FROM taxonomy_term_data;
+
+# get content types (node types) that have content:
+select distinct type from node order by type
+
+# get all node types from config (with/without content): 
+select name from config where name like 'node.type.%' order by name;
+```
