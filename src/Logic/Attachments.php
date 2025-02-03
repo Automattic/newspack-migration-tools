@@ -144,10 +144,12 @@ class Attachments {
 			$filename = basename( $filepath );
 		}
 
+		$filename = sanitize_file_name( $filename );
+
 		global $wpdb;
 
 		// Check if the file with same name exists in the DB.
-		$like = '%' . $wpdb->esc_like( sanitize_file_name( $filename ) );
+		$like = '%' . $wpdb->esc_like( $filename );
 
 		/*
 		 * Check if files with numeric suffix like `filename-1.jpg` exist in DB.
@@ -159,7 +161,7 @@ class Attachments {
 		 */
 		$filename_path_parts    = pathinfo( $filename );
 		$filename_before_suffix = $filename_path_parts['filename'];
-		$filename_after_suffix  = '.' . $filename_path_parts['extension'];
+		$filename_after_suffix  = isset( $filename_path_parts['extension'] ) ? '.' . $filename_path_parts['extension'] : '';
 		/**
 		 * Here's the regex explained:
 		 *  - .+ -- anything first
