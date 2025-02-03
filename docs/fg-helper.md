@@ -46,7 +46,8 @@ DB_NAME=[ your db name ] (can be same database as wordpress)
 
 ## Running Commands
 
-The wrapper simplifies running the importer from the CLI, so to run it do something like this:
+The wrapper simplifies running the importer from the CLI, so to run it do something like this in your migrator class:
+
 ```php
 use Newspack\MigrationTools\Util\FgHelper;
 public function cmd_run_my_custom_import( array $pos_args, array $assoc_args ): void {
