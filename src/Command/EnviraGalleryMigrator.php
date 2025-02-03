@@ -94,7 +94,7 @@ class EnviraGalleryMigrator implements WpCliCommandInterface, ShortcodeReplaceme
 		// Leverage and use existing Shortcodes replacement command with a replacement for Envira shortcodes.
 		WP_CLI::runcommand(
 			sprintf(
-				'newspack-content-migrator replace-shortcodes-in-post-body --shortcode=envira-gallery --replace-callback=NewspackCustomContentMigrator\Command\General\EnviraGalleryMigrator::replace_shortcode %s %s %s',
+				'newspack-content-migrator replace-shortcodes-in-post-body --shortcode=envira-gallery --replace-callback=Newspack\MigrationTools\Command\EnviraGalleryMigrator::replace_shortcode %s %s %s',
 				$dry_run ? '--dry-run' : '',
 				$post_ids_csv ? '--post-ids=' . $post_ids_csv : '',
 				$post_types_csv ? '--post-types=' . $post_types_csv : ''
