@@ -421,10 +421,13 @@ AUDIO;
 	 * @param string $heading_content Paragraph content.
 	 * @param string $heading_level   Heading level (h1, h2, h3, h4, h5, h6), defaults to h2.
 	 * @param string $anchor          Paragraph anchor.
+	 * @param string $size           Font size (small, normal, medium, large, huge), defaults to none.
+	 * @param string $appearance     Appearance style (regular, bold, light, medium, semi-bold, default), defaults to default.
+	 * @param string $text_align     Text alignment (left, center, right), defaults to none.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_heading( $heading_content, $heading_level = 'h2', $anchor = '' ) {
+	public function get_heading( $heading_content, $heading_level = 'h2', $anchor = '', $size = '', $appearance = 'default', $text_align = '' ) {
 		$attrs = [];
 		$level = intval( str_replace( 'h', '', $heading_level ) );
 
@@ -432,8 +435,47 @@ AUDIO;
 			$attrs['level'] = $level;
 		}
 
+		$classes = [ 'wp-block-heading' ];
+		$styles  = [];
+
+		if ( ! empty( $size ) ) {
+			$attrs['fontSize'] = $size;
+			$classes[]         = 'has-' . $size . '-font-size';
+		}
+
+		if ( ! empty( $text_align ) ) {
+			$attrs['textAlign'] = $text_align;
+			$classes[]          = 'has-text-align-' . $text_align;
+		}
+
+		// Handle appearance styles with proper font-weight values
+		if ( 'default' !== $appearance ) {
+			$weight_map = [
+				'light'     => '300',
+				'regular'   => '400',
+				'medium'    => '500',
+				'semi-bold' => '600',
+				'bold'      => '700',
+			];
+
+			if ( isset( $weight_map[ $appearance ] ) ) {
+				if ( ! isset( $attrs['style'] ) ) {
+					$attrs['style'] = [];
+				}
+				if ( ! isset( $attrs['style']['typography'] ) ) {
+					$attrs['style']['typography'] = [];
+				}
+				$attrs['style']['typography']['fontWeight'] = $weight_map[ $appearance ];
+				$attrs['style']['typography']['fontStyle']  = 'normal';
+				$styles[]                                   = 'font-style:normal';
+				$styles[]                                   = 'font-weight:' . $weight_map[ $appearance ];
+			}
+		}
+
 		$anchor_attribute = ! empty( $anchor ) ? ' id="' . $anchor . '"' : '';
-		$content          = "<$heading_level" . $anchor_attribute . ' class="wp-block-heading">' . $heading_content . "</$heading_level>";
+		$class_attribute  = ' class="' . implode( ' ', $classes ) . '"';
+		$style_attribute  = ! empty( $styles ) ? ' style="' . implode( ';', $styles ) . '"' : '';
+		$content          = "<$heading_level" . $anchor_attribute . $class_attribute . $style_attribute . '>' . $heading_content . "</$heading_level>";
 
 		return [
 			'blockName'    => 'core/heading',
