@@ -180,7 +180,7 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 				if ( 'core/shortcode' === $content_block['blockName'] ) {
 
 					$found_shortcode = trim( $content_block['innerHTML'] );
-					WP_CLI::line( sprintf( 'ID %d, replacing shortcode: %s', $post_id, $found_shortcode ) );
+					WP_CLI::line( sprintf( 'Post ID %d, replacing shortcode: %s', $post_id, $found_shortcode ) );
 
 					// Get replacement.
 					$replacement_for_shortcode = $reflection_method->invoke( $class_instance, $found_shortcode, $post_id );

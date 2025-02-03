@@ -38,13 +38,13 @@ class GutenbergBlockGenerator {
 	 *      - at the time of writing this, JP Tiled Gallery doesn't support captions
 	 *
 	 * @param int[]    $attachment_ids  Attachments IDs to be used in the tiled gallery.
-	 * @param string   $link_to         `linkTo` attribute of the Jetpack Tiled Gallery block. Can be "media", or "attachment".
+	 * @param ?string  $link_to         `linkTo` attribute of the Jetpack Tiled Gallery block. Can be "media", or "attachment", or null.
 	 * @param string[] $tile_sizes_list List of tiles sizes in percentages (e.g. ['50', '50']).
 	 *
 	 * @return array to be used in the serialize_block() or serialize_blocks() function to get the raw content of a Gutenberg Block.
 	 * @throws \UnexpectedValueException If $link_to param is invalid.
 	 */
-	public function get_jetpack_tiled_gallery( array $attachment_ids, string $link_to, array $tile_sizes_list = [
+	public function get_jetpack_tiled_gallery( array $attachment_ids, ?string $link_to, array $tile_sizes_list = [
 		'66.79014',
 		'33.20986',
 		'33.33333',
@@ -58,11 +58,10 @@ class GutenbergBlockGenerator {
 			throw new \UnexpectedValueException( 'Invalid $link_to param value.' );
 		}
 
-		$gallery_content = '
-        <div class="wp-block-jetpack-tiled-gallery aligncenter is-style-rectangular">
-            <div class="tiled-gallery__gallery">
-                <div class="tiled-gallery__row">
-        ';
+		$gallery_content = '<div class="wp-block-jetpack-tiled-gallery aligncenter is-style-rectangular">'
+			. "\n"
+			. ' <div class="tiled-gallery__gallery">'
+			. ' <div class="tiled-gallery__row">';
 
 		$tile_sizes                      = [];
 		$non_existing_attachment_indexes = [];
@@ -70,10 +69,10 @@ class GutenbergBlockGenerator {
 		$file_logger = FileLog::get_logger( 'jetpack_tiled_gallery_migrator', 'jetpack_tiled_gallery_migrator.log' );
 
 		$gallery_content .= join(
-			' ',
+			'',
 			array_filter(
 				array_map(
-					function ( $index, $attachment_id ) use ( &$tile_sizes, &$non_existing_attachment_indexes, $tile_sizes_list, $file_logger ) {
+					function ( $index, $attachment_id ) use ( &$tile_sizes, &$non_existing_attachment_indexes, $tile_sizes_list, $file_logger, $link_to ) {
 						$attachment_url = wp_get_attachment_url( $attachment_id );
 
 						if ( ! $attachment_url ) {
@@ -86,19 +85,34 @@ class GutenbergBlockGenerator {
 						$tile_size    = $this->get_tile_image_size_by_index( $index, $tile_sizes_list );
 						$tile_sizes[] = $tile_size;
 
-						return '
-                            <div class="tiled-gallery__col" style="flex-basis: ' . $tile_size . '%">
-                            <figure class="tiled-gallery__item">
-                                <img
-                                        alt="' . get_the_title( $attachment_id ) . '"
-                                        data-id="' . $attachment_id . '"
-                                        data-link="' . $attachment_url . '"
-                                        data-url="' . $attachment_url . '"
-                                        src="' . $attachment_url . '"
-                                    data-amp-layout="responsive"
-                                />
-                            </figure>
-                            </div>';
+						// Add <a> link to attachment URL if linkTo is set to "attachment" or "media".
+						if ( 'attachment' == $link_to ) {
+							$a_opening_tag = sprintf( '<a href="%s">', get_permalink( $attachment_id ) );
+							$a_closing_tag = '</a>';
+						} elseif ( 'media' == $link_to ) {
+							$a_opening_tag = sprintf( '<a href="%s">', wp_get_attachment_url( $attachment_id ) );
+							$a_closing_tag = '</a>';
+						} else {
+							$a_opening_tag = '';
+							$a_closing_tag = '';
+						}
+
+						$post_title = get_the_title( $attachment_id );
+
+						return '<div class="tiled-gallery__col" style="flex-basis: ' . $tile_size . '%">'
+							. $a_opening_tag
+							. '<figure class="tiled-gallery__item">'
+								. '<img '
+									. 'alt="' . $post_title . '" '
+									. 'data-id="' . $attachment_id . '" '
+									. 'data-link="' . $attachment_url . '" '
+									. 'data-url="' . $attachment_url . '" '
+									. 'src="' . $attachment_url . '" '
+									. 'data-amp-layout="responsive"'
+								. '/>'
+							. '</figure>'
+							. $a_closing_tag
+							. '</div>';
 					},
 					array_keys( $attachment_ids ),
 					$attachment_ids
@@ -106,11 +120,9 @@ class GutenbergBlockGenerator {
 			)
 		);
 
-		$gallery_content .= '
-                </div>
-            </div>
-        </div>
-        ';
+		$gallery_content .= '</div>'
+			. '</div>'
+			. '</div>';
 
 		// delete unexisting attachments.
 		foreach ( $non_existing_attachment_indexes as $non_existing_attachment_index ) {
