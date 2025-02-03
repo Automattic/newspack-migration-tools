@@ -830,9 +830,11 @@ AUDIO;
 			}
 		}
 
-		$inner_html = '<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper">
-		' . $youtube_video_url . '
-		</div></figure>';
+		$inner_html = <<<HTML
+<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper">
+$youtube_video_url
+</div></figure>
+HTML;
 
 		return [
 			'blockName'    => 'core/embed',
