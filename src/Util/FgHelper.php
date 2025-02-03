@@ -78,8 +78,8 @@ class FgHelper {
 	private function add_hooks(): void {
 		// Filter if option values already exist in db.
 		add_filter( "option_{$this->function_prefix}_options", [ $this, 'filter_options' ] );
-		// Filter if option values do not exist in db. (Needed otherwise wordpress won't filter the options).
-		add_filter( "default_option_{$this->function_prefix}_options", [ $this, 'filter_options' ] );		
+		// Filter if option values do not exist in db. (Needed otherwise WordPress won't filter the options).
+		add_filter( "default_option_{$this->function_prefix}_options", [ $this, 'filter_options' ] );       
 	}
 
 	/**
@@ -111,7 +111,9 @@ class FgHelper {
 	public function filter_options( array|false $options ): array {
 		
 		// For when options don't exist yet in the db.
-		if( false === $options ) $options = [];
+		if ( false === $options ) {
+			$options = [];
+		}
 
 		$options['hostname'] = getenv( 'DB_HOST' );
 		$options['database'] = getenv( 'DB_NAME' );
