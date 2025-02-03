@@ -695,6 +695,48 @@ AUDIO;
 	}
 
 	/**
+	 * Generate a Row Block.
+	 *
+	 * @param array  $blocks      Inner blocks to be displayed in the row.
+	 * @param string $orientation Row orientation ('horizontal' or 'vertical'), defaults to horizontal.
+	 * @param string $justify     Row justify content ('left', 'center', 'right', 'space-between'), defaults to left.
+	 * @param string $align      Row alignment ('wide', 'full'), defaults to none.
+	 *
+	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 */
+	public function get_row( array $blocks, string $orientation = 'horizontal', string $justify = 'left', string $align = '' ): array {
+		$attrs = [
+			'layout' => [
+				'type'           => 'flex',
+				'orientation'    => $orientation,
+				'justifyContent' => $justify,
+			],
+		];
+
+		if ( ! empty( $align ) ) {
+			$attrs['align'] = $align;
+		}
+
+		$classes = [ 'wp-block-group', 'is-layout-flex' ];
+		if ( ! empty( $align ) ) {
+			$classes[] = 'align' . $align;
+		}
+
+		// Inner content
+		$inner_content = array_fill( 1, count( $blocks ), null );
+		array_unshift( $inner_content, '<div class="' . implode( ' ', $classes ) . '">' );
+		array_push( $inner_content, '</div>' );
+
+		return [
+			'blockName'    => 'core/group',
+			'attrs'        => $attrs,
+			'innerBlocks'  => $blocks,
+			'innerHTML'    => '<div class="' . implode( ' ', $classes ) . '"></div>',
+			'innerContent' => $inner_content,
+		];
+	}
+
+	/**
 	 * Generate a Columns Block.
 	 *
 	 * @param array  $columns              Columns list.
