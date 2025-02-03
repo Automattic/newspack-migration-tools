@@ -191,6 +191,33 @@ class GutenbergBlockGeneratorTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( $internal_url, $youtube_block['innerHTML'] );
 	}
 
+	public function test_get_row() {
+		// Test default row with two paragraphs
+		$paragraph1 = $this->block_generator->get_paragraph( 'First paragraph' );
+		$paragraph2 = $this->block_generator->get_paragraph( 'Second paragraph' );
+		$block      = $this->block_generator->get_row( [ $paragraph1, $paragraph2 ] );
+
+		$html = serialize_block( $block );
+		$this->assertStringStartsWith( '<!-- wp:group', $html );
+		$this->assert_xpath_node_exists( $html, '//div[contains(@class, "wp-block-group")]' );
+		$this->assert_xpath_node_exists( $html, '//div[contains(@class, "is-layout-flex")]' );
+		$this->assert_xpath_node_exists( $html, '//p[contains(text(), "First paragraph")]' );
+		$this->assert_xpath_node_exists( $html, '//p[contains(text(), "Second paragraph")]' );
+
+		// Test vertical orientation with center justify and wide alignment
+		$block = $this->block_generator->get_row(
+			[ $paragraph1, $paragraph2 ],
+			'vertical',
+			'center',
+			'wide'
+		);
+
+		$html = serialize_block( $block );
+		$this->assertStringContainsString( '"orientation":"vertical"', $html );
+		$this->assertStringContainsString( '"justifyContent":"center"', $html );
+		$this->assert_xpath_node_exists( $html, '//div[contains(@class, "alignwide")]' );
+	}
+
 	public function test_get_details() {
 		// Test with a simple paragraph block inside
 		$summary         = 'Test Summary';
