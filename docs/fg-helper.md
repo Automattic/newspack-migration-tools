@@ -108,7 +108,7 @@ Field Images:
 
 #### Helpful Drupal sql
 
-__May not work with all Drupal versions.__
+_May not work with all Drupal versions._
 
 ```
 # get all roles:
