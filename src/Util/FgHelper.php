@@ -119,7 +119,7 @@ class FgHelper {
 		$options['database'] = getenv( 'DB_NAME' );
 		$options['username'] = getenv( 'DB_USER' );
 		$options['password'] = getenv( 'DB_PASSWORD' );
-		if ( empty( $options['hostname'] ) || empty( $options['database'] ) || ! isset( $options['username'] ) || ! isset( $options['password'] ) ) {
+		if ( empty( $options['hostname'] ) || empty( $options['database'] ) || empty( $options['username'] ) || empty( $options['password'] ) ) {
 			NMT::exit_with_message( 'Could not get database connection details from environment variables.' );
 		}
 
