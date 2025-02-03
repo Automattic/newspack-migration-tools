@@ -108,6 +108,8 @@ Field Images:
 
 #### Helpful Drupal sql
 
+__May not work with all Drupal versions.__
+
 ```
 # get all roles:
 SELECT DISTINCT(roles_target_id) FROM user__roles;
