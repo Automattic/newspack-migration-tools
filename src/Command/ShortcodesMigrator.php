@@ -224,7 +224,7 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 					// Replace shortcodes in innerHTML.
 					foreach ( $found_shortcodes as $found_shortcode ) {
 						// Output message just once in innerHTML, no need to repeat same finds in innerContent.
-						WP_CLI::line( sprintf( 'ID %d, replacing shortcode: %s', $post_id, $found_shortcode ) );
+						WP_CLI::line( sprintf( 'Post ID %d, replacing shortcode: %s', $post_id, $found_shortcode ) );
 
 						// Get replacement.
 						$replacement_for_shortcode = $reflection_method->invoke( $class_instance, $found_shortcode, $post_id );
