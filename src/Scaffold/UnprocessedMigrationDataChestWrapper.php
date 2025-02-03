@@ -136,9 +136,9 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 			// phpcs:disable
 			$data_chest = $this->wpdb->get_row(
 				$this->wpdb->prepare(
-					'SELECT * FROM migration_data_chests 
-         				WHERE migration_id = %d 
-         				  AND pointer_to_object_id = %s 
+					'SELECT * FROM migration_data_chests
+         				WHERE migration_id = %d
+         				  AND pointer_to_object_id = %s
          				  AND json_data = %s
          				  ORDER BY created_at DESC',
 					$this->get_run_key()->get_migration_id(),
@@ -197,10 +197,10 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 			// phpcs:disable
 			$this->id = $this->wpdb->get_var(
 				$this->wpdb->prepare(
-					'SELECT id FROM migration_data_chests 
-		 				WHERE migration_id = %d 
-		 				  AND pointer_to_object_id = %s 
-		 				  AND json_data = %s 
+					'SELECT id FROM migration_data_chests
+		 				WHERE migration_id = %d
+		 				  AND pointer_to_object_id = %s
+		 				  AND json_data = %s
 		 				  ORDER BY created_at DESC',
 					$this->get_run_key()->get_migration_id(),
 					$this->get_pointer_to_identifier(),
