@@ -143,4 +143,24 @@ class Shortcodes {
 		// Return the attribute value.
 		return $attributes[ $attribute_name ];
 	}
+
+	/**
+	 * HTML-decodes shortcode text and replaces all known fancy quotes to regular double quote.
+	 * 
+	 * @param string $shortcode Full shortcode text content including brackets.
+	 * @return string The decoded shortcode content
+	 */
+	public function decode_shortcode( string $shortcode ): string {
+		// Decode HTML entities in shortcode (e.g. &quot; or &#8221; to ").
+		$decoded_shortcode = html_entity_decode( $shortcode );
+		
+		// Replace all known similar fancy quotes to regular double quote.
+		$decoded_shortcode = str_replace(
+			[ '“', '”', '‘', '’', '«', '»', '‹', '›', '„', '‚', '′', '″' ],
+			'"',
+			$decoded_shortcode
+		);
+
+		return $decoded_shortcode;
+	}
 }
