@@ -133,15 +133,11 @@ class EnviraGalleryMigrator implements WpCliCommandInterface, ShortcodeReplaceme
 
 		// Get attachment IDs from postmeta meta_key = '_eg_in_gallery'.
 		// phpcs:disable -- WordPress.DB.DirectDatabaseQuery.NoCaching
-		$att_ids = maybe_unserialize(
-			$wpdb->get_var(
-				$wpdb->prepare(
-					"SELECT meta_value FROM $wpdb->postmeta WHERE post_id = %d AND meta_key = %s",
-					$id,
-					self::ENVIRA_POSTMETA_KEY_ATTACHED_IMAGES
-					) 
-					) 
-				);
+		$att_ids = maybe_unserialize( $wpdb->get_var( $wpdb->prepare(
+			"SELECT meta_value FROM $wpdb->postmeta WHERE post_id = %d AND meta_key = %s",
+			$id,
+			self::ENVIRA_POSTMETA_KEY_ATTACHED_IMAGES
+		) ) );
 		// phpcs:enable
 		if ( empty( $att_ids ) ) {
 			WP_CLI::warning( sprintf( 'Envira gallery `id` %d in post ID %d has no attached images.', $id, $post_id ) );
