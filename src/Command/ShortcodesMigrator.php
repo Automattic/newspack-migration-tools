@@ -107,6 +107,14 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 							'optional'    => true,
 							'repeating'   => false,
 						],
+						[
+							'type'        => 'assoc',
+							'name'        => 'post-types',
+							'description' => 'Optional CSV of post types to replace shortcodes from their content, if not provided will replace for all posts and pages. E.g. post,page',
+							'optional'    => true,
+							'repeating'   => false,
+							'default'     => 'post,page',
+						],
 					],
 				],
 			],
@@ -127,8 +135,8 @@ class ShortcodesMigrator implements WpCliCommandInterface {
 		$replace_callback = $assoc_args['replace-callback'];
 		$post_ids         = isset( $assoc_args['post-ids'] ) ? explode( ',', $assoc_args['post-ids'] ) : null;
 		$dry_run          = isset( $assoc_args['dry-run'] ) ? true : false;
+		$post_types       = isset( $assoc_args['post-types'] ) ? explode( ',', $assoc_args['post-types'] ) : [ 'post', 'page' ];
 
-		$post_types    = [ 'post', 'page' ];
 		$post_statuses = [ 'publish' ];
 
 		// Get the replacement class method.
