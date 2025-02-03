@@ -5,16 +5,18 @@ This is a helper class that provides some useful functions for the migration pro
 - [FG Drupal to WordPress (free)](https://wordpress.org/plugins/fg-drupal-to-wp/) 
 - [FG Drupal to WordPress Premium](https://www.fredericgilles.net/fg-drupal-to-wordpress/)
 
-## How to use
+## Setup
 
-## WP Admin:
-
-### Plugins:
+#### Plugins
 
 Upload and activate the FG (Drupal|Joomla) to WP Premium plugin.
 - FgHelper has been tested with FG Drupal to WP Premium version 3.85.2.
 
-### Settings:
+#### Database
+
+Import the live database (drupal|joomla) backup into a mysql database (it can be the same database as wordpress).
+
+#### Settings
 
 FG plugin will create a settings page at wp-admin > tools > import > drupal|joomla. You do not need to adjust these settings.  All settings (options) will be set by the migrator when it's run.  Be advised that any FG options set in the wp-admin may be overwritten by the migrator. It's best to not set any settings via wp-admin and just let the migrator set them instead.
 
@@ -23,11 +25,7 @@ If you set options in wp-admin and want to remove them, you can run:
 wp db query "delete from wp_options where option_name like 'fg_2wp%';"
 ```
 
-### Database:
-
-Import the live database (drupal|joomla) backup into a mysql database (it can be the same database as wordpress).
-
-### WP Config Constants:
+#### WP Config Constants
 
 ```
 define( 'NCCM_SOURCE_WEBSITE_URL', '[ live site url ]' );
@@ -46,7 +44,7 @@ DB_PASSWORD=$MYSQL_PASSWORD (or different pass)
 DB_NAME=[ your db name ] (can be same database as wordpress)
 ```
 
-### Commands
+## Running Commands
 
 The wrapper simplifies running the importer from the CLI, so to run it do something like this:
 ```php
@@ -58,14 +56,13 @@ public function cmd_run_my_custom_import( array $pos_args, array $assoc_args ): 
 
 This will ultimately cause FG's CLI command `wp import-{drupal|joomla} import` to be run, but using our filters and options.
 
-
-### Logging
+#### Logging
 
 FG will log to CLI, `wp-content/debug.log`, and `wp-content/uploads/fg{d|j}2wp-{random}.logs`. FG will also log to `wp-content/uploads/fg{d|j|2wp{p}-progress.json` - this stores the total number of items to migrate and a running count of items imported (example: `{"total":475101,"current":1440}`), it's used for CLI progress bar display.
 
 Note: The "last article node id" is in the options table `fgd2wp_last_node_article_id`. If this option value is deleted, then the plugin will no longer run. The only way to get the migrator to run again would be to add the option by hand and set it's value to the last article id that was imported (either MAX or MIN value of `_fgd2wp_old_node_id` from the postmeta table depending on if importing newest or oldest ids first).
 
-### Re-running:
+#### Re-running
 
 In staging|production, you can just restart the migration. There is no need to run any of the following commands. They are only needed for local testing or if you really need to wipe out previously imported data for some reason.
 
@@ -90,7 +87,7 @@ wp db query "delete from wp_options where option_name like 'fg_2wp%';"
 
 In the FG plugins, do a search for add_filter, add_action, apply_filters, do_action and see if you find something you can use. Files are well organized.
 
-### Drupal Notes:
+#### Drupal Notes
 
 - `nid` Node id can be used in url `/node/123` to redirect to node's web page.
 - `delta` is used for that can be repeated, this is the ordering. For example:
@@ -106,7 +103,7 @@ Field Images:
 - Fields (applies to Drupal 8 and up) If you have the `config` folder (it's in the code download in backups), you can get a list of all fields on a node type by going to the `config` folder. Let's say you want to see all fields on a node type `book_review` then list files like `ls field.field.node.book_review.*`.  These will be imported into `postmeta`.
 - Images: If you have the `config` folder, look at `field_image` for book_review: `cat field.field.node.book_review.field_image.yml`.
 
-#### Helpful Drupal sql:
+#### Helpful Drupal sql
 
 ```
 # get all roles:
