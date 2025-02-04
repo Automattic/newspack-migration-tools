@@ -2,7 +2,6 @@
 
 The following CLI migrator can be used to import a Ghost JSON export file into new posts, featured images, categories, and authors. This CLI is also available as a [stand-alone plugin](https://github.com/Automattic/newspack-ghostcms-migrator/).
 
-
 ### Required Plugin
 
 [CoAuthorsPlus](https://wordpress.org/plugins/co-authors-plus/) (free plugin) must be installed and activated.
