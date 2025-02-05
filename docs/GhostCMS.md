@@ -1,40 +1,19 @@
 # GhostCMS Migrator
 
-The following CLI migrator can be used to import a Ghost JSON export file into new posts, featured images, categories, and authors.
+The documentation for this migrator has been moved to the stand-alone GhostCMS plugin.
 
-### Required Plugin
+Please see the readme: https://github.com/Automattic/newspack-ghostcms-migrator
 
-[CoAuthorsPlus](https://wordpress.org/plugins/co-authors-plus/) (free plugin) must be installed and activated.
+When modifying the GhostCMS migrator, please be sure to follow the "Development" section of the stand-alone plugin so that changes are pushed to that plugin also.
 
-## Usage:
+## Differences between NMT and Stand-alone
 
-Command: `wp newspack-migration-tools ghostcms-import`
+The differences between how this migrator works within NMT and the stand-along GhostCMS Migrator plugin should be kept to a minimum.  
 
-### Required arguments:
+**Itemized differences:**
 
-* `--default-user-id=` Default user id for `post_author`.  Ex: 1
-* `--ghost-url=` This is the current LIVE site url. Ex: https://www.my-site.com/
-* `--json-file=` Path to Ghost JSON export file.
+- "Step 2" requirement to "download and install `newspack-ghostcms-migrator.zip`" is not needed since you can just run the CLI within NMT (or NCCM).
+- "Development" section of the stand-alone documentation is only needed when NMT changes need to be incorprated into a new stand-alone release.  Please keep the stand-alone plugin up to date.
 
-### Optional arguments:
-
-* `--created-after=` Cut off date to only import newer posts.  Ex: "2024-01-01 10:50:30"
-
-### Output log files: 
-
-* `GhostCMSMigrator_cmd_ghostcms_import.log` - Be sure to review for warning and error lines.
-* `GhostCMSMigrator_cmd_ghostcms_import.log-skips.log` - Be sure to review for any posts that should have been added but were skipped.
-
-## Fatal Conflicts:
-
-If the Newspack Plugin is also active, and the following error has encountered:
-
-```
-Error: CoAuthorsPlusHelper construct threw exception: CoAuthors Plus is not installed or active. --> /newspack-repos/newspack-custom-content-migrator/dev/newspack-migration-tools/src/Logic/GhostCMSHelper.php:500
-```
-
-Please do [this fix](https://github.com/Automattic/newspack-migration-tools/issues/41):
-
-`wp config set NEWSPACK_ENABLE_CAP_GUEST_AUTHORS true --raw --type=constant`
 
 
