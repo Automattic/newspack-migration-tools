@@ -14,8 +14,8 @@ The differences between how the GhostCMS migrator works within NMT and the stand
 
 **Known differences:**
 
-- "Step 2" of the README requires "downloading and installing `newspack-ghostcms-migrator.zip`", which is not needed since you can just run the CLI within NMT (or NCCM).
-- "Development" section of the stand-alone documentation is only needed when NMT changes need to be incorprated into a new stand-alone release.  Please keep the stand-alone plugin up to date.
+- [Step 2](https://github.com/Automattic/newspack-ghostcms-migrator/blob/trunk/README.md#step-2-install-this-plugin) of the README requires "downloading and installing `newspack-ghostcms-migrator.zip`", which is not needed since you can just run the CLI within NMT (or NCCM).
+- The [Development section](https://github.com/Automattic/newspack-ghostcms-migrator/blob/trunk/README.md#step-2-install-this-plugin) of the stand-alone documentation is only needed when NMT changes need to be incorprated into a new stand-alone release.  Please keep the stand-alone plugin up to date.
 
 
 
