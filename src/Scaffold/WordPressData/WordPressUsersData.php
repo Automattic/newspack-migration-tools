@@ -324,7 +324,7 @@ class WordPressUsersData extends AbstractWordPressData {
 				$this->data_sources = $original_data_sources;
 			}
 		} else {
-			$unique_user_nicename = $this->users_logic->obtain_unique_user_nicename( $this->user_nicename );
+			$unique_user_nicename = $this->users_logic->get_unique_user_nicename( $this->user_nicename );
 
 			if ( empty( $unique_user_nicename ) ) {
 				try {
@@ -423,7 +423,7 @@ class WordPressUsersData extends AbstractWordPressData {
 	 */
 	private function confirm_user_nicename_is_unique(): void {
 		if ( isset( $this->display_name ) ) {
-			$unique_user_nicename = $this->users_logic->obtain_unique_user_nicename( sanitize_title( $this->display_name ) );
+			$unique_user_nicename = $this->users_logic->get_unique_user_nicename( sanitize_title( $this->display_name ) );
 
 			if ( ! empty( $unique_user_nicename ) ) {
 				$this->concatenate_to_set_property( 'user_nicename', [ 'display_name' ], $unique_user_nicename );
@@ -431,7 +431,7 @@ class WordPressUsersData extends AbstractWordPressData {
 		}
 
 		if ( ! isset( $this->user_nicename ) && isset( $this->first_name ) && isset( $this->last_name ) ) {
-			$unique_user_nicename = $this->users_logic->obtain_unique_user_nicename( sanitize_title( $this->first_name . '-' . $this->last_name ) );
+			$unique_user_nicename = $this->users_logic->get_unique_user_nicename( sanitize_title( $this->first_name . '-' . $this->last_name ) );
 
 			if ( ! empty( $unique_user_nicename ) ) {
 				$this->concatenate_to_set_property( 'user_nicename', [ 'first_name', 'last_name' ], $unique_user_nicename );
@@ -440,7 +440,7 @@ class WordPressUsersData extends AbstractWordPressData {
 
 		// Last resort.
 		if ( ! isset( $this->user_nicename ) ) {
-			$user_nicename = $this->users_logic->obtain_unique_user_nicename( 'user-' . substr( md5( wp_rand() ), 0, 10 ) );
+			$user_nicename = $this->users_logic->get_unique_user_nicename( 'user-' . substr( md5( wp_rand() ), 0, 10 ) );
 
 			if ( ! empty( $user_nicename ) ) {
 				$user_nicename = new MigrationObjectPropertyWrapper( $user_nicename, [] );
