@@ -6,7 +6,7 @@ Please see the README: https://github.com/Automattic/newspack-ghostcms-migrator
 
 The stand-alone plugin is just a thin wrapper to the NMT GhostCMS migrator, but it's important to keep the stand-alone plugin up to date with NMT changes. Instead of having documentation in both places, here and there, we keep the documentation in the stand-alone plugin. This forces us to document changes there and do releases there too.  
 
-Please make every effort avoid allowing the stand-alone plugin to become out of date with NMT GhostCMS changes. Follow the "Development" section of the stand-alone plugin's README whenever changes are made in this NMT GhostCMS migrator.
+Please make every effort to avoid allowing the stand-alone plugin to become out of date with NMT GhostCMS changes. Follow the "Development" section of the stand-alone plugin's README whenever changes are made in this NMT GhostCMS migrator.
 
 ## Differences between NMT and Stand-alone
 
