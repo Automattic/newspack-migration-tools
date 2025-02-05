@@ -299,7 +299,7 @@ class WordPressUsersData extends AbstractWordPressData {
 				throw $e;
 			}
 		} else {
-			$unique_user_login = $this->users_logic->obtain_unique_user_login( $this->user_login );
+			$unique_user_login = $this->users_logic->get_unique_user_login( $this->user_login );
 
 			if ( empty( $unique_user_login ) ) {
 				try {
@@ -372,7 +372,7 @@ class WordPressUsersData extends AbstractWordPressData {
 	 */
 	private function confirm_user_login_is_unique(): void {
 		if ( isset( $this->user_email ) ) {
-			$user_login_from_email = $this->users_logic->obtain_unique_user_login( $this->user_email );
+			$user_login_from_email = $this->users_logic->get_unique_user_login( $this->user_email );
 
 			if ( ! empty( $user_login_from_email ) ) {
 				$this->concatenate_to_set_property( 'user_login', [ 'user_email' ], $user_login_from_email );
@@ -382,7 +382,7 @@ class WordPressUsersData extends AbstractWordPressData {
 		if ( ! isset( $this->user_login ) && isset( $this->first_name ) && isset( $this->last_name ) ) {
 			$user_login_from_names = sanitize_text_field( strtolower( "$this->first_name.$this->last_name" ) );
 			$user_login_from_names = preg_replace( '/\s+/', '.', $user_login_from_names );
-			$user_login_from_names = $this->users_logic->obtain_unique_user_login( $user_login_from_names );
+			$user_login_from_names = $this->users_logic->get_unique_user_login( $user_login_from_names );
 
 			if ( ! empty( $user_login_from_names ) ) {
 				$this->concatenate_to_set_property( 'user_login', [ 'first_name', 'last_name' ], $user_login_from_names );
@@ -392,7 +392,7 @@ class WordPressUsersData extends AbstractWordPressData {
 		if ( ! isset( $this->user_login ) && isset( $this->display_name ) ) {
 			$user_login_from_display_name = sanitize_text_field( strtolower( $this->display_name ) );
 			$user_login_from_display_name = preg_replace( '/\s+/', '.', $user_login_from_display_name );
-			$user_login_from_display_name = $this->users_logic->obtain_unique_user_login( $user_login_from_display_name );
+			$user_login_from_display_name = $this->users_logic->get_unique_user_login( $user_login_from_display_name );
 
 			if ( ! empty( $user_login_from_display_name ) ) {
 				$this->concatenate_to_set_property( 'user_login', [ 'display_name' ], $user_login_from_display_name );
@@ -402,7 +402,7 @@ class WordPressUsersData extends AbstractWordPressData {
 		// Last resort.
 		if ( ! isset( $this->user_login ) ) {
 			$user_login = 'mig-scaf-user-' . substr( md5( wp_rand() ), 0, 10 );
-			$user_login = $this->users_logic->obtain_unique_user_login( $user_login );
+			$user_login = $this->users_logic->get_unique_user_login( $user_login );
 
 			if ( ! empty( $user_login ) ) {
 				$user_login = new MigrationObjectPropertyWrapper( $user_login, [] );
