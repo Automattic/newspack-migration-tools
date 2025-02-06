@@ -1,40 +1,21 @@
 # GhostCMS Migrator
 
-The following CLI migrator can be used to import a Ghost JSON export file into new posts, featured images, categories, and authors.
+The documentation for this migrator has been moved to the stand-alone Newspack GhostCMS Migrator plugin.
 
-### Required Plugin
+Please see the README: https://github.com/Automattic/newspack-ghostcms-migrator
 
-[CoAuthorsPlus](https://wordpress.org/plugins/co-authors-plus/) (free plugin) must be installed and activated.
+The stand-alone plugin is just a thin wrapper to the NMT GhostCMS migrator, but it's important to keep the stand-alone plugin up to date with NMT changes. Instead of having documentation in both places, here and there, we keep the documentation in the stand-alone plugin. This forces us to document changes there and do releases there too.  
 
-## Usage:
+Please make every effort to avoid allowing the stand-alone plugin to become out of date with NMT GhostCMS changes. Follow the "Development" section of the stand-alone plugin's README whenever changes are made in this NMT GhostCMS migrator.
 
-Command: `wp newspack-migration-tools ghostcms-import`
+## Differences between NMT and Stand-alone
 
-### Required arguments:
+The differences between how the GhostCMS migrator functions within NMT and the stand-alone Newspack GhostCMS Migrator plugin should be kept to a minimum.  
 
-* `--default-user-id=` Default user id for `post_author`.  Ex: 1
-* `--ghost-url=` This is the current LIVE site url. Ex: https://www.my-site.com/
-* `--json-file=` Path to Ghost JSON export file.
+**Known differences:**
 
-### Optional arguments:
+- [Step 2](https://github.com/Automattic/newspack-ghostcms-migrator/blob/trunk/README.md#step-2-install-this-plugin) of the README requires downloading and installing `newspack-ghostcms-migrator.zip`. This is not needed here since you can just run the CLI within NMT (or NCCM).
+- The [Development](https://github.com/Automattic/newspack-ghostcms-migrator/blob/trunk/README.md#development) section of the stand-alone documentation is specific to that plugin when NMT changes need to be incorprated into a new stand-alone release.  Please keep the stand-alone plugin up to date.
 
-* `--created-after=` Cut off date to only import newer posts.  Ex: "2024-01-01 10:50:30"
-
-### Output log files: 
-
-* `GhostCMSMigrator_cmd_ghostcms_import.log` - Be sure to review for warning and error lines.
-* `GhostCMSMigrator_cmd_ghostcms_import.log-skips.log` - Be sure to review for any posts that should have been added but were skipped.
-
-## Fatal Conflicts:
-
-If the Newspack Plugin is also active, and the following error has encountered:
-
-```
-Error: CoAuthorsPlusHelper construct threw exception: CoAuthors Plus is not installed or active. --> /newspack-repos/newspack-custom-content-migrator/dev/newspack-migration-tools/src/Logic/GhostCMSHelper.php:500
-```
-
-Please do [this fix](https://github.com/Automattic/newspack-migration-tools/issues/41):
-
-`wp config set NEWSPACK_ENABLE_CAP_GUEST_AUTHORS true --raw --type=constant`
 
 
