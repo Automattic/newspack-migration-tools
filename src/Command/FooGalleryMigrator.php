@@ -1,6 +1,6 @@
 <?php
 /**
- * Custom migration scripts for Envira Gallery Lite.
+ * Custom migration scripts for FooGallery.
  * 
  * @package NewspackCustomContentMigrator\Command\General
  */
@@ -13,12 +13,12 @@ use Newspack\MigrationTools\Logic\GutenbergBlockGenerator;
 use WP_CLI;
 
 /**
- * Custom migration scripts for Envira Gallery Lite.
+ * Custom migration scripts for FooGallery.
  */
-class EnviraGalleryMigrator implements WpCliCommandInterface, ShortcodeReplacementInterface {
+class FooGalleryMigrator implements WpCliCommandInterface, ShortcodeReplacementInterface {
 
-	// Envira Gallery postmeta key containing images belonging to gallery.
-	const ENVIRA_POSTMETA_KEY_ATTACHED_IMAGES = '_eg_in_gallery';
+	// FooGallery postmeta key containing images belonging to gallery.
+	const FOOGALLERY_POSTMETA_KEY_ATTACHED_IMAGES = 'foogallery_attachments';
 
 	/**
 	 * Shortcodes instance.
@@ -48,10 +48,10 @@ class EnviraGalleryMigrator implements WpCliCommandInterface, ShortcodeReplaceme
 	public static function get_cli_commands(): array {
 		return [
 			[
-				'newspack-migration-tools envira-gallery-lite-to-gutenberg-gallery',
-				[ __CLASS__, 'cmd_migrate_envira_galleries' ],
+				'newspack-migration-tools foogallery-to-gutenberg-gallery',
+				[ __CLASS__, 'cmd_migrate_foogalleries' ],
 				[
-					'shortdesc' => 'Converts Envira Gallery Lite galleries to Gutenberg Gallery blocks throughout all Posts and Pages.',
+					'shortdesc' => 'Converts FooGallery galleries to Gutenberg Gallery blocks throughout all Posts and Pages.',
 					'synopsis'  => [
 						[
 							'type'      => 'flag',
@@ -81,20 +81,20 @@ class EnviraGalleryMigrator implements WpCliCommandInterface, ShortcodeReplaceme
 	}
 
 	/**
-	 * Command handler for migrating Envira galleries.
+	 * Command handler for migrating FooGallery galleries.
 	 *
 	 * @param array $pos_args   Positional arguments.
 	 * @param array $assoc_args Associative arguments.
 	 */
-	public function cmd_migrate_envira_galleries( $pos_args, $assoc_args ) {
+	public function cmd_migrate_foogalleries( $pos_args, $assoc_args ) {
 		$dry_run        = isset( $assoc_args['dry-run'] ) ?? false;
 		$post_ids_csv   = isset( $assoc_args['post-ids'] ) ? $assoc_args['post-ids'] : null;
 		$post_types_csv = isset( $assoc_args['post-types'] ) ? $assoc_args['post-types'] : 'post,page';
 				
-		// Leverage and use existing Shortcodes replacement command with a replacement for Envira shortcodes.
+		// Leverage and use existing Shortcodes replacement command with a replacement for FooGallery shortcodes.
 		WP_CLI::runcommand(
 			sprintf(
-				'newspack-content-migrator replace-shortcodes-in-post-body --shortcode=envira-gallery --replace-callback=Newspack\MigrationTools\Command\EnviraGalleryMigrator::replace_shortcode %s %s %s',
+				'newspack-content-migrator replace-shortcodes-in-post-body --shortcode=foogallery --replace-callback=Newspack\MigrationTools\Command\FooGalleryMigrator::replace_shortcode %s %s %s',
 				$dry_run ? '--dry-run' : '',
 				$post_ids_csv ? '--post-ids=' . $post_ids_csv : '',
 				$post_types_csv ? '--post-types=' . $post_types_csv : ''
@@ -108,7 +108,7 @@ class EnviraGalleryMigrator implements WpCliCommandInterface, ShortcodeReplaceme
 	}
 
 	/**
-	 * Replace Envira Gallery shortcode with Gutenberg gallery block.
+	 * Replace FooGallery shortcode with Gutenberg gallery block.
 	 *
 	 * @param string $shortcode The shortcode to replace.
 	 * @param int    $post_id   The post ID where the shortcode is used.
@@ -124,10 +124,10 @@ class EnviraGalleryMigrator implements WpCliCommandInterface, ShortcodeReplaceme
 		// Get gallery ID.
 		$id = $this->shortcode->get_shortcode_attribute( 'id', $decoded_shortcode );
 
-		// Get the gallery post row, check if post_type is 'envira'.
+		// Get the gallery post row, check if post_type is 'foogallery'.
 		$gallery_post = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $wpdb->posts WHERE ID = %d", $id ) ); // phpcs:ignore -- WordPress.DB.DirectDatabaseQuery.NoCaching
-		if ( ! $gallery_post || 'envira' !== $gallery_post->post_type ) {
-			WP_CLI::warning( sprintf( 'Envira gallery `id` %d used in post ID %d not found.', $id, $post_id ) );
+		if ( ! $gallery_post || 'foogallery' !== $gallery_post->post_type ) {
+			WP_CLI::warning( sprintf( 'FooGallery gallery `id` %d used in post ID %d not found.', $id, $post_id ) );
 			return false;
 		}
 
@@ -136,11 +136,11 @@ class EnviraGalleryMigrator implements WpCliCommandInterface, ShortcodeReplaceme
 		$att_ids = maybe_unserialize( $wpdb->get_var( $wpdb->prepare(
 			"SELECT meta_value FROM $wpdb->postmeta WHERE post_id = %d AND meta_key = %s",
 			$id,
-			self::ENVIRA_POSTMETA_KEY_ATTACHED_IMAGES
+			self::FOOGALLERY_POSTMETA_KEY_ATTACHED_IMAGES
 		) ) );
 		// phpcs:enable
 		if ( empty( $att_ids ) ) {
-			WP_CLI::warning( sprintf( 'Envira gallery `id` %d in post ID %d has no attached images.', $id, $post_id ) );
+			WP_CLI::warning( sprintf( 'FooGallery gallery `id` %d in post ID %d has no attached images.', $id, $post_id ) );
 			return false;
 		}
 
@@ -150,4 +150,4 @@ class EnviraGalleryMigrator implements WpCliCommandInterface, ShortcodeReplaceme
 
 		return $gutenberg_block_serialized;
 	}
-}
+} 
