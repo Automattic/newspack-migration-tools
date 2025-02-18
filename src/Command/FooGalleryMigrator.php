@@ -126,7 +126,7 @@ class FooGalleryMigrator implements WpCliCommandInterface, ShortcodeReplacementI
 
 		// Get the gallery post row, check if post_type is 'foogallery'.
 		$gallery_post = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $wpdb->posts WHERE ID = %d", $id ) ); // phpcs:ignore -- WordPress.DB.DirectDatabaseQuery.NoCaching
-		if ( 'foogallery' !== $gallery_post->post_type ) {
+		if ( ! $gallery_post || 'foogallery' !== $gallery_post->post_type ) {
 			WP_CLI::warning( sprintf( 'FooGallery gallery `id` %d used in post ID %d not found.', $id, $post_id ) );
 			return false;
 		}
