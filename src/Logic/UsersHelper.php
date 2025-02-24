@@ -76,6 +76,10 @@ class UsersHelper {
 	 * @return string An unused username.
 	 */
 	public static function get_unused_user_login( string $desired_user_login ): string {
+		if ( empty( $desired_user_login ) ) {
+			throw new InvalidArgumentException( 'Desired user login cannot be empty.' );
+		}
+
 		$original_user_login = $desired_user_login;
 		$desired_user_login  = trim( $desired_user_login );
 		$max_length          = 60;
