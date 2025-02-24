@@ -67,39 +67,39 @@ class UsersHelper {
 	}
 
 	/**
-	 * Get a username that is not in use from a desired username.
+	 * Get a user login that is not in use, starting with a desired user login.
 	 *
-	 * If the desired username is in use, a counter will be appended to it until an unused username is found.
+	 * If the desired user login is in use, a counter will be appended to it until an unused user login is found.
 	 *
-	 * @param string $desired_username Desired username.
+	 * @param string $desired_user_login Desired user login.
 	 *
 	 * @return string An unused username.
 	 */
-	public static function get_unused_username( string $desired_username ): string {
-		$original_username = $desired_username;
-		$desired_username  = trim( $desired_username );
-		$max_length        = 60;
-		if ( strlen( $desired_username ) >= $max_length ) {
-			$desired_username = trim( mb_substr( $desired_username, 0, $max_length ) );
+	public static function get_unused_user_login( string $desired_user_login ): string {
+		$original_user_login = $desired_user_login;
+		$desired_user_login  = trim( $desired_user_login );
+		$max_length          = 60;
+		if ( strlen( $desired_user_login ) >= $max_length ) {
+			$desired_user_login = trim( mb_substr( $desired_user_login, 0, $max_length ) );
 			FileLog::get_logger( 'UsersHelper' )->warning(
 				sprintf(
-					'Shortened username to under %d chars from "%s" to "%s".',
+					'Shortened user login to under %d chars from "%s" to "%s".',
 					$max_length,
-					$original_username,
-					$desired_username
+					$original_user_login,
+					$desired_user_login
 				)
 			);
 		}
 
 		$i = 0;
-		while ( username_exists( $desired_username ) ) {
-			$desired_username = self::append_number_and_ensure_length( $desired_username, ++$i, $max_length );
+		while ( username_exists( $desired_user_login ) ) {
+			$desired_user_login = self::append_number_and_ensure_length( $desired_user_login, ++$i, $max_length );
 		}
 		if ( $i > 0 ) {
-			CliLog::get_logger( 'UsersHelper' )->debug( sprintf( 'Generated username: %s', $desired_username ) );
+			CliLog::get_logger( 'UsersHelper' )->debug( sprintf( 'Generated user login: %s', $desired_user_login ) );
 		}
 
-		return $desired_username;
+		return $desired_user_login;
 	}
 
 	/**
@@ -288,7 +288,7 @@ class UsersHelper {
 		// Now make sure all these values are unused.
 		$data['user_email']    = self::get_unused_fake_email( $user_email );
 		$data['user_nicename'] = self::get_unused_nicename( $user_nicename );
-		$data['user_login']    = self::get_unused_username( $user_login );
+		$data['user_login'] = self::get_unused_user_login( $user_login );
 
 		// Add the unique identifier to the user's meta so we can find them later.
 		$data['meta_input'][ self::UNIQUE_IDENTIFIER_META_KEY ] = $unique_identifier;
