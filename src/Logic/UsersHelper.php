@@ -16,6 +16,8 @@ use WP_User;
  */
 class UsersHelper {
 
+	const MAX_USER_LOGIN_LENGTH = 60;
+
 	/**
 	 * Meta key for the unique identifier for users.
 	 */
@@ -82,18 +84,17 @@ class UsersHelper {
 
 		$original_user_login = $desired_user_login;
 		$desired_user_login  = sanitize_user( $desired_user_login );
-		
+
 		if ( is_email( $desired_user_login ) ) {
 			$desired_user_login = substr( $desired_user_login, 0, strpos( $desired_user_login, '@' ) );
 		}
 
-		$max_length          = 60;
-		if ( strlen( $desired_user_login ) >= $max_length ) {
-			$desired_user_login = trim( mb_substr( $desired_user_login, 0, $max_length ) );
+		if ( strlen( $desired_user_login ) >= self::MAX_USER_LOGIN_LENGTH ) {
+			$desired_user_login = trim( mb_substr( $desired_user_login, 0, self::MAX_USER_LOGIN_LENGTH ) );
 			FileLog::get_logger( 'UsersHelper' )->warning(
 				sprintf(
 					'Shortened user login to under %d chars from "%s" to "%s".',
-					$max_length,
+					self::MAX_USER_LOGIN_LENGTH,
 					$original_user_login,
 					$desired_user_login
 				)
@@ -102,7 +103,7 @@ class UsersHelper {
 
 		$i = 0;
 		while ( username_exists( $desired_user_login ) ) {
-			$desired_user_login = self::append_number_and_ensure_length( $desired_user_login, ++$i, $max_length );
+			$desired_user_login = self::append_number_and_ensure_length( $desired_user_login, ++$i, self::MAX_USER_LOGIN_LENGTH );
 		}
 		if ( $i > 0 ) {
 			CliLog::get_logger( 'UsersHelper' )->debug( sprintf( 'Generated user login: %s', $desired_user_login ) );
