@@ -82,6 +82,11 @@ class UsersHelper {
 
 		$original_user_login = $desired_user_login;
 		$desired_user_login  = sanitize_user( $desired_user_login );
+		
+		if ( is_email( $desired_user_login ) ) {
+			$desired_user_login = substr( $desired_user_login, 0, strpos( $desired_user_login, '@' ) );
+		}
+
 		$max_length          = 60;
 		if ( strlen( $desired_user_login ) >= $max_length ) {
 			$desired_user_login = trim( mb_substr( $desired_user_login, 0, $max_length ) );
