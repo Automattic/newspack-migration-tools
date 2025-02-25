@@ -69,6 +69,46 @@ class UsersHelper {
 	}
 
 	/**
+	 * Confirms that a user login is unused.
+	 *
+	 * @param string $user_login The user login to check.
+	 * @param int    $exclude_user_id A user ID to exclude from the check.
+	 *
+	 * @return bool
+	 */
+	public static function is_user_login_unused( string $user_login, int $exclude_user_id = 0 ): bool {
+		global $wpdb;
+
+		$prepared_sql = $wpdb->prepare( "SELECT ID FROM $wpdb->users WHERE user_login = %s", $user_login );
+
+		if ( $exclude_user_id ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Reason: $sql_prepared is a prepared statement.
+			$prepared_sql = $wpdb->prepare( "$prepared_sql AND ID <> %d", $exclude_user_id );
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		$test = null === $wpdb->get_var( $prepared_sql );
+
+		if ( $test && apply_filters( 'newspack_migration_tools_confirm_user_login_unique_across_coauthors_plus_data', false ) ) {
+			do_action( 'newspack_migration_tools_verify_user_login_unique_across_coauthors_plus_data', $user_login, $exclude_user_id );
+		}
+
+		/*
+		 * Sometimes we have old data in the terms table. Perhaps CAP was turned on at some point, and then turned off.
+		 * Perhaps we had them on, and then migrated them to Guest Contributors. Or perhaps they're coming from
+		 * a custom flavor of WordPress where we didn't remove any data for posterity and so there may
+		 * be a clash. Or perhaps we are updating a user's login because we have to, and therefore
+		 * we should confirm that we don't already have some terms data with the same name.
+		 */
+		if ( $test ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$test = null === $wpdb->get_var( $wpdb->prepare( "SELECT term_id FROM $wpdb->terms WHERE name = %s", $user_login ) );
+		}
+
+		return $test;
+	}
+
+	/**
 	 * Get a user login that is not in use, starting with a desired user login.
 	 *
 	 * If the desired user login is in use, a counter will be appended to it until an unused user login is found.
@@ -102,7 +142,7 @@ class UsersHelper {
 		}
 
 		$i = 0;
-		while ( username_exists( $desired_user_login ) ) {
+		while ( ! self::is_user_login_unused( $desired_user_login ) ) {
 			$desired_user_login = self::append_number_and_ensure_length( $desired_user_login, ++$i, self::MAX_USER_LOGIN_LENGTH );
 		}
 		if ( $i > 0 ) {
