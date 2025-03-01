@@ -38,13 +38,13 @@ class GutenbergBlockGenerator {
 	 *      - at the time of writing this, JP Tiled Gallery doesn't support captions
 	 *
 	 * @param int[]    $attachment_ids  Attachments IDs to be used in the tiled gallery.
-	 * @param string   $link_to         `linkTo` attribute of the Jetpack Tiled Gallery block. Can be "media", or "attachment".
+	 * @param ?string  $link_to         `linkTo` attribute of the Jetpack Tiled Gallery block. Can be "media", or "attachment", or null.
 	 * @param string[] $tile_sizes_list List of tiles sizes in percentages (e.g. ['50', '50']).
 	 *
 	 * @return array to be used in the serialize_block() or serialize_blocks() function to get the raw content of a Gutenberg Block.
 	 * @throws \UnexpectedValueException If $link_to param is invalid.
 	 */
-	public function get_jetpack_tiled_gallery( array $attachment_ids, string $link_to, array $tile_sizes_list = [
+	public function get_jetpack_tiled_gallery( array $attachment_ids, ?string $link_to, array $tile_sizes_list = [
 		'66.79014',
 		'33.20986',
 		'33.33333',
@@ -73,7 +73,7 @@ class GutenbergBlockGenerator {
 			' ',
 			array_filter(
 				array_map(
-					function ( $index, $attachment_id ) use ( &$tile_sizes, &$non_existing_attachment_indexes, $tile_sizes_list, $file_logger ) {
+					function ( $index, $attachment_id ) use ( &$tile_sizes, &$non_existing_attachment_indexes, $tile_sizes_list, $file_logger, $link_to ) {
 						$attachment_url = wp_get_attachment_url( $attachment_id );
 
 						if ( ! $attachment_url ) {
@@ -86,9 +86,20 @@ class GutenbergBlockGenerator {
 						$tile_size    = $this->get_tile_image_size_by_index( $index, $tile_sizes_list );
 						$tile_sizes[] = $tile_size;
 
+						// Add <a> link to attachment URL if linkTo is set to "attachment" or "media".
+						$a_opening_tag = '';
+						$a_closing_tag = '';
+						if ( 'attachment' == $link_to ) {
+							$a_opening_tag = sprintf( '<a href="%s">', get_permalink( $attachment_id ) );
+							$a_closing_tag = '</a>';
+						} elseif ( 'media' == $link_to ) {
+							$a_opening_tag = sprintf( '<a href="%s">', wp_get_attachment_url( $attachment_id ) );
+							$a_closing_tag = '</a>';
+						}
+
 						return '
                             <div class="tiled-gallery__col" style="flex-basis: ' . $tile_size . '%">
-                            <figure class="tiled-gallery__item">
+                            ' . $a_opening_tag . '<figure class="tiled-gallery__item">
                                 <img
                                         alt="' . get_the_title( $attachment_id ) . '"
                                         data-id="' . $attachment_id . '"
@@ -97,7 +108,7 @@ class GutenbergBlockGenerator {
                                         src="' . $attachment_url . '"
                                     data-amp-layout="responsive"
                                 />
-                            </figure>
+                            </figure>' . $a_closing_tag . '
                             </div>';
 					},
 					array_keys( $attachment_ids ),
@@ -830,9 +841,11 @@ AUDIO;
 			}
 		}
 
-		$inner_html = '<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper">
-		' . $youtube_video_url . '
-		</div></figure>';
+		$inner_html = <<<HTML
+<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper">
+$youtube_video_url
+</div></figure>
+HTML;
 
 		return [
 			'blockName'    => 'core/embed',
@@ -933,8 +946,8 @@ HTML;
 	 * Generate a Newspack Iframe block.
 	 *
 	 * @param string $src    URL.
-	 * @param int $width Width.
-	 * @param int $height Height.
+	 * @param int    $width Width.
+	 * @param int    $height Height.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
@@ -1120,6 +1133,37 @@ HTML;
 			'innerBlocks'  => [],
 			'innerHTML'    => '',
 			'innerContent' => [],
+		];
+	}
+
+	/**
+	 * Generate a Details Block.
+	 *
+	 * @param string $summary      The summary/title text for the details block.
+	 * @param array  $blocks       Inner blocks to be displayed in the details content.
+	 * @param bool   $show_content Whether the details should be open by default.
+	 *
+	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 */
+	public function get_details( $summary, array $blocks, bool $show_content = false ): array {
+		$attrs = [];
+		if ( $show_content ) {
+			$attrs['show_content'] = true;
+		}
+
+		$open_attr = $show_content ? ' open' : '';
+
+		// Inner content
+		$inner_content = array_fill( 1, count( $blocks ), null );
+		array_unshift( $inner_content, '<details class="wp-block-details"' . $open_attr . '><summary>' . $summary . '</summary>' );
+		array_push( $inner_content, '</details>' );
+
+		return [
+			'blockName'    => 'core/details',
+			'attrs'        => $attrs,
+			'innerBlocks'  => $blocks,
+			'innerHTML'    => '<details class="wp-block-details"' . $open_attr . '><summary>' . $summary . '</summary></details>',
+			'innerContent' => $inner_content,
 		];
 	}
 }

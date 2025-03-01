@@ -17,12 +17,16 @@ class WpCliCommands {
 			CampaignsMigrator::class,
 			ContentConverterPluginMigrator::class,
 			CssMigrator::class,
+			GhostCMSMigrator::class,
 			MenusMigrator::class,
 			MetaToContentMigrator::class,
 			NewspaperThemeCommand::class,
 			PostsMigrator::class,
 			SettingsMigrator::class,
 			WooCommMigrator::class,
+			ShortcodesMigrator::class,
+			EnviraGalleryMigrator::class,
+			FooGalleryMigrator::class,
 		];
 
 		return apply_filters( 'newspack_migration_tools_command_classes', $classes_with_cli_commands );
