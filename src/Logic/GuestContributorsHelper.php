@@ -64,9 +64,9 @@ class GuestContributorsHelper {
      *
      * @param string $display_name The Display Name of the new user.
 	 * @param bool   $force        Force the creation even if existing user(s) found.
-	 * @return int|array|WP_error  Inserted user ID, array of existing user ID(s), or WP_Error.
+	 * @return int|WP_error  Inserted user ID or WP_Error.
      */
-    public static function create_from_display_name( $display_name, $force = false ): int|array|WP_Error {
+    public static function create_from_display_name( $display_name, $force = false ): int|WP_Error {
         
 		if ( ! self::validate_newspack_plugin() ) {
 			return new WP_Error( "Newspack Plugin's Guest Contributors feature is required to use this function." );
@@ -83,8 +83,11 @@ class GuestContributorsHelper {
 		if ( ! $force ) {
 			$existing = self::get_by_display_name( $display_name );
 			// return if error or not empty (array has value(s)).
-			if ( is_wp_error( $existing) || ! empty( $existing ) ) {
+			if ( is_wp_error( $existing) ) {
 				return $existing;
+			}
+			if( ! empty( $existing ) ){
+				return new WP_Error( 'Existing users found. Use $force = true to create another user.' );
 			}
 		}
 
