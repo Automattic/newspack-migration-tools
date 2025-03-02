@@ -29,12 +29,12 @@ class GuestContributorsMigrator implements WpCliCommandInterface {
 				'newspack-content-migrator guest-contributors-get-by-display-name',
 				self::get_command_closure( 'cmd_get_by_display_name' ),
 				[
-					'shortdesc' => 'Get Guest Contributors by display name.',
+					'shortdesc' => 'Get Guest Contributors by display name - may return multiple.',
 					'synopsis'  => [
 						[
 							'type'        => 'assoc',
 							'name'        => 'display_name',
-							'description' => 'Display name of the guest contributor. (May return multiple).',
+							'description' => 'Display name of the guest contributor.',
 							'optional'    => false,
 							'repeating'   => false,
 						],
@@ -45,22 +45,26 @@ class GuestContributorsMigrator implements WpCliCommandInterface {
     }
 
     /**
-     * Get guest contributor by display name. May return multiple.
+     * Get guest contributor by display name - may return multiple.
      *
      * ## OPTIONS
-     *
-     * --display_name=<display_name>
-     * : The display name to search for.
+     *     
+     *     --display_name=<display_name>
+     *     : The display name to search for.
      *
      * ## EXAMPLES
      *
      *     # Find guest contributors
      *     $ wp newspack-content-migrator guest-contributors-get-by-display-name --display_name="John Smith"
      *
+     * ## Output format
+     *
+     *     1,2,3
+     *
      * @param array $pos_args   Positional arguments.
      * @param array $assoc_args Associative arguments.
      */
-    public function get_by_display_name( $pos_args, $assoc_args ) {
+    public function cmd_get_by_display_name( $pos_args, $assoc_args ) {
 
         $display_name = $assoc_args['display_name'] ?? '';
         if ( empty( $display_name ) === 0 ) {
