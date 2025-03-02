@@ -5,6 +5,7 @@ namespace Newspack\MigrationTools\Logic;
 use Newspack\Guest_Contributor_Role;
 use CoAuthors_Plus;
 use WP_Error;
+use WP_Role;
 
 class GuestContributorsHelper {
 
@@ -32,9 +33,9 @@ class GuestContributorsHelper {
 	 * Multiple results may be returned.
 	 *
 	 * @param string $display_name Display name to find.
-	 * @return array|WP_Error Array of user ID(s) or WP_Error.
+	 * @return array|\WP_Error Array of user ID(s) or WP_Error.
 	 */
-	public static function get_by_display_name( $display_name ): array|WP_Error {
+	public static function get_by_display_name( $display_name ): array|\WP_Error {
 		
 		if ( ! self::validate_newspack_plugin() ) {
 			return new WP_Error( "Newspack Plugin's Guest Contributors feature is required to use this function." );
@@ -64,9 +65,9 @@ class GuestContributorsHelper {
      *
      * @param string $display_name The Display Name of the new user.
 	 * @param bool   $force        Force the creation even if existing user(s) found.
-	 * @return int|WP_error  Inserted user ID or WP_Error.
+	 * @return int|\WP_Error  Inserted user ID or WP_Error.
      */
-    public static function create_from_display_name( $display_name, $force = false ): int|WP_Error {
+    public static function create_from_display_name( $display_name, $force = false ): int|\WP_Error {
         
 		if ( ! self::validate_newspack_plugin() ) {
 			return new WP_Error( "Newspack Plugin's Guest Contributors feature is required to use this function." );
@@ -139,9 +140,9 @@ class GuestContributorsHelper {
      * Generate a unique dummy email address with a random suffix.
 	 * 
      * @param string $display_name The user display name.
-     * @return string|WP_Error Example: ron-chambers-12345@example.com
+     * @return string|\WP_Error Example: ron-chambers-12345@example.com
      */
-	public static function generate_email( $display_name ): string|WP_Error {
+	public static function generate_email( $display_name ): string|\WP_Error {
 		
 		if ( ! is_callable( 'Guest_Contributor_Role', 'get_dummy_email_domain' ) ) {
 			return new WP_Error( 'Guest_Contributor_Role::get_dummy_email_domain() is not callable.' );
@@ -184,9 +185,9 @@ class GuestContributorsHelper {
 	 * Generate a unique username (user_login) with a random suffix.
 	 *
 	 * @param string $display_name The user display name.
-	 * @return string|WP_Error Example: ron-chambers-12345
+	 * @return string|\WP_Error Example: ron-chambers-12345
 	 */ 
-	public static function generate_username( $display_name ): string|WP_Error {
+	public static function generate_username( $display_name ): string|\WP_Error {
 
 		// sanitize in the same way wp_insert_user would.
 		$sanitized_display_name = sanitize_title( sanitize_user( trim( $display_name ), true ) );
@@ -225,7 +226,7 @@ class GuestContributorsHelper {
 	 * @param int   $post_id  Post ID.
 	 * @param bool  $append   Append to existing authors.
 	 */
-	public static function assign_authors_to_post( array $user_ids, int $post_id, bool $append = false ): bool|WP_Error {
+	public static function assign_authors_to_post( array $user_ids, int $post_id, bool $append = false ): bool|\WP_Error {
 
 		global $coauthors_plus;
 
