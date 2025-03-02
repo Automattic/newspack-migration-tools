@@ -41,7 +41,7 @@ class GuestContributorsHelper {
 		}
 
 		// Preform initial search based on display name and role.
-		// Note: Intial sql match is case-insensitive, and also if display name starts/ends with "*"
+		// Note: Initial sql match is case-insensitive, and also if display name starts/ends with "*"
 		// like " ** Special Person ** " then sql will also wildcard match.
 		// To fix both these issues, exact match will be performed in foreach after this query.
 		$get_users = get_users( array(
@@ -87,7 +87,7 @@ class GuestContributorsHelper {
 				return $existing;
 			}
 			if( ! empty( $existing ) ){
-				return new WP_Error( 'Existing users found. Use $force = true to create another user.' );
+				return new WP_Error( 'Existing user(s) found. Use $force = true to skip this check.' );
 			}
 		}
 
