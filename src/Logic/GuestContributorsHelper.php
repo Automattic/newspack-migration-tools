@@ -9,6 +9,8 @@ use WP_Role;
 
 class GuestContributorsHelper {
 
+	const ERROR_NEWSPACK_PLUGIN = "Newspack Plugin's Guest Contributors feature is required to use this function.";
+
 	/**
 	 * Validates whether Newspack Plugin's Guest Contributors feature is active.
 	 *
@@ -38,7 +40,7 @@ class GuestContributorsHelper {
 	public static function get_by_display_name( $display_name ): array|\WP_Error {
 		
 		if ( ! self::validate_newspack_plugin() ) {
-			return new WP_Error( "Newspack Plugin's Guest Contributors feature is required to use this function." );
+			return new WP_Error( 'ERROR_NEWSPACK_PLUGIN', self::ERROR_NEWSPACK_PLUGIN );
 		}
 
 		// Preform initial search based on display name and role.
@@ -70,14 +72,14 @@ class GuestContributorsHelper {
     public static function create_by_display_name( $display_name, $force = false ): int|\WP_Error {
         
 		if ( ! self::validate_newspack_plugin() ) {
-			return new WP_Error( "Newspack Plugin's Guest Contributors feature is required to use this function." );
+			return new WP_Error( 'ERROR_NEWSPACK_PLUGIN', self::ERROR_NEWSPACK_PLUGIN );
 		}
 
 		$display_name = trim( $display_name );
 
 		// Check for core bug when display name is > 250: https://core.trac.wordpress.org/ticket/53109
 		if ( empty( $display_name) || mb_strlen( $display_name ) > 250 ) {
-			return new WP_Error( 'Display Name must be between 1 and 250 characters.' );
+			return new WP_Error( 'ERROR_DISPLAY_NAME', 'Display Name must be between 1 and 250 characters.' );
 		}
 		
 		// If we're not forcing user creation, check for existing user(s) - could be multiple.
@@ -88,7 +90,7 @@ class GuestContributorsHelper {
 				return $existing;
 			}
 			if( ! empty( $existing ) ){
-				return new WP_Error( 'Existing user(s) found. Use $force = true to skip this check.' );
+				return new WP_Error( 'ERROR_EXISTING_USERS', 'Existing user(s) found. Use $force = true to skip this check.' );
 			}
 		}
 
@@ -103,13 +105,13 @@ class GuestContributorsHelper {
 		// Cut down on insert errors and increase security by getting a unique user login with random value.
 		$userdata['user_login'] = self::generate_username( $display_name );
 		if ( is_wp_error( $userdata['user_login'] ) ) {
-			return new WP_Error( "Function generate_username() failed with wp_error: " . json_encode( $userdata['user_login'] ) );
+			return new WP_Error( 'ERROR_GENERATE_USERNAME', json_encode( $userdata['user_login'] ) );
 		}
 
 		// Cut down on insert errors and increase security by getting a unique user email with random value.
 		$userdata['user_email'] = self::generate_email( $display_name );
 		if ( is_wp_error( $userdata['user_email'] ) ) {
-			return new WP_Error( "Function generate_email() failed with wp_error: " . json_encode( $userdata['user_email'] ) );
+			return new WP_Error( 'ERROR_GENERATE_EMAIL', json_encode( $userdata['user_email'] ) );
 		}
 
 		// Set user_nicename ourselves for better security and nicer urls otherwise it will be created from user_login.
@@ -117,7 +119,7 @@ class GuestContributorsHelper {
 		$userdata['user_nicename'] = mb_substr( sanitize_title( sanitize_user( $display_name, true ) ), 0, 50 );
 		if ( empty( $userdata['user_nicename'] ) ) {
 			// this can happen if sanitization produced empty string. Ex: $display_name = "&nbsp; <div>"
-			return new WP_Error( "User nicename can not be blank." );
+			return new WP_Error( 'ERROR_USER_NICENAME', 'User nicename can not be blank.' );
 		}
 
 		// Insert.
@@ -125,12 +127,12 @@ class GuestContributorsHelper {
 
 		// Fail on any errors.
 		if ( is_wp_error( $user_id ) ) {
-			return new WP_Error( "wp_insert_user failed with wp_error: " . json_encode( $user_id ) );
+			return new WP_Error( 'ERROR_INSERT_USER', json_encode( $user_id ) );
 		}
 		// Fail if wp_insert_user didn't return a positive int (return of 0 can happen on other failures...)
 		// core bug that results in 0 integer value: https://core.trac.wordpress.org/ticket/53109
 		if ( ! is_int( $user_id ) || ! ( $user_id > 0 ) ) {
-			return new WP_Error( "wp_insert_user returned a non-positive integer: " . json_encode( $user_id ) );
+			return new WP_Error( 'ERROR_INSERT_USER', "returned non-positive integer: " . json_encode( $user_id ) );
 		}
 
 		return $user_id;
@@ -145,13 +147,13 @@ class GuestContributorsHelper {
 	public static function generate_email( $display_name ): string|\WP_Error {
 		
 		if ( ! is_callable( 'Guest_Contributor_Role', 'get_dummy_email_domain' ) ) {
-			return new WP_Error( 'Guest_Contributor_Role::get_dummy_email_domain() is not callable.' );
+			return new WP_Error( 'ERROR_GET_DUMMY_EMAIL_DOMAIN', 'Guest_Contributor_Role::get_dummy_email_domain() is not callable.' );
 		}
 
 		// sanitize input.
 		$sanitized_display_name = sanitize_title( sanitize_user( trim( $display_name ), true ) );
 		if ( empty( $sanitized_display_name ) ) {
-			return new WP_Error( 'Sanitization created a blank string.' );
+			return new WP_Error( 'ERROR_SANITIZE_INPUT', 'Sanitization created a blank string.' );
 		}
 
 		// hard code email column char length from db.
@@ -167,7 +169,7 @@ class GuestContributorsHelper {
 
 			if( ++$attempts > 9999 ) {
 				// stop...this could cause an ininite loop.
-				return new WP_Error( 'Might be in an infinite loop.' );
+				return new WP_Error( 'ERROR_ATTEMPTS', 'Might be in an infinite loop.' );
 			}
 
 			// try a different random suffix on each loop
@@ -192,7 +194,7 @@ class GuestContributorsHelper {
 		// sanitize in the same way wp_insert_user would.
 		$sanitized_display_name = sanitize_title( sanitize_user( trim( $display_name ), true ) );
 		if ( empty( $sanitized_display_name ) ) {
-			return new WP_Error( 'Sanitization created a blank string.' );
+			return new WP_Error( 'ERROR_SANITIZE_INPUT', 'Sanitization created a blank string.' );
 		}
 
 		// hard code char length from db.
@@ -205,7 +207,7 @@ class GuestContributorsHelper {
 
 			if( ++$attempts > 9999 ) {
 				// stop...this could cause an ininite loop.
-				return new WP_Error( 'Might be in an infinite loop.' );
+				return new WP_Error( 'ERROR_ATTEMPTS', 'Might be in an infinite loop.' );
 			}
 
 			// try a different random suffix on each loop
@@ -232,12 +234,12 @@ class GuestContributorsHelper {
 
 		// CAP Plugin is required.
 		if ( ! is_plugin_active( "co-authors-plus/co-authors-plus.php" ) ) {
-			$this->logger->error( 'Co-Authors Plus plugin not found. Install and activate it before using this command.' );
+			$this->logger->error( 'ERROR_CAP_PLUGIN_NOT_FOUND', 'Co-Authors Plus plugin not found. Install and activate it before using this command.' );
 			exit();
 		}
 		
 		if ( ! $coauthors_plus instanceof CoAuthors_Plus ) {
-			return new WP_Error('CoAuthors Plus plugin is required to use this function.');
+			return new WP_Error('ERROR_COAUTHORS_PLUS_PLUGIN_IS_REQUIRED', 'CoAuthors Plus plugin is required to use this function.' );
 		}
 
 		// $what_is_return_value = $coauthors_plus->add_coauthors( $post_id, $user_ids, $append, 'id' );
