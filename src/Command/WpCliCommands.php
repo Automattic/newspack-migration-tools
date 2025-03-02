@@ -18,6 +18,7 @@ class WpCliCommands {
 			ContentConverterPluginMigrator::class,
 			CssMigrator::class,
 			GhostCMSMigrator::class,
+			GuestContributorsMigrator::class,
 			MenusMigrator::class,
 			MetaToContentMigrator::class,
 			NewspaperThemeCommand::class,
