@@ -1,102 +1,81 @@
 <?php
+/**
+ * GuestContributorsMigrator class.
+ * 
+ * @package newspack-migration-tools
+ */
 
 namespace Newspack\MigrationTools\Command;
 
 use Newspack\MigrationTools\Logic\GuestContributorsHelper;
+use Newspack\MigrationTools\Util\Log\CliLog;
+use Newspack\MigrationTools\Util\Log\FileLog;
+use Newspack\MigrationTools\Util\Log\MultiLog;
 use WP_CLI;
 
 /**
- * Class for migrating guest contributors.
+ * Guest Contributors migration commands.
  */
 class GuestContributorsMigrator implements WpCliCommandInterface {
 
     use WpCliCommandTrait;
 
-    /**
-     * Create a guest contributor from a display name.
-     *
-     * ## OPTIONS
-     *
-     * &lt;display_name&gt;
-     * : The display name for the guest contributor.
-     *
-     * [--force]
-     * : Force creation even if a user with the same display name exists.
-     *
-     * ## EXAMPLES
-     *
-     *     # Create a guest contributor
-     *     $ wp newspack-content-migrator guest-contributors create "John Smith"
-     *
-     *     # Force create a guest contributor even if one exists
-     *     $ wp newspack-content-migrator guest-contributors create "John Smith" --force
-     *
-     * @param array $args       Positional arguments.
-     * @param array $assoc_args Associative arguments.
-     */
-    public function create( $args, $assoc_args ) {
-        if ( empty( $args[0] ) ) {
-            WP_CLI::error( 'Display name is required.' );
-        }
-
-        $display_name = $args[0];
-        $force = isset( $assoc_args['force'] );
-
-        try {
-            $result = GuestContributorsHelper::create_from_display_name( $display_name, $force );
-            
-            if ( is_wp_error( $result ) ) {
-                WP_CLI::error( $result->get_error_message() );
-            }
-
-            WP_CLI::success( sprintf( 'Created guest contributor with ID: %d', $result ) );
-        } catch ( \Exception $e ) {
-            WP_CLI::error( $e->getMessage() );
-        }
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_cli_commands(): array {
+		return [
+			[
+				'newspack-content-migrator guest-contributors-get-by-display-name',
+				self::get_command_closure( 'cmd_get_by_display_name' ),
+				[
+					'shortdesc' => 'Get Guest Contributors by display name.',
+					'synopsis'  => [
+						[
+							'type'        => 'assoc',
+							'name'        => 'display_name',
+							'description' => 'Display name of the guest contributor. (May return multiple).',
+							'optional'    => false,
+							'repeating'   => false,
+						],
+					],
+				],
+			],
+        ];
     }
 
     /**
-     * Get guest contributor(s) by display name.
+     * Get guest contributor by display name. May return multiple.
      *
      * ## OPTIONS
      *
-     * &lt;display_name&gt;
+     * --display_name=<display_name>
      * : The display name to search for.
      *
      * ## EXAMPLES
      *
      *     # Find guest contributors
-     *     $ wp newspack-content-migrator guest-contributors get "John Smith"
+     *     $ wp newspack-content-migrator guest-contributors-get-by-display-name --display_name="John Smith"
      *
-     * @param array $args       Positional arguments.
+     * @param array $pos_args   Positional arguments.
      * @param array $assoc_args Associative arguments.
      */
-    public function get( $args, $assoc_args ) {
-        if ( empty( $args[0] ) ) {
-            WP_CLI::error( 'Display name is required.' );
+    public function get_by_display_name( $pos_args, $assoc_args ) {
+
+        $display_name = $assoc_args['display_name'] ?? '';
+        if ( empty( $display_name ) === 0 ) {
+            WP_CLI::error( '--display_name=<display_name> is required.' );
+            exit();
         }
 
-        $display_name = $args[0];
-
-        try {
-            $result = GuestContributorsHelper::get_by_display_name( $display_name );
-            
-            if ( is_wp_error( $result ) ) {
-                WP_CLI::error( $result->get_error_message() );
-            }
-
-            if ( empty( $result ) ) {
-                WP_CLI::warning( 'No guest contributors found with that display name.' );
-                return;
-            }
-
-            WP_CLI::success( sprintf( 'Found %d guest contributor(s):', count( $result ) ) );
-            foreach ( $result as $user_id ) {
-                $user = get_userdata( $user_id );
-                WP_CLI::line( sprintf( 'ID: %d, Display Name: %s', $user_id, $user->display_name ) );
-            }
-        } catch ( \Exception $e ) {
-            WP_CLI::error( $e->getMessage() );
+        $result = GuestContributorsHelper::get_by_display_name( $display_name );
+        if ( is_wp_error( $result ) ) {
+            WP_CLI::error( $result->get_error_message() );
+            exit();
         }
+
+        // Output result as list: 1,2,3
+        WP_CLI::line( implode( ',', $result ) );
+
     }
 }
