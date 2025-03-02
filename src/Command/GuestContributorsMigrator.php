@@ -73,7 +73,7 @@ class GuestContributorsMigrator implements WpCliCommandInterface {
         }
 
         $result = GuestContributorsHelper::get_by_display_name( $display_name );
-        if ( is_wp_error( $result ) ) {
+        if ( \is_wp_error( $result ) ) {
             WP_CLI::error( $result->get_error_message() );
             exit();
         }
