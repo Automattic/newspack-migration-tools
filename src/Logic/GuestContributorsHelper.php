@@ -61,13 +61,13 @@ class GuestContributorsHelper {
 	}
 
     /**
-     * Create a Guest Contributor from Display Name.
+     * Create a Guest Contributor by Display Name.
      *
      * @param string $display_name The Display Name of the new user.
 	 * @param bool   $force        Force the creation even if existing user(s) found.
 	 * @return int|\WP_Error  Inserted user ID or WP_Error.
      */
-    public static function create_from_display_name( $display_name, $force = false ): int|\WP_Error {
+    public static function create_by_display_name( $display_name, $force = false ): int|\WP_Error {
         
 		if ( ! self::validate_newspack_plugin() ) {
 			return new WP_Error( "Newspack Plugin's Guest Contributors feature is required to use this function." );
