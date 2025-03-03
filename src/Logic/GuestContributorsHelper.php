@@ -117,11 +117,11 @@ class GuestContributorsHelper {
 		// Pre-insert checks.
 
 		if ( is_wp_error( $userdata['user_email'] ) ) {
-			return new WP_Error( 'ERROR_GENERATE_EMAIL', json_encode( $userdata['user_email'] ) );
+			return new WP_Error( 'ERROR_GENERATE_EMAIL', wp_json_encode( $userdata['user_email'] ) );
 		}
 
 		if ( is_wp_error( $userdata['user_login'] ) ) {
-			return new WP_Error( 'ERROR_GENERATE_USERNAME', json_encode( $userdata['user_login'] ) );
+			return new WP_Error( 'ERROR_GENERATE_USERNAME', wp_json_encode( $userdata['user_login'] ) );
 		}
 
 		if ( empty( $userdata['user_nicename'] ) ) {
@@ -136,12 +136,12 @@ class GuestContributorsHelper {
 
 		// Fail on any errors.
 		if ( is_wp_error( $user_id ) ) {
-			return new WP_Error( 'ERROR_INSERT_USER', json_encode( $user_id ) );
+			return new WP_Error( 'ERROR_INSERT_USER', wp_json_encode( $user_id ) );
 		}
 		// Fail if wp_insert_user didn't return a positive int (return of 0 can happen on other failures...)
 		// core bug that results in 0 integer value: https://core.trac.wordpress.org/ticket/53109
 		if ( ! is_int( $user_id ) || ! ( $user_id > 0 ) ) {
-			return new WP_Error( 'ERROR_INSERT_USER_ID', 'returned non-positive integer: ' . json_encode( $user_id ) );
+			return new WP_Error( 'ERROR_INSERT_USER_ID', 'returned non-positive integer: ' . wp_json_encode( $user_id ) );
 		}
 
 		return $user_id;
