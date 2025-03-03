@@ -199,14 +199,46 @@ class GuestContributorsMigrator implements WpCliCommandInterface {
 		$logger->info( 'Starting tests...' );
         
 
+        $display_name = "";
+        $logger->info( "Testing generate_username() with display_name: " . $display_name );
         $result = GuestContributorsHelper::generate_username( $display_name );
+        if ( ! \is_wp_error( $result ) || GuestContributorsHelper::ERROR_SANITIZE_INPUT !== $result->get_error_message() ) {
+            $logger->error( 'Failed: ' . json_encode( $result ) );
+            exit();
+        }
+
+        $display_name = "&nbsp; <div>";
+        $logger->info( "Testing generate_username() with display_name: " . $display_name );
+        $result = GuestContributorsHelper::generate_username( $display_name );
+        if ( ! \is_wp_error( $result ) || GuestContributorsHelper::ERROR_SANITIZE_INPUT !== $result->get_error_message() ) {
+            $logger->error( 'Failed: ' . json_encode( $result ) );
+            exit();
+        }
+
+        $display_name = "John Smith";
+        $logger->info( "Testing generate_username() with display_name: " . $display_name );
+        $result = GuestContributorsHelper::generate_username( $display_name );
+        if ( \is_wp_error( $result ) || ! preg_match( '/john-smith-[0-9]{5}/', $result ) ) {
+            $logger->error( 'Failed: ' . json_encode( $result ) );
+            exit();
+        }
+
+        $display_name = str_repeat( 'José ', 13 ); // Over limit
+        $logger->info( "Testing generate_username() with display_name: " . $display_name );
+        $result = GuestContributorsHelper::generate_username( $display_name );
+        if ( \is_wp_error( $result ) || ! preg_match( '/' . str_repeat( 'jose-', 11 ). '[0-9]{5}/', $result ) ) {
+            $logger->error( 'Failed: ' . json_encode( $result ) );
+            exit();
+        }
 
 
-        $result = GuestContributorsHelper::generate_email( $display_name );
 
 
 
+exit();
 
+        
+$result = GuestContributorsHelper::generate_email( $display_name );
 
 
         $display_name = "John Smith";

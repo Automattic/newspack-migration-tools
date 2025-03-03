@@ -10,6 +10,8 @@ use WP_Role;
 class GuestContributorsHelper {
 
 	const ERROR_NEWSPACK_PLUGIN = "Newspack Plugin's Guest Contributors feature is required to use this function.";
+	const ERROR_SANITIZE_INPUT  = "Display name is (or sanitization created) a blank string.";
+	const ERROR_ATTEMPTS        = "Might be in an infinite loop.";
 
 	/**
 	 * Validates whether Newspack Plugin's Guest Contributors feature is active.
@@ -153,7 +155,7 @@ class GuestContributorsHelper {
 		// sanitize input.
 		$sanitized_display_name = sanitize_title( sanitize_user( trim( $display_name ), true ) );
 		if ( empty( $sanitized_display_name ) ) {
-			return new WP_Error( 'ERROR_SANITIZE_INPUT', 'Sanitization created a blank string.' );
+			return new WP_Error( 'ERROR_SANITIZE_INPUT', self::ERROR_SANITIZE_INPUT );
 		}
 
 		// hard code email column char length from db.
@@ -169,11 +171,11 @@ class GuestContributorsHelper {
 
 			if( ++$attempts > 9999 ) {
 				// stop...this could cause an ininite loop.
-				return new WP_Error( 'ERROR_ATTEMPTS', 'Might be in an infinite loop.' );
+				return new WP_Error( 'ERROR_ATTEMPTS', self::ERROR_ATTEMPTS );
 			}
 
 			// try a different random suffix on each loop
-			$suffix = '-' . rand( 11111, 99999 ) . $email_suffix;
+			$suffix = '-' . \wp_rand( 11111, 99999 ) . $email_suffix;
 
 			// make room if needed for the random suffix, then add it to the string.
 			$email_out = mb_substr( $sanitized_display_name, 0, $db_max_chars - mb_strlen( $suffix ) ) . $suffix;
@@ -194,7 +196,7 @@ class GuestContributorsHelper {
 		// sanitize in the same way wp_insert_user would.
 		$sanitized_display_name = sanitize_title( sanitize_user( trim( $display_name ), true ) );
 		if ( empty( $sanitized_display_name ) ) {
-			return new WP_Error( 'ERROR_SANITIZE_INPUT', 'Sanitization created a blank string.' );
+			return new WP_Error( 'ERROR_SANITIZE_INPUT', self::ERROR_SANITIZE_INPUT );
 		}
 
 		// hard code char length from db.
@@ -207,11 +209,11 @@ class GuestContributorsHelper {
 
 			if( ++$attempts > 9999 ) {
 				// stop...this could cause an ininite loop.
-				return new WP_Error( 'ERROR_ATTEMPTS', 'Might be in an infinite loop.' );
+				return new WP_Error( 'ERROR_ATTEMPTS', self::ERROR_ATTEMPTS );
 			}
 
 			// try a different random suffix on each loop
-			$suffix = '-' . rand( 11111, 99999 );
+			$suffix = '-' . \wp_rand( 11111, 99999 );
 
 			// make room in the username if needed for the random suffix, then add it to the string.
 			$username_out = mb_substr( $sanitized_display_name, 0, $db_max_chars - mb_strlen( $suffix ) ) . $suffix;
