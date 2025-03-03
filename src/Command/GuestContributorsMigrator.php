@@ -22,6 +22,9 @@ class GuestContributorsMigrator implements WpCliCommandInterface {
 
     use WpCliCommandTrait;
 
+    /** @var MultiLog $logger Logger instance. */
+    private $logger;
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -187,7 +190,7 @@ class GuestContributorsMigrator implements WpCliCommandInterface {
 
         // Logger.
 		$log_slug = str_replace( __NAMESPACE__ . '\\', '', __CLASS__ ) . '_' . __FUNCTION__;
-		$logger = MultiLog::get_logger( 
+		$this->logger = MultiLog::get_logger( 
 			'multi-' . $log_slug,
 			[
 				CliLog::get_logger( $log_slug, new ColoredLineFormatter( null, "%level_name%: %message%\n", null, true ) ),
@@ -196,65 +199,52 @@ class GuestContributorsMigrator implements WpCliCommandInterface {
 		);
 		
         // Tests.
-		$logger->info( 'Starting tests...' );
+		$this->logger->info( 'Starting tests...' );
         
 
-        $display_name = "";
-        $logger->info( "Testing generate_username() with display_name: " . $display_name );
-        $result = GuestContributorsHelper::generate_username( $display_name );
-        if ( ! \is_wp_error( $result ) || GuestContributorsHelper::ERROR_SANITIZE_INPUT !== $result->get_error_message() ) {
-            $logger->error( 'Failed: ' . json_encode( $result ) );
+        
+        $this->tester( 'generate_username', '', 'is_error', GuestContributorsHelper::ERROR_SANITIZE_INPUT );
+        $this->tester( 'generate_username', '&nbsp; <div>', 'is_error', GuestContributorsHelper::ERROR_SANITIZE_INPUT );
+        $this->tester( 'generate_username', 'John Smith', 'preg_match', '/^john-smith-[0-9]{5}$/' );
+        $this->tester( 'generate_username', str_repeat( 'José ', 13 ), 'preg_match', '/^' . str_repeat( 'jose-', 11 ). '[0-9]{5}$/' ); // Over limit
+
+        $this->tester( 'generate_email', '', 'is_error', GuestContributorsHelper::ERROR_SANITIZE_INPUT );
+        $this->tester( 'generate_email', '&nbsp; <div>', 'is_error', GuestContributorsHelper::ERROR_SANITIZE_INPUT );
+        $this->tester( 'generate_email', 'John Smith', 'preg_match', '/^john-smith-[0-9]{5}$/' );
+        $this->tester( 'generate_email', str_repeat( 'José ', 13 ), 'preg_match', '/^' . str_repeat( 'jose-', 11 ). '[0-9]{5}$/' ); // Over limit
+        
+        $this->logger->notice( "Tests completed." );
+    }
+
+    /**
+     * Test a function with various inputs and expected results.
+     *
+     * @param string $function Function name.
+     * @param string $display_name Display name.
+     * @param string $result_type Test type.
+     * @param string $result_match Expected match.
+     */
+    private function tester( $function, $display_name, $result_type, $result_match ) {
+
+        $this->logger->info( 'Testing ' . $function . '(' . $display_name . ')' );
+
+        if ( ! is_callable( [ GuestContributorsHelper::class, $function ] ) ) {
+            $this->logger->error( 'Failed: not a callable function.' );
             exit();
         }
 
-        $display_name = "&nbsp; <div>";
-        $logger->info( "Testing generate_username() with display_name: " . $display_name );
-        $result = GuestContributorsHelper::generate_username( $display_name );
-        if ( ! \is_wp_error( $result ) || GuestContributorsHelper::ERROR_SANITIZE_INPUT !== $result->get_error_message() ) {
-            $logger->error( 'Failed: ' . json_encode( $result ) );
-            exit();
+        $result = call_user_func( [ GuestContributorsHelper::class, $function ], $display_name );
+
+        if ( 'is_error' === $result_type && \is_wp_error( $result ) && $result_match === $result->get_error_message() ) {
+            return $this->logger->info( 'Passed.' );
         }
 
-        $display_name = "John Smith";
-        $logger->info( "Testing generate_username() with display_name: " . $display_name );
-        $result = GuestContributorsHelper::generate_username( $display_name );
-        if ( \is_wp_error( $result ) || ! preg_match( '/john-smith-[0-9]{5}/', $result ) ) {
-            $logger->error( 'Failed: ' . json_encode( $result ) );
-            exit();
+        if ( 'preg_match' === $result_type && is_string( $result ) && preg_match( $result_match, $result ) ) {
+            return $this->logger->info( 'Passed.' );
         }
 
-        $display_name = str_repeat( 'José ', 13 ); // Over limit
-        $logger->info( "Testing generate_username() with display_name: " . $display_name );
-        $result = GuestContributorsHelper::generate_username( $display_name );
-        if ( \is_wp_error( $result ) || ! preg_match( '/' . str_repeat( 'jose-', 11 ). '[0-9]{5}/', $result ) ) {
-            $logger->error( 'Failed: ' . json_encode( $result ) );
-            exit();
-        }
+        $this->logger->error( 'Failed: ' . json_encode( $result ) );
+        exit();
 
-
-
-
-
-exit();
-
-        
-$result = GuestContributorsHelper::generate_email( $display_name );
-
-
-        $display_name = "John Smith";
-
-        $logger->info( "Creating user with display name: {$display_name}" );
-
-        $result = GuestContributorsHelper::create_by_display_name( $display_name );
-        if ( \is_wp_error( $result ) ) {
-            $logger->error( $result->get_error_message() );
-        } 
-        
-        $result = GuestContributorsHelper::get_by_display_name( $display_name );
-        $result = GuestContributorsHelper::assign_authors_to_post( [ $user_id ], $post_id );
-        $result = GuestContributorsHelper::generate_email( $display_name );
-        $result = GuestContributorsHelper::generate_username( $display_name );
-        
-        $logger->notice( "Tests completed." );
     }
 }
