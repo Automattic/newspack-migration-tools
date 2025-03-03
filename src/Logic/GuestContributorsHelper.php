@@ -9,9 +9,14 @@ use WP_Role;
 
 class GuestContributorsHelper {
 
+	const ERROR_ATTEMPTS        = 'Might be in an infinite loop.';
+	const ERROR_CREATE_USER     = 'Could not create user.';
+	const ERROR_DISPLAY_NAME    = 'Display Name must be between 1 and 250 characters.';
+	const ERROR_EMAIL_DOMAIN    = 'Guest_Contributor_Role::get_dummy_email_domain() is not callable.';
+	const ERROR_EXISTING_USERS  = 'Existing user(s) found. Use $force = true to skip this check.';
 	const ERROR_NEWSPACK_PLUGIN = "Newspack Plugin's Guest Contributors feature is required to use this function.";
-	const ERROR_SANITIZE_INPUT  = "Display name is (or sanitization created) a blank string.";
-	const ERROR_ATTEMPTS        = "Might be in an infinite loop.";
+	const ERROR_SANITIZE_INPUT  = 'Display name is (or sanitization created) a blank string.';
+	const ERROR_USER_NICENAME   = 'User nicename can not be blank.';
 
 	/**
 	 * Validates whether Newspack Plugin's Guest Contributors feature is active.
@@ -23,7 +28,7 @@ class GuestContributorsHelper {
         // Const must be defined and registered.
 		// @ todo: test get_role() before after admin_init? is this check neccessary?
 		$role_const = '\Newspack\Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME';
-        if ( ! defined( $role_const ) || ! get_role( constant( $role_const ) ) instanceof \WP_Role) {
+        if ( ! defined( $role_const ) || ! \get_role( constant( $role_const ) ) instanceof \WP_Role) {
             return false;
         }
 
@@ -81,7 +86,7 @@ class GuestContributorsHelper {
 
 		// Check for core bug when display name is > 250: https://core.trac.wordpress.org/ticket/53109
 		if ( empty( $display_name) || mb_strlen( $display_name ) > 250 ) {
-			return new WP_Error( 'ERROR_DISPLAY_NAME', 'Display Name must be between 1 and 250 characters.' );
+			return new WP_Error( 'ERROR_DISPLAY_NAME', self::ERROR_DISPLAY_NAME );
 		}
 		
 		// If we're not forcing user creation, check for existing user(s) - could be multiple.
@@ -92,36 +97,36 @@ class GuestContributorsHelper {
 				return $existing;
 			}
 			if( ! empty( $existing ) ){
-				return new WP_Error( 'ERROR_EXISTING_USERS', 'Existing user(s) found. Use $force = true to skip this check.' );
+				return new WP_Error( 'ERROR_EXISTING_USERS', self::ERROR_EXISTING_USERS );
 			}
 		}
 
 		// New user data.
 		$userdata = [
-			'display_name' => $display_name,
-			'nickname'     => $display_name, // set value so it doesn't get set to user_login.
-			'user_pass'    => wp_generate_password(), // generate else wp will write to debug.log.
-			'role'         => Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME,
+			'display_name'  => $display_name,
+			'nickname'      => $display_name, // set value so it doesn't get set to user_login.
+			'role'          => Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME,
+			'user_email'    => self::generate_email( $display_name ),
+			'user_login'    => self::generate_username( $display_name ),
+			'user_nicename' => self::sanitize_for_db( $display_name, 50 ),
+			'user_pass'     => wp_generate_password(), // generate else wp will write to debug.log.
 		];
 
-		// Cut down on insert errors and increase security by getting a unique user login with random value.
-		$userdata['user_login'] = self::generate_username( $display_name );
-		if ( is_wp_error( $userdata['user_login'] ) ) {
-			return new WP_Error( 'ERROR_GENERATE_USERNAME', json_encode( $userdata['user_login'] ) );
-		}
+		// Pre-insert checks.
 
-		// Cut down on insert errors and increase security by getting a unique user email with random value.
-		$userdata['user_email'] = self::generate_email( $display_name );
 		if ( is_wp_error( $userdata['user_email'] ) ) {
 			return new WP_Error( 'ERROR_GENERATE_EMAIL', json_encode( $userdata['user_email'] ) );
 		}
 
-		// Set user_nicename ourselves for better security and nicer urls otherwise it will be created from user_login.
-		// If duplicate already in db, wordpress will add -2, -3, etc.
-		$userdata['user_nicename'] = mb_substr( sanitize_title( sanitize_user( $display_name, true ) ), 0, 50 );
+		if ( is_wp_error( $userdata['user_login'] ) ) {
+			return new WP_Error( 'ERROR_GENERATE_USERNAME', json_encode( $userdata['user_login'] ) );
+		}
+
 		if ( empty( $userdata['user_nicename'] ) ) {
+			// Set user_nicename ourselves for better security and nicer urls otherwise it will be created from user_login.
+			// If duplicate already in db, wordpress will add -2, -3, etc.
 			// this can happen if sanitization produced empty string. Ex: $display_name = "&nbsp; <div>"
-			return new WP_Error( 'ERROR_USER_NICENAME', 'User nicename can not be blank.' );
+			return new WP_Error( 'ERROR_USER_NICENAME', self::ERROR_USER_NICENAME );
 		}
 
 		// Insert.
@@ -134,10 +139,21 @@ class GuestContributorsHelper {
 		// Fail if wp_insert_user didn't return a positive int (return of 0 can happen on other failures...)
 		// core bug that results in 0 integer value: https://core.trac.wordpress.org/ticket/53109
 		if ( ! is_int( $user_id ) || ! ( $user_id > 0 ) ) {
-			return new WP_Error( 'ERROR_INSERT_USER', "returned non-positive integer: " . json_encode( $user_id ) );
+			return new WP_Error( 'ERROR_INSERT_USER_ID', "returned non-positive integer: " . json_encode( $user_id ) );
 		}
 
 		return $user_id;
+	}
+
+	/**
+	 * Sanitize display name for use in a database the same way WordPress does it.
+	 *
+	 * @param string $display_name The user display name.
+	 * @param int|null $length The maximum length of the sanitized string. Defaults to null (no limit).
+	 * @return string The sanitized string.
+	 */
+	public static function sanitize_for_db( $display_name, $length = null ) {
+		return mb_substr( \sanitize_title(\sanitize_user( $display_name, true ) ), 0, $length );
 	}
 
 	/**
@@ -149,11 +165,11 @@ class GuestContributorsHelper {
 	public static function generate_email( $display_name ): string|\WP_Error {
 		
 		if ( ! is_callable( 'Guest_Contributor_Role', 'get_dummy_email_domain' ) ) {
-			return new WP_Error( 'ERROR_GET_DUMMY_EMAIL_DOMAIN', 'Guest_Contributor_Role::get_dummy_email_domain() is not callable.' );
+			return new WP_Error( 'ERROR_EMAIL_DOMAIN', self::ERROR_EMAIL_DOMAIN );
 		}
 
 		// sanitize input.
-		$sanitized_display_name = sanitize_title( sanitize_user( trim( $display_name ), true ) );
+		$sanitized_display_name = self::sanitize_for_db( $display_name);
 		if ( empty( $sanitized_display_name ) ) {
 			return new WP_Error( 'ERROR_SANITIZE_INPUT', self::ERROR_SANITIZE_INPUT );
 		}
@@ -194,7 +210,7 @@ class GuestContributorsHelper {
 	public static function generate_username( $display_name ): string|\WP_Error {
 
 		// sanitize in the same way wp_insert_user would.
-		$sanitized_display_name = sanitize_title( sanitize_user( trim( $display_name ), true ) );
+		$sanitized_display_name = self::sanitize_for_db( $display_name );
 		if ( empty( $sanitized_display_name ) ) {
 			return new WP_Error( 'ERROR_SANITIZE_INPUT', self::ERROR_SANITIZE_INPUT );
 		}
