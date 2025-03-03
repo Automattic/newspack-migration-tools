@@ -7,6 +7,8 @@
 
 namespace Newspack\MigrationTools\Command;
 
+use Bramus\Monolog\Formatter\ColoredLineFormatter;
+use Monolog\Formatter\LineFormatter;
 use Newspack\MigrationTools\Logic\GuestContributorsHelper;
 use Newspack\MigrationTools\Util\Log\CliLog;
 use Newspack\MigrationTools\Util\Log\FileLog;
@@ -65,8 +67,8 @@ class GuestContributorsMigrator implements WpCliCommandInterface {
 				],
 			],
             [
-                'newspack-content-migrator guest-contributors-test',
-                self::get_command_closure( 'cmd_test' ),
+                'newspack-content-migrator guest-contributors-tests',
+                self::get_command_closure( 'cmd_tests' ),
                 [
                     'shortdesc' => 'Test Guest Contributors functions.',
                     'synopsis'  => [],
@@ -158,93 +160,69 @@ class GuestContributorsMigrator implements WpCliCommandInterface {
     /**
      * Test Guest Contributors functions.
      *
-     * Define WP_ENVIRONMENT_TYPE as local to run test: define( 'WP_ENVIRONMENT_TYPE', 'local' ).
+     * Define WP_ENVIRONMENT_TYPE as 'local' or 'development' to run tests.
      *
      * ## EXAMPLES
      *
      *     # Test functions
-     *     $ wp newspack-content-migrator guest-contributors-test
+     *     $ wp newspack-content-migrator guest-contributors-tests
      * 
      * ## OUTPUT
      *
-     *     Log file: GuestContributorsMigrator_cmd_test.log
+     *     Log file: GuestContributorsMigrator_cmd_tests.log
      *
      * @param array $pos_args   Positional arguments.
      * @param array $assoc_args Associative arguments.
      */
-    public function cmd_test( $pos_args, $assoc_args ) {
+    public function cmd_tests( $pos_args, $assoc_args ) {
 
-        if ( ! defined( 'WP_ENVIRONMENT_TYPE' ) || 'local' !== WP_ENVIRONMENT_TYPE ) {
-            WP_CLI::error( "Must have wp-config.php: define('WP_ENVIRONMENT_TYPE', 'local' )." );
+        if ( ! defined( 'WP_ENVIRONMENT_TYPE' ) || ! in_array( WP_ENVIRONMENT_TYPE, [ 'local', 'development' ], true ) ) {
+            WP_CLI::error( "Must have wp-config.php: define('WP_ENVIRONMENT_TYPE', 'local|development' )." );
         }
+
+        if( ! GuestContributorsHelper::validate_newspack_plugin() ) {
+            WP_CLI::error( GuestContributorsHelper::ERROR_NEWSPACK_PLUGIN );
+            exit();
+        };
 
         // Logger.
 		$log_slug = str_replace( __NAMESPACE__ . '\\', '', __CLASS__ ) . '_' . __FUNCTION__;
 		$logger = MultiLog::get_logger( 
 			'multi-' . $log_slug,
 			[
-				CliLog::get_logger( $log_slug ),
-				FileLog::get_logger( $log_slug ),
+				CliLog::get_logger( $log_slug, new ColoredLineFormatter( null, "%level_name%: %message%\n", null, true ) ),
+				FileLog::get_logger( $log_slug, $log_slug . '.log', new LineFormatter( "%level_name%: %message%\n", null, false, false, true ) ),
 			]
 		);
 		
-		$logger->info( 'Starting Guest Contributors Helper test...' );
-
-        // Create.
+        // Tests.
+		$logger->info( 'Starting tests...' );
         
+
+        $result = GuestContributorsHelper::generate_username( $display_name );
+
+
+        $result = GuestContributorsHelper::generate_email( $display_name );
+
+
+
+
+
+
         $display_name = "John Smith";
 
         $logger->info( "Creating user with display name: {$display_name}" );
 
         $result = GuestContributorsHelper::create_by_display_name( $display_name );
         if ( \is_wp_error( $result ) ) {
-            $logger->warning( sprintf( 'Error: %s', $result->get_error_message() ) );
-        } else {
-            WP_CLI::success( sprintf( '   Created user with ID: %d', $result ) );
-            $user_id = $result;
-        }
-
-
-/*
-
-        WP_CLI::line( sprintf( '   Result: %s', $result ? 'true' : 'false' ) );
-
-        WP_CLI::line( "\n2. Testing get_by_display_name()..." );
+            $logger->error( $result->get_error_message() );
+        } 
+        
         $result = GuestContributorsHelper::get_by_display_name( $display_name );
-        if ( \is_wp_error( $result ) ) {
-            WP_CLI::warning( sprintf( '   Error: %s', $result->get_error_message() ) );
-        } else {
-            WP_CLI::line( sprintf( '   Found %d user(s): %s', count( $result ), implode( ',', $result ) ) );
-        }
-
-        WP_CLI::line( "\n3. Testing create_by_display_name()..." );
-
-        if ( isset( $user_id ) ) {
-            WP_CLI::line( "\n4. Testing assign_authors_to_post()..." );
-            $result = GuestContributorsHelper::assign_authors_to_post( [ $user_id ], $post_id );
-            if ( \is_wp_error( $result ) ) {
-                WP_CLI::warning( sprintf( '   Error: %s', $result->get_error_message() ) );
-            } else {
-                WP_CLI::success( sprintf( '   Assigned author to post: %s', $result ? 'true' : 'false' ) );
-            }
-        }
-
-        WP_CLI::line( "\n5. Testing generate_email()..." );
+        $result = GuestContributorsHelper::assign_authors_to_post( [ $user_id ], $post_id );
         $result = GuestContributorsHelper::generate_email( $display_name );
-        if ( \is_wp_error( $result ) ) {
-            WP_CLI::warning( sprintf( '   Error: %s', $result->get_error_message() ) );
-        } else {
-            WP_CLI::line( sprintf( '   Generated email: %s', $result ) );
-        }
-
-        WP_CLI::line( "\n6. Testing generate_username()..." );
         $result = GuestContributorsHelper::generate_username( $display_name );
-        if ( \is_wp_error( $result ) ) {
-            WP_CLI::warning( sprintf( '   Error: %s', $result->get_error_message() ) );
-        } else {
-            WP_CLI::line( sprintf( '   Generated username: %s', $result ) );
-        }
-*/
-        WP_CLI::success( "\nTest complete!" );
+        
+        $logger->notice( "Tests completed." );
     }
 }
