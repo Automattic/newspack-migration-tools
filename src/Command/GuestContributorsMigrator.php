@@ -247,10 +247,11 @@ class GuestContributorsMigrator implements WpCliCommandInterface {
 			'post_status' => 'publish'
 		]);
 		$authors = GuestContributorsHelper::get_by_display_name( $unique_display_name );
-		$this->tester( 'assign_authors_to_post', [ $authors, $post_id ], 'preg_match', '/^[\d,]+$/' );
+		$this->tester( 'assign_authors_to_post', [ $authors, $post_id ], 'preg_match', '/^1$/' ); // true => 1
 
+		// @todo: verify with get_coauthors( $post_id ) // this will return object->ID (WP_User and GA just incase)
+		
 		// todo: check role with and without newspack plugin loaded (admin_init??)
-
 
 		$this->logger->notice( 'Tests completed.' );
 	}

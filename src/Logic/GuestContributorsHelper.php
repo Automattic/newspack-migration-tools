@@ -2,7 +2,6 @@
 
 namespace Newspack\MigrationTools\Logic;
 
-
 use CoAuthors_Plus;
 use Newspack\Guest_Contributor_Role;
 use WP_Error;
@@ -252,9 +251,14 @@ class GuestContributorsHelper {
 	/**
 	 * Assigns Authors to the Post.
 	 *
+	 * Return value is bool from CoAuthors Plus function. If you need to further verify user IDs were added
+	 * the other post, use get_coauthors( $post_id ) to get all objects on the post (WP_Users and possibly
+	 * Guest Authors).  Both objects will have ID propery: $object->ID .
+	 * 
 	 * @param array $user_ids WP User IDs.
 	 * @param int   $post_id  Post ID.
 	 * @param bool  $append   Append to existing authors.
+	 * @return bool|\WP_Error True on success, WP_Error otherwise.
 	 */
 	public static function assign_authors_to_post( array $user_ids, int $post_id, bool $append = false ): bool|\WP_Error {
 		
@@ -263,11 +267,6 @@ class GuestContributorsHelper {
 		}
 
 		global $coauthors_plus;
-		$coauthors_plus->add_coauthors( $post_id, $user_ids, $append, 'id' );
-
-		// @todo: add a taxonomy query to verify the correct authors on post?
-		// wait, doesn't $coauthors_plus have a get_authors we can use to compare the IDs?
-
-		return true;
+		return $coauthors_plus->add_coauthors( $post_id, $user_ids, $append, 'id' );
 	}
 }
