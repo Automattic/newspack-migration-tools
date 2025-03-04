@@ -2,8 +2,9 @@
 
 namespace Newspack\MigrationTools\Logic;
 
-use Newspack\Guest_Contributor_Role;
+
 use CoAuthors_Plus;
+use Newspack\Guest_Contributor_Role;
 use WP_Error;
 use WP_Role;
 
@@ -11,6 +12,7 @@ class GuestContributorsHelper {
 
 	const ERROR_ATTEMPTS        = 'Might be in an infinite loop.';
 	const ERROR_CREATE_USER     = 'Could not create user.';
+	const ERROR_COAUTHORS_PLUS  = 'CoAuthors Plus plugin is required to use this function.';
 	const ERROR_DISPLAY_NAME    = 'Display Name must be between 1 and 250 characters.';
 	const ERROR_EMAIL_DOMAIN    = 'Guest_Contributor_Role::get_dummy_email_domain() is not callable.';
 	const ERROR_EXISTING_USERS  = 'Existing user(s) found. Use $force = true to skip this check.';
@@ -19,20 +21,26 @@ class GuestContributorsHelper {
 	const ERROR_USER_NICENAME   = 'User nicename can not be blank.';
 
 	/**
+	 * Validates whether CoAuthors Plus Plugin is active.
+	 *
+	 * @return bool Is active.
+	 */
+	public static function validate_coauthors_plus_plugin(): bool {
+		global $coauthors_plus;
+		return ( isset( $coauthors_plus) && $coauthors_plus instanceof CoAuthors_Plus );
+	}
+
+
+	/**
 	 * Validates whether Newspack Plugin's Guest Contributors feature is active.
 	 *
 	 * @return bool Is role active.
 	 */
 	public static function validate_newspack_plugin(): bool {
-
 		// Const must be defined and registered.
 		// @ todo: test get_role() before after admin_init? is this check neccessary?
 		$role_const = '\Newspack\Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME';
-		if ( ! defined( $role_const ) || ! \get_role( constant( $role_const ) ) instanceof \WP_Role ) {
-			return false;
-		}
-
-		return true;
+		return ( defined( $role_const ) && \get_role( constant( $role_const ) ) instanceof \WP_Role );
 	}
 
 	/**
@@ -249,23 +257,17 @@ class GuestContributorsHelper {
 	 * @param bool  $append   Append to existing authors.
 	 */
 	public static function assign_authors_to_post( array $user_ids, int $post_id, bool $append = false ): bool|\WP_Error {
+		
+		if ( ! self::validate_coauthors_plus_plugin() ) {
+			return new WP_Error( 'ERROR_COAUTHORS_PLUS', self::ERROR_COAUTHORS_PLUS );
+		}
 
 		global $coauthors_plus;
+		$coauthors_plus->add_coauthors( $post_id, $user_ids, $append, 'id' );
 
-		// CAP Plugin is required.
-		if ( ! is_plugin_active( 'co-authors-plus/co-authors-plus.php' ) ) {
-			$this->logger->error( 'ERROR_CAP_PLUGIN_NOT_FOUND', 'Co-Authors Plus plugin not found. Install and activate it before using this command.' );
-			exit();
-		}
-		
-		if ( ! $coauthors_plus instanceof CoAuthors_Plus ) {
-			return new WP_Error( 'ERROR_COAUTHORS_PLUS_PLUGIN_IS_REQUIRED', 'CoAuthors Plus plugin is required to use this function.' );
-		}
+		// @todo: add a taxonomy query to verify the correct authors on post?
+		// wait, doesn't $coauthors_plus have a get_authors we can use to compare the IDs?
 
-		// $what_is_return_value = $coauthors_plus->add_coauthors( $post_id, $user_ids, $append, 'id' );
-
-		// CoAuhorsPlus helpers uses this to validate success: $valid = $this->validate_authors_for_post( $post_id, $authors );
-		// could I just do a select on taxonomy tables to grap the user ids on the post id?
-		return false; // $what_is_return_value; // ????
+		return true;
 	}
 }

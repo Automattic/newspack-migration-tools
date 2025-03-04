@@ -187,6 +187,11 @@ class GuestContributorsMigrator implements WpCliCommandInterface {
 			exit();
 		}
 
+		if ( ! GuestContributorsHelper::validate_coauthors_plus_plugin() ) {
+			WP_CLI::error( GuestContributorsHelper::ERROR_COAUTHORS_PLUS );
+			exit();
+		}
+
 		// Logger.
 		$log_slug     = str_replace( __NAMESPACE__ . '\\', '', __CLASS__ ) . '_' . __FUNCTION__;
 		$this->logger = MultiLog::get_logger( 
@@ -227,7 +232,7 @@ class GuestContributorsMigrator implements WpCliCommandInterface {
 		$this->tester( 'create_by_display_name', [ '' ], 'is_error', 'ERROR_DISPLAY_NAME' );
 		$this->tester( 'create_by_display_name', [ '&nbsp; <div>' ], 'is_error', 'ERROR_GENERATE_EMAIL' );
 		
-		// Mixed tests.
+		// Mixed get and create tests.
 		$unique_display_name = 'John ' . microtime() . ' ' . wp_rand( 11111, 99999 );
 		$this->tester( 'get_by_display_name', [ $unique_display_name ], 'preg_match', '/^$/' );
 		$this->tester( 'create_by_display_name', [ $unique_display_name ], 'preg_match', '/^\d+$/' );
@@ -236,7 +241,17 @@ class GuestContributorsMigrator implements WpCliCommandInterface {
 		$this->tester( 'create_by_display_name', [ $unique_display_name, true ], 'preg_match', '/^\d+$/' );
 		$this->tester( 'get_by_display_name', [ $unique_display_name ], 'preg_match', '/^[\d,]+$/' );
 
-		
+		// Assign authors tests.
+		$post_id = \wp_insert_post( [
+			'post_title' => 'Test ' . microtime() . ' ' . wp_rand( 11111, 99999 ),
+			'post_status' => 'publish'
+		]);
+		$authors = GuestContributorsHelper::get_by_display_name( $unique_display_name );
+		$this->tester( 'assign_authors_to_post', [ $authors, $post_id ], 'preg_match', '/^[\d,]+$/' );
+
+		// todo: check role with and without newspack plugin loaded (admin_init??)
+
+
 		$this->logger->notice( 'Tests completed.' );
 	}
 
@@ -250,8 +265,8 @@ class GuestContributorsMigrator implements WpCliCommandInterface {
 	 */
 	private function tester( $function, $args, $result_type, $result_match ) {
 
-
-		$this->logger->info( 'Testing ' . $function . '("' . implode( '", "', $args ) . '")' );
+		// Splat the arguments and also remove leading "[" and trailing "]".
+		$this->logger->info( 'Testing ' . $function . '(' . preg_replace( '/^\[|\]$/', '', json_encode( $args ) ) . ')' );
 
 		if ( ! is_callable( [ GuestContributorsHelper::class, $function ] ) ) {
 			$this->logger->error( 'Failed: not a callable function.' );
