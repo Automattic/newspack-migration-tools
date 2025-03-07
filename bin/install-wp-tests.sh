@@ -42,9 +42,9 @@ elif [[ $WP_VERSION == 'nightly' || $WP_VERSION == 'trunk' ]]; then
 	WP_TESTS_TAG="trunk"
 else
 	# http serves a single offer, whereas https serves multiple. we only want one
-	download http://api.wordpress.org/core/version-check/1.7/ /tmp/wp-latest.json
-	grep '[0-9]+\.[0-9]+(\.[0-9]+)?' /tmp/wp-latest.json
-	LATEST_VERSION=$(grep -o '"version":"[^"]*' /tmp/wp-latest.json | sed 's/"version":"//')
+	download http://api.wordpress.org/core/version-check/1.7/ $TMPDIR/wp-latest.json
+	grep '[0-9]+\.[0-9]+(\.[0-9]+)?' $TMPDIR/wp-latest.json
+	LATEST_VERSION=$(grep -o '"version":"[^"]*' $TMPDIR/wp-latest.json | sed 's/"version":"//')
 	if [[ -z "$LATEST_VERSION" ]]; then
 		echo "Latest WordPress version could not be found"
 		exit 1
@@ -98,8 +98,10 @@ install_wp() {
 # Install plugins needed for the test suite.
 install_contrib_plugins() {
   # Also see set_up_contrib_plugins() in ./bootstrap.php in this repo for how to activate plugins in the test suite.
-  wget -nv -O /tmp/co-authors-plus.zip https://downloads.wordpress.org/plugin/co-authors-plus.zip
-  unzip -q -o /tmp/co-authors-plus.zip -d $WP_CORE_DIR/wp-content/plugins/
+  wget -nv -O $TMPDIR/co-authors-plus.zip https://downloads.wordpress.org/plugin/co-authors-plus.zip
+  unzip -q -o $TMPDIR/co-authors-plus.zip -d $WP_CORE_DIR/wp-content/plugins/
+  wget -nv -O $TMPDIR/newspack-plugin.zip https://github.com/Automattic/newspack-plugin/releases/latest/download/newspack-plugin.zip
+  unzip -q -o $TMPDIR/newspack-plugin.zip -d $WP_CORE_DIR/wp-content/plugins/
 }
 
 install_test_suite() {
@@ -129,6 +131,8 @@ install_test_suite() {
 		sed $ioption "s/yourusernamehere/$DB_USER/" "$WP_TESTS_DIR"/wp-tests-config.php
 		sed $ioption "s/yourpasswordhere/$DB_PASS/" "$WP_TESTS_DIR"/wp-tests-config.php
 		sed $ioption "s|localhost|${DB_HOST}|" "$WP_TESTS_DIR"/wp-tests-config.php
+		# allow CAP in Newspack Plugin otherwise CAP tests fail:
+		echo "define( 'NEWSPACK_ENABLE_CAP_GUEST_AUTHORS', true );" >> "$WP_TESTS_DIR"/wp-tests-config.php
 	fi
 
 }
