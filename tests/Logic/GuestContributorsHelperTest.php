@@ -105,8 +105,8 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 
     public function createByDisplayNameProvider() {
         return [
-            'empty string' => ['', false, true],
-            'html content' => ['&nbsp; <div>', false, true],
+            'empty string' => ['', false, true], // 'ERROR_DISPLAY_NAME' 
+            'html content' => ['&nbsp; <div>', false, true], // 'ERROR_GENERATE_EMAIL'
         ];
     }
 
@@ -155,5 +155,9 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
         // Test assignment
         $result = GuestContributorsHelper::assign_authors_to_post($authors, $postId);
         $this->assertTrue($result);
+
+        // @todo: verify with get_coauthors( $post_id ) // this will return object->ID (WP_User and GA just incase)
+        // todo: check role with and without newspack plugin loaded (admin_init??)
+
     }
 }
