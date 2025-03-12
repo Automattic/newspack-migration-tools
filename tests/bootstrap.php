@@ -73,7 +73,8 @@ tests_add_filter( 'muplugins_loaded', fn() => require dirname( __DIR__ ) . '/new
 // Include and "activate" plugins needed.
 set_up_contrib_plugins();
 
-// Force include of Newspack Plugin's autoloader since phpunit ignores it because the plugin doesn't use __DIR__ .
+// Bug: Force include of Newspack Plugin's autoloader since phpunit ignores it because the plugin doesn't use __DIR__ .
+// Remove this once the PR ( https://github.com/Automattic/newspack-plugin/pull/3808 ) is merged into the latest release zip.
 require_once rtrim( sys_get_temp_dir(), '/\\' ) . '/wordpress/wp-content/plugins/newspack-plugin/vendor/autoload.php';
 
 // Start up the WP testing environment.
