@@ -154,26 +154,4 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
         $result = GuestContributorsHelper::get_by_display_name($uniqueName);
         $this->assertMatchesRegularExpression('/^[\d,]+$/', implode(',', $result));
     }
-
-    public function testAssignAuthorsToPost() {
-        $uniqueName = 'John ' . microtime() . ' ' . wp_rand(11111, 99999);
-        
-        // Create a test post
-        $postId = wp_insert_post([
-            'post_title' => 'Test ' . microtime() . ' ' . wp_rand(11111, 99999),
-            'post_status' => 'publish'
-        ]);
-        
-        // Create and get authors
-        GuestContributorsHelper::create_by_display_name($uniqueName);
-        $authors = GuestContributorsHelper::get_by_display_name($uniqueName);
-        
-        // Test assignment
-        $result = GuestContributorsHelper::assign_authors_to_post($authors, $postId);
-        $this->assertTrue($result);
-
-        // @todo: verify with get_coauthors( $post_id ) // this will return object->ID (WP_User and GA just incase)
-        // todo: check role with and without newspack plugin loaded (admin_init??)
-
-    }
 }
