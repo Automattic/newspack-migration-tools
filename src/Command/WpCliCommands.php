@@ -27,6 +27,7 @@ class WpCliCommands {
 			ShortcodesMigrator::class,
 			EnviraGalleryMigrator::class,
 			UsersMigrator::class,
+			FooGalleryMigrator::class,
 		];
 
 		return apply_filters( 'newspack_migration_tools_command_classes', $classes_with_cli_commands );
