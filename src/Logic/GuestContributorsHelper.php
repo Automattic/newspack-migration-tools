@@ -24,7 +24,6 @@ class GuestContributorsHelper {
 	 */
 	public static function validate_newspack_plugin(): bool {
 		// Const must be defined and registered.
-		// @ todo: test get_role() before after admin_init? is this check neccessary?
 		$role_const = '\Newspack\Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME';
 		return ( defined( $role_const ) && \get_role( constant( $role_const ) ) instanceof \WP_Role );
 	}
