@@ -45,7 +45,7 @@ class UsersMigrator implements WpCliCommandInterface {
 							'type'        => 'assoc',
 							'name'        => 'reassign-to',
 							'description' => 'User ID to reassign posts to before deleting users. If not provided, posts will be deleted.',
-							'optional'    => true,
+							'optional'    => false,
 							'repeating'   => false,
 						),
 						array(
@@ -128,14 +128,11 @@ class UsersMigrator implements WpCliCommandInterface {
 		}
 
 		// Handle reassign-to parameter
-		$reassign_to = null;
-		if ( isset( $assoc_args['reassign-to'] ) ) {
-			$reassign_to   = (int) $assoc_args['reassign-to'];
-			$reassign_user = get_user_by( 'id', $reassign_to );
-			if ( ! $reassign_user ) {
-				$logger->error( sprintf( 'Invalid reassign-to user ID: %d', $reassign_to ) );
-				return;
-			}
+		$reassign_to   = (int) $assoc_args['reassign-to'];
+		$reassign_user = get_user_by( 'id', $reassign_to );
+		if ( ! $reassign_user ) {
+			$logger->error( sprintf( 'Invalid reassign-to user ID: %d', $reassign_to ) );
+			return;
 		}
 
 		// Group users by role and collect them
@@ -173,20 +170,7 @@ class UsersMigrator implements WpCliCommandInterface {
 				}
 
 				$logger->info( sprintf( 'Deleting user: %s', wp_json_encode( $user_info ) ) );
-				// If no reassignment is specified, force delete all posts
-				if ( null === $reassign_to ) {
-					// Get all posts by this user
-					$posts = get_posts(
-						[
-							'author'         => $user->ID,
-							'post_type'      => 'post',
-							'posts_per_page' => -1,
-						]
-					);
-					foreach ( $posts as $post ) {
-						wp_delete_post( $post->ID, true );
-					}
-				}
+
 				$result = wp_delete_user( $user->ID, $reassign_to );
 				if ( $result ) {
 					$logger->info( sprintf( 'Successfully deleted user ID: %d', $user->ID ) );
