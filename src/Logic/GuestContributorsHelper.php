@@ -18,17 +18,6 @@ class GuestContributorsHelper {
 	const ERROR_USER_NICENAME   = 'User nicename can not be blank.';
 
 	/**
-	 * Validates whether Newspack Plugin's Guest Contributors feature is active.
-	 *
-	 * @return bool Is role active.
-	 */
-	public static function validate_newspack_plugin(): bool {
-		// Const must be defined and registered.
-		$role_const = '\Newspack\Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME';
-		return ( defined( $role_const ) && \get_role( constant( $role_const ) ) instanceof \WP_Role );
-	}
-
-	/**
 	 * Create a Guest Contributor by Display Name.
 	 *
 	 * @param string $display_name The Display Name of the new user.
@@ -234,4 +223,14 @@ class GuestContributorsHelper {
 		return mb_substr( \sanitize_title( \sanitize_user( $display_name, true ) ), 0, $length );
 	}
 
+	/**
+	 * Validates whether Newspack Plugin's Guest Contributors feature is active.
+	 *
+	 * @return bool Is role active.
+	 */
+	public static function validate_newspack_plugin(): bool {
+		// Const must be defined and registered.
+		$role_const = '\Newspack\Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME';
+		return ( defined( $role_const ) && \get_role( constant( $role_const ) ) instanceof \WP_Role );
+	}
 }
