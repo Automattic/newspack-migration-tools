@@ -212,50 +212,6 @@ class TestUsersMigrator extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test actual deletion of users without reassignment.
-	 */
-	public function test_delete_users_without_reassignment(): void {
-		// Create test users
-		$subscriber_ids = self::factory()->user->create_many( 3, [ 'role' => 'subscriber' ] );
-		$author_ids     = self::factory()->user->create_many( 2, [ 'role' => 'author' ] );
-		$editor_id      = self::factory()->user->create( [ 'role' => 'editor' ] );
-
-		// Create some test posts for authors
-		$post_ids = [];
-		foreach ( $author_ids as $author_id ) {
-			$post_ids[] = self::factory()->post->create(
-				[
-					'post_author' => $author_id,
-					'post_type'   => 'post',
-					'post_status' => 'publish',
-				]
-			);
-		}
-
-		// Delete subscribers and authors without reassignment
-		UsersMigrator::cmd_delete_users_by_role(
-			[],
-			[
-				'roles' => 'subscriber,author',
-			]
-		);
-
-		// Assert that subscribers and authors were deleted but editor remains
-		$subscribers = get_users( [ 'role' => 'subscriber' ] );
-		$authors     = get_users( [ 'role' => 'author' ] );
-		$editors     = get_users( [ 'role' => 'editor' ] );
-
-		$this->assertEquals( 0, count( $subscribers ) );
-		$this->assertEquals( 0, count( $authors ) );
-		$this->assertEquals( 1, count( $editors ) );
-
-		// Verify posts were deleted
-		foreach ( $post_ids as $post_id ) {
-			$this->assertNull( get_post( $post_id ) );
-		}
-	}
-
-	/**
 	 * Test deleting users when none exist for the specified roles.
 	 */
 	public function test_delete_users_none_exist(): void {
@@ -266,7 +222,8 @@ class TestUsersMigrator extends WP_UnitTestCase {
 		UsersMigrator::cmd_delete_users_by_role(
 			[],
 			[
-				'roles' => 'subscriber',
+				'roles'       => 'subscriber',
+				'reassign-to' => $this->admin_user_id,
 			]
 		);
 
@@ -302,6 +259,7 @@ class TestUsersMigrator extends WP_UnitTestCase {
 			[],
 			[
 				'exclude-roles' => 'editor,administrator',
+				'reassign-to'   => $this->admin_user_id,
 			]
 		);
 
@@ -351,10 +309,15 @@ class TestUsersMigrator extends WP_UnitTestCase {
 		);
 		$this->assertEquals( 3, count( $admins ), sprintf( 'Wrong number of administrators. Found: %s', wp_json_encode( $admin_info ) ) );
 
-		// Verify posts were deleted
-		foreach ( $post_ids as $post_id ) {
-			$this->assertNull( get_post( $post_id ) );
-		}
+		// Verify posts were reassigned
+		$admin_posts = get_posts(
+			[
+				'author'         => $this->admin_user_id,
+				'post_type'      => 'post',
+				'posts_per_page' => -1,
+			]
+		);
+		$this->assertEquals( count( $post_ids ), count( $admin_posts ) );
 	}
 
 	/**
@@ -370,6 +333,7 @@ class TestUsersMigrator extends WP_UnitTestCase {
 			[
 				'roles'         => 'author',
 				'exclude-roles' => 'administrator',
+				'reassign-to'   => $this->admin_user_id,
 			]
 		);
 
