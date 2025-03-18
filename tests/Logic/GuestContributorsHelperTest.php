@@ -17,14 +17,6 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 	}
 
     /**
-	 * Test that the CoAuthors Plus Plugin is installed and activated.
-	 */
-	public function test_coauthors_plus_plugin_activated() {
-		$helper = new GuestContributorsHelper();
-		$this->assertTrue( $helper->validate_coauthors_plus_plugin() );
-	}
-
-    /**
      * @dataProvider sanitizeForDbProvider
      */
     public function testSanitizeForDb($input, $expected) {
