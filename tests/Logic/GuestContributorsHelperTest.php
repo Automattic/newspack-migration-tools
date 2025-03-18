@@ -36,14 +36,14 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 	/**
 	 * @dataProvider usernameGenerationProvider
 	 */
-	public function testUsernameGeneration( $input, $expectedPattern, $expectError = false ) {
+	public function testUsernameGeneration( $input, $expect_pattern, $expect_error = false ) {
 		$result = GuestContributorsHelper::generate_username( $input );
 		
-		if ( $expectError ) {
+		if ( $expect_error ) {
 			$this->assertInstanceOf( WP_Error::class, $result );
 			$this->assertEquals( 'ERROR_SANITIZE_INPUT', $result->get_error_code() );
 		} else {
-			$this->assertMatchesRegularExpression( $expectedPattern, $result );
+			$this->assertMatchesRegularExpression( $expect_pattern, $result );
 		}
 	}
 
@@ -59,14 +59,14 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 	/**
 	 * @dataProvider emailGenerationProvider
 	 */
-	public function testEmailGeneration( $input, $expectedPattern, $expectError = false ) {
+	public function testEmailGeneration( $input, $expect_pattern, $expect_error = false ) {
 		$result = GuestContributorsHelper::generate_email( $input );
 		
-		if ( $expectError ) {
+		if ( $expect_error ) {
 			$this->assertInstanceOf( WP_Error::class, $result );
 			$this->assertEquals( 'ERROR_SANITIZE_INPUT', $result->get_error_code() );
 		} else {
-			$this->assertMatchesRegularExpression( $expectedPattern, $result );
+			$this->assertMatchesRegularExpression( $expect_pattern, $result );
 		}
 	}
 
@@ -82,12 +82,12 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 	/**
 	 * @dataProvider getByDisplayNameProvider
 	 */
-	public function testGetByDisplayName( $input, $expectedPattern ) {
+	public function testGetByDisplayName( $input, $expect_pattern ) {
 		$result = GuestContributorsHelper::get_by_display_name( $input );
 		if ( is_array( $result ) ) {
 			$result = implode( ',', $result );
 		}
-		$this->assertMatchesRegularExpression( $expectedPattern, $result );
+		$this->assertMatchesRegularExpression( $expect_pattern, $result );
 	}
 
 	public function getByDisplayNameProvider() {
@@ -101,10 +101,10 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 	/**
 	 * @dataProvider createByDisplayNameProvider
 	 */
-	public function testCreateByDisplayName( $input, $force, $expectError = false ) {
+	public function testCreateByDisplayName( $input, $force, $expect_error = false ) {
 		$result = GuestContributorsHelper::create_by_display_name( $input, $force );
 		
-		if ( $expectError ) {
+		if ( $expect_error ) {
 			$this->assertInstanceOf( WP_Error::class, $result );
 		} else {
 			$this->assertMatchesRegularExpression( '/^\d+$/', $result );
@@ -119,31 +119,31 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 	}
 
 	public function testCompleteGuestContributorFlow() {
-		$uniqueName = 'John ' . microtime() . ' ' . wp_rand( 11111, 99999 );
+		$unique_name = 'John ' . microtime() . ' ' . wp_rand( 11111, 99999 );
 		
 		// Initial get should return empty
-		$result = GuestContributorsHelper::get_by_display_name( $uniqueName );
+		$result = GuestContributorsHelper::get_by_display_name( $unique_name );
 		$this->assertMatchesRegularExpression( '/^$/', implode( ',', $result ) );
 		
 		// Create should succeed
-		$result = GuestContributorsHelper::create_by_display_name( $uniqueName );
+		$result = GuestContributorsHelper::create_by_display_name( $unique_name );
 		$this->assertMatchesRegularExpression( '/^\d+$/', $result );
 		
 		// Get should now return the ID
-		$result = GuestContributorsHelper::get_by_display_name( $uniqueName );
+		$result = GuestContributorsHelper::get_by_display_name( $unique_name );
 		$this->assertMatchesRegularExpression( '/^\d+$/', implode( ',', $result ) );
 		
 		// Create without force should fail
-		$result = GuestContributorsHelper::create_by_display_name( $uniqueName );
+		$result = GuestContributorsHelper::create_by_display_name( $unique_name );
 		$this->assertInstanceOf( WP_Error::class, $result );
 		$this->assertEquals( 'ERROR_EXISTING_USERS', $result->get_error_code() );
 		
 		// Create with force should succeed
-		$result = GuestContributorsHelper::create_by_display_name( $uniqueName, true );
+		$result = GuestContributorsHelper::create_by_display_name( $unique_name, true );
 		$this->assertMatchesRegularExpression( '/^\d+$/', $result );
 		
 		// Get should now return multiple IDs
-		$result = GuestContributorsHelper::get_by_display_name( $uniqueName );
+		$result = GuestContributorsHelper::get_by_display_name( $unique_name );
 		$this->assertMatchesRegularExpression( '/^[\d,]+$/', implode( ',', $result ) );
 	}
 }
