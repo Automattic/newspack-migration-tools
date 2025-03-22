@@ -72,22 +72,27 @@ class MigrationActivity {
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 			$this->wpdb->prepare(
 				'SELECT
-					m.id, 
+					m.id,
+					m.namespace_and_class,
 					m.name, 
 					m.version, 
 					ms.status_id 
 				FROM migrations m 
 				    LEFT JOIN migration_status ms 
 				        ON m.ID = ms.migration_id 
-				WHERE m.name = %s 
+				WHERE m.namespace_and_class = %s
+				  AND m.name = %s 
 				  AND m.version = ( 
 				  	SELECT MAX( version ) 
 				  	FROM migrations 
-				  	WHERE name = %s 
+				  	WHERE migrations.namespace_and_class = %s 
+				  	  AND name = %s 
 				  	) 
 				ORDER BY ms.created_at DESC, FIELD( status_id, 3, 5, 4, 2, 1)
 				LIMIT 1',
+				get_class( $migration ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				$migration->get_name(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				get_class( $migration ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				$migration->get_name(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 			)
 		);
@@ -187,16 +192,18 @@ class MigrationActivity {
 	/**
 	 * Obtains the latest status for a specific Migration.
 	 *
-	 * @param Migration $migration The migration.
+	 * @param string $namespace_and_class The migration namespace and class.
+	 * @param string $migration_name The migration name.
 	 *
 	 * @return object|null
 	 */
-	public function get_latest_status( Migration $migration ): object|null {
+	public function get_latest_status( string $namespace_and_class, string $migration_name ): object|null {
 		// phpcs:disable
 		$latest_status = $this->wpdb->get_row(
 			$this->wpdb->prepare(
 				'SELECT 
     					m.id as migration_id, 
+    					m.namespace_and_class as migration_namespace_and_class, 
     					m.name as migration_name, 
     					m.version migration_version, 
     					m.created_at migration_created_at, 
@@ -207,11 +214,12 @@ class MigrationActivity {
 					FROM migrations m 
 					    LEFT JOIN migration_status ms ON m.id = ms.migration_id 
 					    INNER JOIN migration_status_enum mse ON mse.id = ms.status_id 
-					WHERE m.name = %s 
-					ORDER BY ms.created_at DESC, m.created_at DESC 
+					WHERE m.namespace_and_class = %s 
+					  AND m.name = %s 
 					ORDER BY ms.created_at DESC, FIELD( ms.status_id, 3, 5, 4, 2, 1), m.created_at DESC 
 					LIMIT 1',
-				$migration->get_name()
+				$namespace_and_class,
+				$migration_name
 			)
 		);
 		// phpcs:enable
@@ -262,6 +270,7 @@ class MigrationActivity {
 		$maybe_inserted = $this->wpdb->insert(
 			'migrations',
 			[
+				'namespace_and_class' => get_class( $migration ),
 				'name'    => $migration->get_name(),
 				'version' => $version,
 			]

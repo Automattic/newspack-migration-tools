@@ -20,11 +20,12 @@ class ScaffoldTables {
 
 		$migration_table = "CREATE TABLE IF NOT EXISTS migrations (
 			id bigint(20) NOT NULL AUTO_INCREMENT,
+			namespace_and_class varchar(255) NOT NULL,
 			name varchar(255) NOT NULL,
 			version integer NOT NULL,
 			created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
 			PRIMARY KEY  (id),
-			UNIQUE KEY name_version (name, version)
+			UNIQUE KEY namespace_name_version (namespace_and_class, name, version)
 		) $charset_collate;";
 
 		$migration_status_enum_table = "CREATE TABLE IF NOT EXISTS migration_status_enum (
