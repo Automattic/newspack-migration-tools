@@ -6,6 +6,7 @@ use Exception;
 use Newspack\MigrationTools\Scaffold\Contracts\Migration;
 use Newspack\MigrationTools\Scaffold\Contracts\MigrationRunKey;
 use Newspack\MigrationTools\Scaffold\Enum\MigrationStatus;
+use Newspack\MigrationTools\Scaffold\Singletons\WordPressData;
 
 /**
  * Class for migration activity.
@@ -265,6 +266,78 @@ class MigrationActivity {
 		);
 		//phpcs:enable
 	}
+
+	/**
+	 * Getting the migration objects that spawned the creation of a specific WordPress object involves getting any
+	 * migration objects directly linked via the `migration_destination_sources` table. From there, at least
+	 * one of those migration objects will be the original object that initially created the WordPress
+	 * object. Returning any migration object records where that original object was used will give
+	 * a full accounting of which migration objects were involved in shaping the WordPress object.
+	 *
+	 * @param int    $wordpress_object_id The WordPress object ID. (e.g. post ID, term ID, etc.).
+	 * @param string $table_name The table names where the WordPress object ID is located.
+	 *
+	 * @return array
+	 * @throws Exception Throws Exception if the given $table_name does not exist.
+	 */
+	public function get_source_migration_objects_for_wordpress_object( int $wordpress_object_id, string $table_name ): array {
+		$table_column_ids = [];
+		$table_column_ids = array_merge( $table_column_ids, WordPressData::get_instance()->get_column_ids_for_table( $table_name ) );
+
+		$table_column_id_placeholders = implode( ',', array_fill( 0, count( $table_column_ids ), '%d' ) );
+
+		// phpcs:disable -- query is properly prepared.
+		$first_order_sources = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT 
+    					mo.*,
+    					mdc.source_type, 
+    					mdc.pointer_to_object_id, 
+    					m.id as migration_id, 
+    					m.namespace_and_class as migration_namespace_and_class,
+    					m.name as migration_name, 
+    					m.version as migration_version 
+					FROM migration_objects mo
+						INNER JOIN migration_data_chests mdc ON mdc.id = mo.migration_data_chest_id 
+					    INNER JOIN migrations m ON m.id = mdc.migration_id 
+					WHERE mo.id IN (
+						SELECT 
+						    DISTINCT migration_object_id
+						FROM migration_destination_sources
+						WHERE wordpress_object_id = %d 
+						  AND wordpress_table_column_id IN ( $table_column_id_placeholders )
+    				)",
+				$wordpress_object_id,
+				...$table_column_ids
+			)
+		);
+
+		// phpcs:enable
+
+		$migration_object_ids_map = array_fill_keys( array_column( $first_order_sources, 'id' ), true );
+		$second_order_sources     = [];
+
+		foreach ( $first_order_sources as $first_order_source ) {
+			$second_order_duplicate_sources = $this->get_duplicate_migration_objects(
+				$first_order_source->original_object_id,
+				json_decode( $first_order_source->json_data )
+			);
+
+			$second_order_sources = array_merge(
+				$second_order_sources,
+				array_filter(
+					$second_order_duplicate_sources,
+					// Filter out any second-order sources that are the same as the first-order source.
+					// Remember, in order to filter out, the return value should be false.
+					fn( $second_order_source ) => ! isset( $migration_object_ids_map[ $second_order_source->id ] )
+				)
+			);
+		}
+
+		return array_merge( $first_order_sources, $second_order_sources );
+	}
+
+	/**
 	 * Sets the status of a migration.
 	 *
 	 * @param MigrationRunKey $run_key The migration run key.
@@ -330,5 +403,4 @@ class MigrationActivity {
 	public function create_initial_migration_record( Migration $migration ): MigrationRunKey {
 		return $this->create_migration_record( $migration, 1 );
 	}
-
 }
