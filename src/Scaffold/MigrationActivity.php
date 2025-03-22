@@ -44,7 +44,7 @@ class MigrationActivity {
     				m.name, 
     				m.version, 
     				m.status_id 
-				FROM migration m 
+				FROM migrations m 
 				    LEFT JOIN migration_status ms 
 				        ON m.ID = ms.migration_id 
 				WHERE m.name = %s 
