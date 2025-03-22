@@ -200,7 +200,6 @@ abstract class AbstractWordPressData {
 	 */
 	public function update(): bool|WP_Error {
 		if ( null === $this->get_primary_id() ) {
-			// TODO perhaps we use $migration_object to try and obtain a primary ID (via `migration_destination_sources`)?
 			return new WP_Error( 'missing_primary_key', 'Primary key not found in data.' );
 		}
 
