@@ -8,6 +8,8 @@ use DateTimeInterface;
 use DateTimeZone;
 use Exception;
 use Newspack\MigrationTools\Scaffold\Contracts\RunAwareMigrationObject;
+use Newspack\MigrationTools\Scaffold\Enum\MigrationStatus;
+use Newspack\MigrationTools\Scaffold\MigrationActivity;
 use Newspack\MigrationTools\Scaffold\MigrationObjectPropertyWrapper;
 use Newspack\MigrationTools\Scaffold\Singletons\WordPressData;
 use WP_Error;
@@ -58,6 +60,13 @@ abstract class AbstractWordPressData {
 	 * @var RunAwareMigrationObject|null $migration_object The migration object.
 	 */
 	protected ?RunAwareMigrationObject $migration_object;
+
+	/**
+	 * Class which facilitates obtaining migration activity.
+	 *
+	 * @var MigrationActivity Migration Activity instance.
+	 */
+	protected MigrationActivity $migration_activity;
 
 	/**
 	 * Constructor.
@@ -203,6 +212,16 @@ abstract class AbstractWordPressData {
 					$this->get_migration_object()->get_data_id(),
 					$this->get_primary_id(),
 					$this->get_wordpress_object_id_from_migration_object(),
+				)
+			);
+		}
+
+		// Here we need to make sure that the item we're trying to update isn't part of an ongoing migration.
+		if ( ! $this->is_able_to_proceed_with_update() ) {
+			throw new Exception(
+				sprintf(
+					'There are migration objects or migrations associated with this WordPressObject ID %s that have not been processed or finished, respectively.',
+					$this->get_primary_id()
 				)
 			);
 		}
@@ -522,5 +541,67 @@ abstract class AbstractWordPressData {
 		return $this->get_wordpress_object_id_from_legacy_id(
 			$this->get_migration_object()->get_data_id()
 		);
+	}
+
+	protected function get_migration_activity(): MigrationActivity {
+		if ( ! isset( $this->migration_activity ) ) {
+			$this->migration_activity = new MigrationActivity();
+		}
+
+		return $this->migration_activity;
+	}
+
+
+	protected function is_able_to_proceed_with_update(): bool {
+		$previous_migration_object_records = $this->get_migration_activity()
+												  ->get_source_migration_objects_for_wordpress_object(
+													  $this->get_primary_id(),
+													  $this->get_table_name()
+												  );
+
+		$concat_migration_namespace_and_name     = function ( $migration_object_record ) {
+			return $migration_object_record->migration_namespace_and_class . '#' . $migration_object_record->migration_name;
+		};
+		$unique_migrations_and_latest_status_map = [];
+		$current_migration_namespace_and_class   = get_class(
+			$this->get_migration_object()
+				 ->get_data_chest()
+				 ->get_run_key()
+				 ->get_migration()
+		);
+
+		foreach ( $previous_migration_object_records as $migration_object_record ) {
+			// Ignore any migration objects that belong to the currently running migration.
+			if ( $migration_object_record->migration_namespace_and_class === $current_migration_namespace_and_class ) {
+				continue;
+			}
+
+			// Check every migration object has been processed.
+			if ( 0 === (int) $migration_object_record->processed ) {
+				return false;
+			}
+
+			$migration_namespace_and_name = $concat_migration_namespace_and_name( $migration_object_record );
+
+			// However, here we want to ensure we only consider the latest status for unique migrations only.
+			if ( isset( $unique_migrations_and_latest_status_map[ $migration_namespace_and_name ] ) ) {
+				continue;
+			}
+
+			$unique_migrations_and_latest_status_map[ $migration_namespace_and_name ] = null;
+
+			$latest_status = $this->get_migration_activity()->get_latest_status( $migration_object_record->migration_namespace_and_class, $migration_object_record->migration_name );
+
+			switch ( $latest_status->status ) {
+				case MigrationStatus::FAILED:
+				case MigrationStatus::COMPLETED:
+				case MigrationStatus::CANCELLED:
+					continue 2;
+				default:
+					return false;
+			}
+		}
+
+		return true;
 	}
 }
