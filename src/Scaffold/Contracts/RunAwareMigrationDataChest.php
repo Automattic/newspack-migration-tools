@@ -2,7 +2,16 @@
 
 namespace Newspack\MigrationTools\Scaffold\Contracts;
 
+use Newspack\MigrationTools\Scaffold\MigrationRunContext;
+
 interface RunAwareMigrationDataChest extends MigrationDataChest {
+
+	/**
+	 * Returns the Migration Run Context.
+	 *
+	 * @return MigrationRunContext
+	 */
+	public function get_run_context(): MigrationRunContext;
 
 	/**
 	 * Returns the Migration Run Key.

@@ -19,11 +19,11 @@ abstract class AbstractRunAwareMigrationDataChest extends AbstractMigrationDataC
 	private \wpdb $wpdb;
 
 	/**
-	 * The migration run key.
+	 * The migration run context.
 	 *
-	 * @var MigrationRunKey The migration run key.
+	 * @var MigrationRunContext The migration run context.
 	 */
-	private MigrationRunKey $run_key;
+	private MigrationRunContext $run_context;
 
 	/**
 	 * The Database ID for this migration data container.
@@ -44,15 +44,15 @@ abstract class AbstractRunAwareMigrationDataChest extends AbstractMigrationDataC
 		 *
 		 * @param iterable        $data The data set that needs to be migrated.
 		 * @param string          $pointer_to_identifier Pointer to the data attribute which uniquely identifies individual objects with the data set.
-		 * @param MigrationRunKey $run_key The migration run key.
+		 * @param MigrationRunContext $run_context The migration run context.
 		 * @param int|null        $id The Database ID for the migration data set.
 		 * @param bool|null       $stored Whether the data set has been successfully stored or not.
 		 *
 		 * @throws Exception If $id does not exist in `migration_data_chests` table.
 		 */
-	public function __construct( iterable $data, string $pointer_to_identifier, MigrationRunKey $run_key, ?int $id = null, ?bool $stored = null ) {
+	public function __construct( iterable $data, string $pointer_to_identifier, MigrationRunContext $run_context, ?int $id = null, ?bool $stored = null ) {
 		parent::__construct( $data, $pointer_to_identifier );
-		$this->run_key = $run_key;
+		$this->run_context = $run_context;
 
 		global $wpdb;
 		$this->wpdb = $wpdb;
@@ -83,12 +83,21 @@ abstract class AbstractRunAwareMigrationDataChest extends AbstractMigrationDataC
 	}
 
 	/**
+	 * Returns the Migration Run Context.
+	 *
+	 * @return MigrationRunContext
+	 */
+	public function get_run_context(): MigrationRunContext {
+		return $this->run_context;
+	}
+
+	/**
 	 * Returns the migration run key.
 	 *
 	 * @return MigrationRunKey
 	 */
 	public function get_run_key(): MigrationRunKey {
-		return $this->run_key;
+		return $this->get_run_context()->get_run_key();
 	}
 
 	/**
