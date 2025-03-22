@@ -85,7 +85,7 @@ class MigrationActivity {
 				  	FROM migrations 
 				  	WHERE name = %s 
 				  	) 
-				ORDER BY ms.created_at DESC
+				ORDER BY ms.created_at DESC, FIELD( status_id, 3, 5, 4, 2, 1)
 				LIMIT 1',
 				$migration->get_name(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				$migration->get_name(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
@@ -161,7 +161,7 @@ class MigrationActivity {
 					    LEFT JOIN migration_status ms ON m.id = ms.migration_id 
 					    INNER JOIN migration_status_enum mse ON mse.id = ms.status_id 
 					WHERE m.name = %s 
-					ORDER BY ms.created_at DESC, m.created_at DESC',
+					ORDER BY ms.created_at DESC, FIELD( ms.status_id, 3, 5, 4, 2, 1), m.created_at DESC',
 				$migration->get_name()
 			)
 		);
@@ -209,6 +209,7 @@ class MigrationActivity {
 					    INNER JOIN migration_status_enum mse ON mse.id = ms.status_id 
 					WHERE m.name = %s 
 					ORDER BY ms.created_at DESC, m.created_at DESC 
+					ORDER BY ms.created_at DESC, FIELD( ms.status_id, 3, 5, 4, 2, 1), m.created_at DESC 
 					LIMIT 1',
 				$migration->get_name()
 			)
