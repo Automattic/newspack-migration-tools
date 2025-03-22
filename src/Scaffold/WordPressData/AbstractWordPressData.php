@@ -233,13 +233,6 @@ abstract class AbstractWordPressData {
 			);
 			// phpcs:enable
 
-			if ( $existing_source ) {
-				$this->wpdb->delete(
-					'migration_destination_sources',
-					[ 'id' => $existing_source->id ]
-				);
-			}
-
 			$this->wpdb->insert(
 				'migration_destination_sources',
 				[
