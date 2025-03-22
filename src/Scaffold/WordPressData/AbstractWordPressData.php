@@ -543,6 +543,11 @@ abstract class AbstractWordPressData {
 		);
 	}
 
+	/**
+	 * Returns a MigrationActivity object. Only creates a new MigrationActivity object if it doesn't exist.'
+	 *
+	 * @return MigrationActivity
+	 */
 	protected function get_migration_activity(): MigrationActivity {
 		if ( ! isset( $this->migration_activity ) ) {
 			$this->migration_activity = new MigrationActivity();
@@ -552,22 +557,25 @@ abstract class AbstractWordPressData {
 	}
 
 
+	/**
+	 * This function will check if the an update opertion is allowed for the current WordPress object. To do this, it
+	 * must confirm that there are no migration objects with the same Legacy ID in an unprocessed state. Furthermore,
+	 * it will also check that any Migration associated with a Migration Object is completed.
+	 *
+	 * @return bool
+	 * @throws Exception Throws Exception if the given $table_name does not exist.
+	 */
 	protected function is_able_to_proceed_with_update(): bool {
-		$previous_migration_object_records = $this->get_migration_activity()
-												  ->get_source_migration_objects_for_wordpress_object(
-													  $this->get_primary_id(),
-													  $this->get_table_name()
-												  );
-
+		$previous_migration_object_records       = $this->get_migration_activity()->get_source_migration_objects_for_wordpress_object( $this->get_primary_id(), $this->get_table_name() );
 		$concat_migration_namespace_and_name     = function ( $migration_object_record ) {
 			return $migration_object_record->migration_namespace_and_class . '#' . $migration_object_record->migration_name;
 		};
 		$unique_migrations_and_latest_status_map = [];
 		$current_migration_namespace_and_class   = get_class(
 			$this->get_migration_object()
-				 ->get_data_chest()
-				 ->get_run_key()
-				 ->get_migration()
+				->get_data_chest()
+				->get_run_key()
+				->get_migration()
 		);
 
 		foreach ( $previous_migration_object_records as $migration_object_record ) {
