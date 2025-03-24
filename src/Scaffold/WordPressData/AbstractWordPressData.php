@@ -597,7 +597,11 @@ abstract class AbstractWordPressData {
 
 			$unique_migrations_and_latest_status_map[ $migration_namespace_and_name ] = null;
 
-			$latest_status = $this->get_migration_activity()->get_latest_status( $migration_object_record->migration_namespace_and_class, $migration_object_record->migration_name );
+			$latest_status = $this->get_migration_activity()->get_latest_status(
+				$migration_object_record->migration_namespace_and_class,
+				$migration_object_record->migration_name,
+				$migration_object_record->migration_version
+			);
 
 			switch ( $latest_status->status ) {
 				case MigrationStatus::FAILED:
