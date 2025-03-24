@@ -17,6 +17,12 @@ use Newspack\MigrationTools\Scaffold\MigrationStates\RunningMigrationState;
 class Migrator {
 
 	/**
+	 * The migration run context.
+	 *
+	 * @var MigrationRunContext|null $run_context The context for the migration run.
+	 */
+	private ?MigrationRunContext $run_context;
+
 	 * Resumes the migration run.
 	 *
 	 * @param Migration $migration The migration to resume.
