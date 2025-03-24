@@ -195,14 +195,25 @@ class MigrationActivity {
 	 *
 	 * @param string $namespace_and_class The migration namespace and class.
 	 * @param string $migration_name The migration name.
+	 * @param int    $migration_version The migration version.
 	 *
 	 * @return object|null
 	 */
-	public function get_latest_status( string $namespace_and_class, string $migration_name ): object|null {
+	public function get_latest_status( string $namespace_and_class, string $migration_name, int $migration_version = 0 ): object|null {
+		$constraints = [
+			$namespace_and_class,
+			$migration_name,
+		];
+
+		if ( $migration_version > 0 ) {
+			$version_constraint = 'AND m.version = %d';
+			$constraints[]      = $migration_version;
+		}
+
 		// phpcs:disable
 		$latest_status = $this->wpdb->get_row(
 			$this->wpdb->prepare(
-				'SELECT 
+				"SELECT 
     					m.id as migration_id, 
     					m.namespace_and_class as migration_namespace_and_class, 
     					m.name as migration_name, 
@@ -217,10 +228,10 @@ class MigrationActivity {
 					    INNER JOIN migration_status_enum mse ON mse.id = ms.status_id 
 					WHERE m.namespace_and_class = %s 
 					  AND m.name = %s 
+					  {$version_constraint}
 					ORDER BY ms.created_at DESC, FIELD( ms.status_id, 3, 5, 4, 2, 1), m.created_at DESC 
-					LIMIT 1',
-				$namespace_and_class,
-				$migration_name
+					LIMIT 1",
+				...$constraints
 			)
 		);
 		// phpcs:enable
@@ -375,8 +386,8 @@ class MigrationActivity {
 			'migrations',
 			[
 				'namespace_and_class' => get_class( $migration ),
-				'name'    => $migration->get_name(),
-				'version' => $version,
+				'name'                => $migration->get_name(),
+				'version'             => $version,
 			]
 		);
 
