@@ -2,10 +2,10 @@
 
 namespace Newspack\MigrationTools\Scaffold\MigrationStates;
 
-use Exception;
 use Newspack\MigrationTools\Scaffold\Contracts\MigrationState;
 use Newspack\MigrationTools\Scaffold\Enum\MigrationStatus;
 use Newspack\MigrationTools\Scaffold\MigrationRunContext;
+use Throwable;
 use WP_Error;
 
 /**
@@ -23,9 +23,9 @@ class FailedMigrationState extends AbstractMigrationState {
 	/**
 	 * The error that stopped the migration.
 	 *
-	 * @var WP_Error|Exception|null $error The error that stopped the migration.
+	 * @var WP_Error|Throwable|null $error The error that stopped the migration.
 	 */
-	private WP_Error|Exception|null $error;
+	private WP_Error|Throwable|null $error;
 
 	/**
 	 * Flag which determines whether the migration should continue or not, in spite of failure.
@@ -78,11 +78,11 @@ class FailedMigrationState extends AbstractMigrationState {
 	/**
 	 * Set the error that caused the migration command to fail/stop.
 	 *
-	 * @param Exception|WP_Error $error The error that caused the migration command to fail/stop.
+	 * @param Throwable|WP_Error $error The error that caused the migration command to fail/stop.
 	 *
 	 * @return FailedMigrationState
 	 */
-	public function set_error( Exception|WP_Error $error ): FailedMigrationState {
+	public function set_error( Throwable|WP_Error $error ): FailedMigrationState {
 		$this->error = $error;
 
 		return $this;
@@ -131,7 +131,7 @@ class FailedMigrationState extends AbstractMigrationState {
 	private function store_error(): void {
 		if ( isset( $this->error ) ) {
 			// TODO - write error to DB
-			if ( $this->error instanceof Exception ) {
+			if ( $this->error instanceof Throwable ) {
 
 			} else { // WP_Error
 
