@@ -64,6 +64,7 @@ class FailedMigrationState extends AbstractMigrationState {
 		 * Not only can it write state information to its own table, but we also send out a Slack message when it fails.
 		 */
 
+		$this->print_error();
 		$this->store_error();
 		$this->send_slack_message();
 
@@ -121,6 +122,23 @@ class FailedMigrationState extends AbstractMigrationState {
 		$this->notify = $flag;
 
 		return $this;
+	}
+
+	/**
+	 * Prints the error message to the console.
+	 *
+	 * @return void
+	 */
+	private function print_error(): void {
+		if ( isset( $this->error ) ) {
+			if ( $this->error instanceof Throwable ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- custom error logging in use.
+				error_log( $this->error->getMessage() );
+			} else { // WP_Error.
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- custom error logging in use.
+				error_log( $this->error->get_error_message() );
+			}
+		}
 	}
 
 	/**
