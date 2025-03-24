@@ -84,12 +84,21 @@ abstract class AbstractRunAwareMigrationObject extends AbstractMigrationObject i
 	}
 
 	/**
+	 * Returns the Migration Run Context.
+	 *
+	 * @return MigrationRunContext
+	 */
+	public function get_run_context(): MigrationRunContext {
+		return $this->get_data_chest()->get_run_context();
+	}
+
+	/**
 	 * Returns the Migration Run Key.
 	 *
 	 * @return MigrationRunKey
 	 */
 	public function get_run_key(): MigrationRunKey {
-		return $this->get_data_chest()->get_run_key();
+		return $this->get_run_context()->get_run_key();
 	}
 
 	/**

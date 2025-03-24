@@ -182,7 +182,7 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 			}
 
 			// Here we know that we have an instance of MigrationObject, but not a RunAwareMigrationObject, so let's wrap it.
-			$migration_object = new RunAwareMigrationObjectWrapper( $migration_object, $this->get_run_key() );
+			$migration_object = new RunAwareMigrationObjectWrapper( $migration_object, $this->get_run_context() );
 
 			if ( ! $migration_object->has_been_processed() ) {
 				yield $migration_object;

@@ -37,11 +37,11 @@ class RunAwareMigrationObjectWrapper implements RunAwareMigrationObject, ArrayAc
 	private RunAwareMigrationDataChest $data_container;
 
 	/**
-	 * The Migration Run Key.
+	 * Migration Run Context.
 	 *
-	 * @var MigrationRunKey $run_key The Migration Run Key.
+	 * @var MigrationRunContext $run_context The migration run context.
 	 */
-	private MigrationRunKey $run_key;
+	private MigrationRunContext $run_context;
 
 	/**
 	 * The Database ID for this Migration Object.
@@ -68,12 +68,11 @@ class RunAwareMigrationObjectWrapper implements RunAwareMigrationObject, ArrayAc
 	 * Constructor.
 	 *
 	 * @param MigrationObject $migration_object The Migration Object.
-	 * @param MigrationRunKey $run_key The Migration Run Key.
 	 */
-	public function __construct( MigrationObject $migration_object, MigrationRunKey $run_key ) {
+	public function __construct( MigrationObject $migration_object, MigrationRunContext $run_context ) {
 		global $wpdb;
 		$this->wpdb             = $wpdb;
-		$this->run_key          = $run_key;
+		$this->run_context      = $run_context;
 		$this->migration_object = $migration_object;
 	}
 
@@ -115,10 +114,19 @@ class RunAwareMigrationObjectWrapper implements RunAwareMigrationObject, ArrayAc
 		}
 
 		if ( ! isset( $this->data_container ) ) {
-			$this->data_container = new UnprocessedMigrationDataChestWrapper( $this->migration_object->get_data_chest(), $this->run_key );
+			$this->data_container = new UnprocessedMigrationDataChestWrapper( $this->migration_object->get_data_chest(), $this->get_run_context() );
 		}
 
 		return $this->data_container;
+	}
+
+	/**
+	 * Returns the Migration Run Context.
+	 *
+	 * @return MigrationRunContext
+	 */
+	public function get_run_context(): MigrationRunContext {
+		return $this->run_context;
 	}
 
 	/**
@@ -127,7 +135,7 @@ class RunAwareMigrationObjectWrapper implements RunAwareMigrationObject, ArrayAc
 	 * @return MigrationRunKey
 	 */
 	public function get_run_key(): MigrationRunKey {
-		return $this->run_key;
+		return $this->get_run_context()->get_run_key();
 	}
 
 	/**
