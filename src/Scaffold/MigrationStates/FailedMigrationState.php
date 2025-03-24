@@ -67,6 +67,11 @@ class FailedMigrationState extends AbstractMigrationState {
 		$this->store_error();
 		$this->send_slack_message();
 
+		if ( $this->should_stop() ) {
+			// Stop any further progress.
+			die();
+		}
+
 		return null;
 	}
 
