@@ -565,32 +565,43 @@ abstract class AbstractWordPressData {
 	 * @throws Exception Throws Exception if the given $table_name does not exist.
 	 */
 	protected function is_able_to_proceed_with_update(): bool {
-		$previous_migration_object_records       = $this->get_migration_activity()->get_source_migration_objects_for_wordpress_object( $this->get_primary_id(), $this->get_table_name() );
-		$concat_migration_namespace_and_name     = function ( $migration_object_record ) {
+		$previous_migration_object_records        = $this->get_migration_activity()->get_source_migration_objects_for_wordpress_object( $this->get_primary_id(), $this->get_table_name() );
+		$concat_migration_namespace_and_name      = function ( $migration_object_record ) {
 			return $migration_object_record->migration_namespace_and_class . '#' . $migration_object_record->migration_name;
 		};
-		$unique_migrations_and_latest_status_map = [];
-		$current_migration_namespace_and_class   = get_class(
-			$this->get_migration_object()
-				->get_data_chest()
-				->get_run_key()
-				->get_migration()
-		);
+		$run_context                              = $this->get_migration_object()->get_data_chest()->get_run_context();
+		$current_migration                        = $run_context->get_migration();
+		$current_migration_namespace_name_version = get_class( $current_migration ) . '#' . $current_migration->get_name() . '-v' . $run_context->get_run_key()->get_migration_version();
+		$unique_migrations_and_latest_status_map  = [];
 
 		foreach ( $previous_migration_object_records as $migration_object_record ) {
+			$migration_namespace_and_name = $concat_migration_namespace_and_name( $migration_object_record );
+
+			// Need to check migration class, name, and version.
 			// Ignore any migration objects that belong to the currently running migration.
-			if ( $migration_object_record->migration_namespace_and_class === $current_migration_namespace_and_class ) {
+			if ( "$migration_namespace_and_name-v{$migration_object_record->migration_version}" === $current_migration_namespace_name_version ) {
 				continue;
 			}
 
 			// Check every migration object has been processed.
-			if ( 0 === (int) $migration_object_record->processed ) {
-				return false;
+			if ( 0 === (int) $migration_object_record->processed && ! isset( $unique_migrations_and_latest_status_map[ $migration_namespace_and_name ] ) ) {
+				$latest_status = $this->get_migration_activity()->get_latest_status(
+					$migration_object_record->migration_namespace_and_class,
+					$migration_object_record->migration_name,
+					$migration_object_record->migration_version
+				);
+
+				switch ( $latest_status->status ) {
+					case MigrationStatus::FAILED:
+					case MigrationStatus::CANCELLED:
+						$unique_migrations_and_latest_status_map[ $migration_namespace_and_name ] = null;
+						continue 2;
+					default:
+						return false;
+				}
 			}
 
-			$migration_namespace_and_name = $concat_migration_namespace_and_name( $migration_object_record );
-
-			// However, here we want to ensure we only consider the latest status for unique migrations only.
+			// Here we want to ensure we only consider the latest status for unique migrations only.
 			if ( isset( $unique_migrations_and_latest_status_map[ $migration_namespace_and_name ] ) ) {
 				continue;
 			}
