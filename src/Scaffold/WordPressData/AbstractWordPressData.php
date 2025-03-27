@@ -240,17 +240,6 @@ abstract class AbstractWordPressData {
 		}
 
 		foreach ( $this->data_sources as $key => $source ) {
-			// phpcs:disable
-			$existing_source = $this->wpdb->get_row(
-				$this->wpdb->prepare(
-					'SELECT * FROM migration_destination_sources WHERE migration_object_id = %d AND wordpress_table_column_id = %d AND wordpress_object_id = %d',
-					$this->get_migration_object()->get_id(),
-					WordPressData::get_instance()->get_column_id( $this->get_table_name(), $key ),
-					$primary_id
-				)
-			);
-			// phpcs:enable
-
 			$this->wpdb->insert(
 				'migration_destination_sources',
 				[
