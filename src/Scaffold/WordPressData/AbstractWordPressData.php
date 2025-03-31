@@ -146,7 +146,7 @@ abstract class AbstractWordPressData {
 			throw new Exception( 'MigrationObject has not been set.' );
 		}
 
-		// Ensure we don't already have a pre-exsting WordPress Object from the same Migration Object.
+		// Ensure we don't already have a pre-existing WordPress Object from the same Migration Object.
 		$pre_existing_object_id = $this->get_wordpress_object_id_from_migration_object();
 		if ( ! empty( $pre_existing_object_id ) ) {
 			throw new Exception(
