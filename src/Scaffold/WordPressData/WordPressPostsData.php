@@ -509,8 +509,8 @@ class WordPressPostsData extends AbstractWordPressData {
 					'migration_destination_sources',
 					[
 						'migration_object_id'       => $copy_migration_object->get_id(),
-						'wordpress_table_column_id' => WordPressData::get_instance()->get_column_id( 'wp_term_relationships', 'term_taxonomy_id' ),
-						'wordpress_object_id'       => $author_term->term_taxonomy_id,
+						'wordpress_table_column_id' => WordPressData::get_instance()->get_column_id( 'term_relationships_view', 'virtual_primary_key' ),
+						'wordpress_object_id'       => WordPressTermRelationshipsData::get_virtual_primary_key( $result, $author_term->term_taxonomy_id ),
 						'json_path'                 => $author instanceof MigrationObjectPropertyWrapper ? $author->get_path() : '',
 					]
 				);
