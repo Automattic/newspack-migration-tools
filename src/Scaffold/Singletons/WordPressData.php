@@ -100,7 +100,18 @@ class WordPressData {
 		$table = strtolower( $table );
 
 		if ( self::$values[ $table ] ) {
-			return self::$values[ $table ];
+			switch ( $table ) {
+				case 'term_relationships_view':
+				case 'term_relationships':
+					return [
+						'virtual_primary_key' => self::$values['term_relationships_view']['virtual_primary_key'],
+						'object_id'           => self::$values['term_relationships']['object_id'],
+						'term_taxonomy_id'    => self::$values['term_relationships']['term_taxonomy_id'],
+						'term_order'          => self::$values['term_relationships']['term_order'],
+					];
+				default:
+					return self::$values[ $table ];
+			}
 		}
 
 		$exception_message = sprintf( '`%s` does not exist.', $table );

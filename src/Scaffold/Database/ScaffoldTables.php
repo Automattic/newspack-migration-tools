@@ -130,6 +130,17 @@ class ScaffoldTables {
 		dbDelta( $wordpress_table_columns );
 		dbDelta( $migration_destination_sources );
 
+		// Views aren't supported by `dbDelta`, so we create them manually.
+		$wpdb->query(
+			"CREATE VIEW {$wpdb->prefix}term_relationships_view AS 
+			SELECT 
+				(object_id << 32) | term_taxonomy_id AS virtual_primary_key, 
+				object_id, 
+				term_taxonomy_id, 
+				term_order 
+			FROM wp_term_relationships;"
+		);
+
 		$migration_status_names = [
 			'STARTED',
 			'RUNNING',
@@ -156,6 +167,7 @@ class ScaffoldTables {
 			'usermeta',
 			'comments',
 			'commentmeta',
+			'term_relationships_view',
 		];
 
 		foreach ( $wordpress_tables_names as $table_name ) {
@@ -167,7 +179,7 @@ class ScaffoldTables {
 		}
 
 		$wordpress_table_columns_names = [
-			'posts'              => [
+			'posts'                   => [
 				'ID',
 				'post_author',
 				'post_date',
@@ -192,19 +204,19 @@ class ScaffoldTables {
 				'post_mime_type',
 				'comment_count',
 			],
-			'postmeta'           => [
+			'postmeta'                => [
 				'meta_id',
 				'post_id',
 				'meta_key',
 				'meta_value',
 			],
-			'terms'              => [
+			'terms'                   => [
 				'term_id',
 				'name',
 				'slug',
 				'term_group',
 			],
-			'term_taxonomy'      => [
+			'term_taxonomy'           => [
 				'term_taxonomy_id',
 				'term_id',
 				'taxonomy',
@@ -212,12 +224,15 @@ class ScaffoldTables {
 				'parent',
 				'count',
 			],
-			'term_relationships' => [
+			'term_relationships'      => [
 				'object_id',
 				'term_taxonomy_id',
 				'term_order',
 			],
-			'users'              => [
+			'term_relationships_view' => [
+				'virtual_primary_key',
+			],
+			'users'                   => [
 				'ID',
 				'user_login',
 				'user_pass',
@@ -229,13 +244,13 @@ class ScaffoldTables {
 				'user_status',
 				'display_name',
 			],
-			'usermeta'           => [
+			'usermeta'                => [
 				'umeta_id',
 				'user_id',
 				'meta_key',
 				'meta_value',
 			],
-			'comments'           => [
+			'comments'                => [
 				'comment_ID',
 				'comment_post_ID',
 				'comment_author',
@@ -252,7 +267,7 @@ class ScaffoldTables {
 				'comment_parent',
 				'user_id',
 			],
-			'commentmeta'        => [
+			'commentmeta'             => [
 				'meta_id',
 				'comment_id',
 				'meta_key',
