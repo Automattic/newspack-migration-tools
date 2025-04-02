@@ -229,14 +229,16 @@ abstract class AbstractWordPressData {
 		$primary_id  = $this->get_primary_id();
 		unset( $update_data[ $this->get_primary_key() ] );
 
-		$maybe_updated = $this->wpdb->update(
-			$this->get_table_name(),
-			$update_data,
-			[ $this->get_primary_key() => $primary_id ]
-		);
+		if ( ! empty( $update_data ) ) {
+			$maybe_updated = $this->wpdb->update(
+				$this->get_table_name(),
+				$update_data,
+				[ $this->get_primary_key() => $primary_id ]
+			);
 
-		if ( false === $maybe_updated ) {
-			return new WP_Error( 'failed_to_update', $this->wpdb->last_error );
+			if ( false === $maybe_updated ) {
+				return new WP_Error( 'failed_to_update', $this->wpdb->last_error );
+			}
 		}
 
 		foreach ( $this->data_sources as $key => $source ) {
