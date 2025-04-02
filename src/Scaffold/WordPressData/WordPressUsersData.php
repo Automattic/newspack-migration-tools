@@ -312,7 +312,7 @@ class WordPressUsersData extends AbstractWordPressData {
 		// Or a mix of `display_name` only, or `first_name` and `last_name` only.
 		if ( ! isset( $this->user_login ) ) {
 			try {
-				$this->confirm_user_login_is_unique();
+				$this->set_user_login_from_available_data_points();
 			} catch ( Exception $e ) {
 				$this->data         = $original_data;
 				$this->data_sources = $original_data_sources;
@@ -324,7 +324,7 @@ class WordPressUsersData extends AbstractWordPressData {
 
 			if ( empty( $unique_user_login ) ) {
 				try {
-					$this->confirm_user_login_is_unique();
+					$this->set_user_login_from_available_data_points();
 				} catch ( Exception $e ) {
 					$this->data         = $original_data;
 					$this->data_sources = $original_data_sources;
@@ -339,7 +339,7 @@ class WordPressUsersData extends AbstractWordPressData {
 
 		if ( ! isset( $this->user_nicename ) ) {
 			try {
-				$this->confirm_user_nicename_is_unique();
+				$this->set_user_nicename_from_available_data_points();
 			} catch ( Exception $e ) {
 				$this->data         = $original_data;
 				$this->data_sources = $original_data_sources;
@@ -349,7 +349,7 @@ class WordPressUsersData extends AbstractWordPressData {
 
 			if ( empty( $unique_user_nicename ) ) {
 				try {
-					$this->confirm_user_nicename_is_unique();
+					$this->set_user_nicename_from_available_data_points();
 				} catch ( Exception $e ) {
 					$this->data         = $original_data;
 					$this->data_sources = $original_data_sources;
@@ -391,7 +391,7 @@ class WordPressUsersData extends AbstractWordPressData {
 	 * @return void
 	 * @throws Exception If a data property and data property source have not been set, or unable to procure a unique `user_login`.
 	 */
-	private function confirm_user_login_is_unique(): void {
+	private function set_user_login_from_available_data_points(): void {
 		if ( isset( $this->user_email ) ) {
 			$user_login_from_email = $this->users_logic->get_unique_user_login( $this->user_email );
 
@@ -442,7 +442,7 @@ class WordPressUsersData extends AbstractWordPressData {
 	 * @return void
 	 * @throws Exception If a data property and data property source have not been set, or unabel to procure a unique `user_nicename`.
 	 */
-	private function confirm_user_nicename_is_unique(): void {
+	private function set_user_nicename_from_available_data_points(): void {
 		if ( isset( $this->display_name ) ) {
 			$unique_user_nicename = $this->users_logic->get_unique_user_nicename( sanitize_title( $this->display_name ) );
 
