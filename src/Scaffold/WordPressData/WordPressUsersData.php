@@ -443,18 +443,31 @@ class WordPressUsersData extends AbstractWordPressData {
 	 */
 	private function set_user_nicename_from_available_data_points(): void {
 		if ( isset( $this->display_name ) ) {
-			$unique_user_nicename = $this->users_logic->get_unique_user_nicename( sanitize_title( $this->display_name ) );
+			$sanitized_display_name = sanitize_title( $this->display_name );
+			$unique_user_nicename   = $this->users_logic->get_unique_user_nicename( $sanitized_display_name );
 
-			if ( ! empty( $unique_user_nicename ) ) {
+			if ( isset( $this->user_login ) && $this->user_login === $unique_user_nicename ) {
+				$unique_user_nicename = $this->users_logic->get_unique_user_nicename( "$sanitized_display_name-1" );
+			}
+
+			if ( ! empty( $unique_user_nicename ) && array_key_exists( 'display_name', $this->data_sources ) ) {
 				$this->concatenate_to_set_property( 'user_nicename', [ 'display_name' ], $unique_user_nicename );
+			} else {
+				$this->set_user_nicename( $unique_user_nicename );
 			}
 		}
 
 		if ( ! isset( $this->user_nicename ) && isset( $this->first_name ) && isset( $this->last_name ) ) {
 			$unique_user_nicename = $this->users_logic->get_unique_user_nicename( sanitize_title( $this->first_name . '-' . $this->last_name ) );
 
-			if ( ! empty( $unique_user_nicename ) ) {
+			if ( isset( $this->user_login ) && $this->user_login === $unique_user_nicename ) {
+				$unique_user_nicename = $this->users_logic->get_unique_user_nicename( "$sanitized_display_name-1" );
+			}
+
+			if ( ! empty( $unique_user_nicename ) && isset( $this->data_sources['first_name'] ) && isset( $this->data_sources['last_name'] ) ) {
 				$this->concatenate_to_set_property( 'user_nicename', [ 'first_name', 'last_name' ], $unique_user_nicename );
+			} else {
+				$this->set_user_nicename( $unique_user_nicename );
 			}
 		}
 
