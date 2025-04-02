@@ -572,7 +572,8 @@ class WordPressPostsData extends AbstractWordPressData {
 
 			return new MigrationObjectPropertyWrapper(
 				$value->ID,
-				explode( '.', $property->get_path() )
+				explode( '.', $property->get_path() ),
+				$property->get_migration_object()
 			);
 		}
 

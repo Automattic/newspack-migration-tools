@@ -426,7 +426,6 @@ class WordPressUsersData extends AbstractWordPressData {
 			$user_login = $this->users_logic->get_unique_user_login( $user_login );
 
 			if ( ! empty( $user_login ) ) {
-				$user_login = new MigrationObjectPropertyWrapper( $user_login, [] );
 				$this->set_user_login( $user_login );
 			}
 		}
@@ -464,7 +463,6 @@ class WordPressUsersData extends AbstractWordPressData {
 			$user_nicename = $this->users_logic->get_unique_user_nicename( 'user-' . substr( md5( wp_rand() ), 0, 10 ) );
 
 			if ( ! empty( $user_nicename ) ) {
-				$user_nicename = new MigrationObjectPropertyWrapper( $user_nicename, [] );
 				$this->set_user_nicename( $user_nicename );
 			}
 		}
