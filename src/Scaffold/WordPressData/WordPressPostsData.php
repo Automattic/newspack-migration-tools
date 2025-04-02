@@ -482,6 +482,8 @@ class WordPressPostsData extends AbstractWordPressData {
 		// At this point, $data, $data_sources, $migration_object have been reset.
 
 		if ( ! empty( $this->authors ) ) {
+			$this->handle_author_assignment( $result, $copy_migration_object );
+		}
 
 			// TODO add check to see if full CAP is being used, or using just guest-contributors.
 
@@ -494,18 +496,59 @@ class WordPressPostsData extends AbstractWordPressData {
 
 			if ( ! $maybe_coauthors_have_been_set ) {
 				throw new Exception( 'Unable to set co-authors successfully after post was created.' );
+	/**
+	 * This function handles some logistics around author assignment. Given the result of the post creation, it assigns
+	 * co-authors to the post. If this is a post update, it will also handle removing any existing author-post
+	 * relationships if necessary. Finally, it also handles the recording of the co-author assignments
+	 * in the migration_destination_sources table.
+	 *
+	 * @param int             $post_id The ID of the post.
+	 * @param MigrationObject $migration_object The migration object.
+	 *
+	 * @return void
+	 * @throws Exception If the co-authors cannot be set after post creation.
+	 */
+	private function handle_author_assignment( int $post_id, MigrationObject $migration_object ): void {
+		// TODO add check to see if full CAP is being used, or using just guest-contributors.
+
+		$maybe_coauthors_have_been_set = $this->co_authors_plus->add_coauthors(
+			$post_id,
+			array_keys( $this->authors ),
+			false, // Removes existing author-post relationships.
+			'id'
+		);
+
+		if ( ! $maybe_coauthors_have_been_set ) {
+			throw new Exception( 'Unable to set co-authors successfully after post was created.' );
+		}
+
+		foreach ( $this->authors as $author_id => $author ) {
+			$user = get_user_by( 'id', $author_id );
+
+			$guest_authors_enabled = false;
+
+			if ( $guest_authors_enabled ) {
+				$user = $this->co_authors_plus->get_coauthor_by( 'email', $user->user_email );
 			}
 
 			foreach ( $this->authors as $author_id => $author ) {
 				$user = get_user_by( 'id', $author_id );
 
-				$guest_authors_enabled = false;
+			$author_term = $this->co_authors_plus->get_author_term( $user );
 
-				if ( $guest_authors_enabled ) {
-					$user = $this->co_authors_plus->get_coauthor_by( 'email', $user->user_email );
-				}
+			$this->wpdb->insert(
+				'migration_destination_sources',
+				[
+					'migration_object_id'       => $migration_object->get_id(),
+					'wordpress_table_column_id' => WordPressData::get_instance()->get_column_id( 'term_relationships_view', 'virtual_primary_key' ),
+					'wordpress_object_id'       => WordPressTermRelationshipsData::get_virtual_primary_key( $post_id, $author_term->term_taxonomy_id ),
+					'json_path'                 => $author instanceof MigrationObjectPropertyWrapper ? $author->get_path() : '',
+				]
+			);
+		}
 
-				$author_term = $this->co_authors_plus->get_author_term( $user );
+		$this->authors = [];
+	}
 
 				// TODO - we may have to come back to this and rework. `wp_term_relationships` doesn't have a primary key,
 				// like other tables, so the only way to point to a specific author <-> post relationship is by using
