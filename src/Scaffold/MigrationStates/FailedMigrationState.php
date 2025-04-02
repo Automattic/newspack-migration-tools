@@ -133,7 +133,7 @@ class FailedMigrationState extends AbstractMigrationState {
 		if ( isset( $this->error ) ) {
 			if ( $this->error instanceof Throwable ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- custom error logging in use.
-				error_log( $this->error->getMessage() );
+				error_log( "{$this->error->getMessage()} in {$this->error->getFile()} on line {$this->error->getLine()}" );
 			} else { // WP_Error.
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- custom error logging in use.
 				error_log( $this->error->get_error_message() );
