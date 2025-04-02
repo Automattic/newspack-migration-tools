@@ -5,8 +5,11 @@ namespace Newspack\MigrationTools\Scaffold\WordPressData;
 use CoAuthors_Plus;
 use DateTimeInterface;
 use Exception;
+use Newspack\MigrationTools\Scaffold\Contracts\MigrationObject;
 use Newspack\MigrationTools\Scaffold\MigrationObjectPropertyWrapper;
 use Newspack\MigrationTools\Scaffold\Singletons\WordPressData;
+use WP_Error;
+use WP_Term;
 use WP_User;
 
 /**
@@ -54,6 +57,13 @@ class WordPressPostsData extends AbstractWordPressData {
 	 * @var int[]|WP_User[]|MigrationObjectPropertyWrapper[] $authors The authors of a particular post.
 	 */
 	protected array $authors = [];
+
+	/**
+	 * The categories to set for a particular post.
+	 *
+	 * @var int[]|WP_Term[]|MigrationObjectPropertyWrapper[] $categories The categories of a particular post.
+	 */
+	protected array $categories = [];
 
 	/**
 	 * WordPressPostsData constructor.
@@ -465,12 +475,44 @@ class WordPressPostsData extends AbstractWordPressData {
 	}
 
 	/**
+	 * Sets the categories for this post.
+	 *
+	 * @param int[]|string[]|WP_Term[]|MigrationObjectPropertyWrapper[] $categories The categories to set for the post.
+	 * @param bool                                                      $create_if_not_found Whether to create the category if it does not exist.
+	 *
+	 * @return WordPressPostsData
+	 * @throws Exception If the category is not found and $create_if_not_found is false.
+	 */
+	public function set_categories( array $categories, bool $create_if_not_found = false ): WordPressPostsData {
+		foreach ( $categories as $category ) {
+			$this->maintain_categories_array( $category, $create_if_not_found );
+		}
+
+		return $this;
+	}
+
+	/**
+	 * Adds a category to the list of categories for this post.
+	 *
+	 * @param int|string|WP_Term|MigrationObjectPropertyWrapper $category The category to add to the categories array.
+	 * @param bool                                              $create_if_not_found Whether to create the category if it does not exist.
+	 *
+	 * @return $this
+	 * @throws Exception If the category is not found and $create_if_not_found is false.
+	 */
+	public function add_category( int|string|WP_Term|MigrationObjectPropertyWrapper $category, bool $create_if_not_found = false ): WordPressPostsData {
+		$this->maintain_categories_array( $category, $create_if_not_found );
+
+		return $this;
+	}
+
+	/**
 	 * Creates a post with the given data.
 	 *
-	 * @return \WP_Error|int
+	 * @return WP_Error|int
 	 * @throws Exception If the co-authors cannot be set after post creation.
 	 */
-	public function create(): \WP_Error|int {
+	public function create(): WP_Error|int {
 		$copy_migration_object = $this->get_migration_object();
 
 		$result = parent::create();
@@ -485,17 +527,39 @@ class WordPressPostsData extends AbstractWordPressData {
 			$this->handle_author_assignment( $result, $copy_migration_object );
 		}
 
-			// TODO add check to see if full CAP is being used, or using just guest-contributors.
+		if ( ! empty( $this->categories ) ) {
+			$this->handle_category_assignment( $result, $copy_migration_object );
+		}
 
-			$maybe_coauthors_have_been_set = $this->co_authors_plus->add_coauthors(
-				$result,
-				array_keys( $this->authors ),
-				false,
-				'id'
-			);
+		return $result;
+	}
 
-			if ( ! $maybe_coauthors_have_been_set ) {
-				throw new Exception( 'Unable to set co-authors successfully after post was created.' );
+	/**
+	 * Updates a post with the given data.
+	 *
+	 * @return bool|WP_Error
+	 * @throws Exception If authors or categories cannot be set.
+	 */
+	public function update(): bool|WP_Error {
+		$copy_migration_object = $this->get_migration_object();
+
+		$result = parent::update();
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		if ( ! empty( $this->authors ) ) {
+			$this->handle_author_assignment( $result, $copy_migration_object );
+		}
+
+		if ( ! empty( $this->categories ) ) {
+			$this->handle_category_assignment( $result, $copy_migration_object );
+		}
+
+		return $result;
+	}
+
 	/**
 	 * This function handles some logistics around author assignment. Given the result of the post creation, it assigns
 	 * co-authors to the post. If this is a post update, it will also handle removing any existing author-post
@@ -531,8 +595,6 @@ class WordPressPostsData extends AbstractWordPressData {
 				$user = $this->co_authors_plus->get_coauthor_by( 'email', $user->user_email );
 			}
 
-			foreach ( $this->authors as $author_id => $author ) {
-				$user = get_user_by( 'id', $author_id );
 
 			$author_term = $this->co_authors_plus->get_author_term( $user );
 
@@ -550,24 +612,111 @@ class WordPressPostsData extends AbstractWordPressData {
 		$this->authors = [];
 	}
 
-				// TODO - we may have to come back to this and rework. `wp_term_relationships` doesn't have a primary key,
-				// like other tables, so the only way to point to a specific author <-> post relationship is by using
-				// both the `object_id` and `term_taxonomy_id` columns.
+	/**
+	 * This function handles some logistics around category assignment. Given the result of the post creation
+	 * it assigns categories to the post. If this is a post update, it will also handle removing any
+	 * existing category-post relationships if necessary. Finally, it also handles the recording
+	 * of the category assignments in the migration_destination_sources table.
+	 *
+	 * @param int             $post_id The ID of the post.
+	 * @param MigrationObject $migration_object The migration object.
+	 *
+	 * @return void
+	 * @throws Exception If unable to set categories successfully.
+	 */
+	private function handle_category_assignment( int $post_id, MigrationObject $migration_object ): void {
+		// phpcs:disable -- query properly formatted and escaped.
+		$existing_post_categories = $this->wpdb->get_col(
+			$this->wpdb->prepare(
+				"SELECT 
+    				tr.term_taxonomy_id 
+				FROM {$this->wpdb->term_relationships} tr 
+				    INNER JOIN {$this->wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id 
+				WHERE tt.taxonomy = 'category' 
+				  AND tr.object_id = %d",
+				$post_id
+			)
+		);
+		// phpcs:enable
+		$existing_post_categories = array_map( 'intval', $existing_post_categories );
+
+		$categories_to_delete = [];
+		foreach ( $existing_post_categories as $index => $term_taxonomy_id ) {
+			if ( ! array_key_exists( $term_taxonomy_id, $this->categories ) ) {
+				$categories_to_delete[ $term_taxonomy_id ] = $index;
+				unset( $existing_post_categories[ $index ] );
+			}
+		}
+
+		if ( ! empty( $categories_to_delete ) ) {
+			$category_id_placeholders = implode( ',', array_fill( 0, count( $categories_to_delete ), '%d' ) );
+			// phpcs:disable -- query properly formatted and escaped.
+			$maybe_deleted = $this->wpdb->query(
+				$this->wpdb->prepare(
+					"DELETE FROM {$this->wpdb->term_relationships} WHERE object_id = %d AND term_taxonomy_id IN ({$category_id_placeholders})",
+					$post_id,
+					...array_keys( $categories_to_delete ),
+				)
+			);
+			// phpcs:enable
+
+			if ( false === (bool) $maybe_deleted ) {
+				throw new Exception( 'Unable to delete existing post-category relationships successfully.' );
+			}
+		}
+
+		$term_order = 0;
+		foreach ( $this->categories as $term_taxonomy_id => $category ) {
+			if ( in_array( $term_taxonomy_id, $existing_post_categories, true ) ) {
+				$this->wpdb->update(
+					$this->wpdb->term_relationships,
+					[
+						'term_order' => $term_order,
+					],
+					[
+						'object_id'        => $post_id,
+						'term_taxonomy_id' => $term_taxonomy_id,
+					]
+				);
+				++$term_order;
+
 				$this->wpdb->insert(
 					'migration_destination_sources',
 					[
-						'migration_object_id'       => $copy_migration_object->get_id(),
+						'migration_object_id' => $migration_object->get_id(),
 						'wordpress_table_column_id' => WordPressData::get_instance()->get_column_id( 'term_relationships_view', 'virtual_primary_key' ),
-						'wordpress_object_id'       => WordPressTermRelationshipsData::get_virtual_primary_key( $result, $author_term->term_taxonomy_id ),
-						'json_path'                 => $author instanceof MigrationObjectPropertyWrapper ? $author->get_path() : '',
+						'wordpress_object_id' => WordPressTermRelationshipsData::get_virtual_primary_key( $post_id, $term_taxonomy_id ),
+						'json_path'           => $category instanceof MigrationObjectPropertyWrapper ? $category->get_path() : '',
 					]
 				);
+				continue;
 			}
 
-			$this->authors = [];
-		}
+			$maybe_inserted = $this->wpdb->insert(
+				$this->wpdb->term_relationships,
+				[
+					'object_id'        => $post_id,
+					'term_taxonomy_id' => $term_taxonomy_id,
+					'term_order'       => $term_order,
+				]
+			);
 
-		return $result;
+			if ( false === (bool) $maybe_inserted ) {
+				throw new Exception( 'Unable to insert new post-category relationships successfully.' );
+			}
+
+			++$term_order;
+
+			$this->wpdb->insert(
+				'migration_destination_sources',
+				[
+					'migration_object_id'       => $migration_object->get_id(),
+					'wordpress_table_column_id' => WordPressData::get_instance()->get_column_id( 'term_relationships_view', 'virtual_primary_key' ),
+					'wordpress_object_id'       => WordPressTermRelationshipsData::get_virtual_primary_key( $post_id, $term_taxonomy_id ),
+					'json_path'                 => $category instanceof MigrationObjectPropertyWrapper ? $category->get_path() : '',
+				]
+			);
+		}
 	}
 
 	/**
@@ -674,6 +823,95 @@ class WordPressPostsData extends AbstractWordPressData {
 			}
 
 			$this->authors[ $author_id ] = $author;
+		}
+	}
+
+	/**
+	 * Maintains a list of categories to be assigned to the post.
+	 *
+	 * @param int|string|WP_Term|MigrationObjectPropertyWrapper $category The category to maintain in the categories array.
+	 * @param bool                                              $create_if_not_found If the category should be created if it does not exist.
+	 *
+	 * @return void
+	 * @throws Exception If the category is not a valid term, or cannot be created.
+	 */
+	private function maintain_categories_array( int|string|WP_Term|MigrationObjectPropertyWrapper $category, bool $create_if_not_found = false ): void {
+		$value = $category;
+		if ( $category instanceof MigrationObjectPropertyWrapper ) {
+			if ( $category->get_value() instanceof WP_Term ) {
+				$this->categories[ $category->get_value()->term_taxonomy_id ] = new MigrationObjectPropertyWrapper(
+					$category->get_value()->term_taxonomy_id,
+					explode( '.', $category->get_path() ),
+					$category->get_migration_object()
+				);
+
+				return;
+			}
+
+			$value = $category->get_value();
+		}
+
+		if ( is_string( $value ) && ! is_numeric( $value ) ) {
+			// try to get the term by name, and if not found, then by slug.
+			$term = get_term_by( 'name', $value, 'category' );
+			if ( false === $term ) {
+				$term = get_term_by( 'slug', $value, 'category' );
+			}
+
+			if ( false === $term ) {
+				if ( ! $create_if_not_found ) {
+					throw new Exception(
+						sprintf(
+							'Category with name or slug: %s does not exist.',
+							$value // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+						)
+					);
+				}
+
+				// Unable to find the category, create it if flag is set.
+				$term = (object) wp_insert_term(
+					$value,
+					'category',
+					[
+						'description' => '',
+						'slug'        => sanitize_title( $value ),
+					]
+				);
+
+				if ( is_wp_error( $term ) ) {
+					throw new Exception(
+						sprintf(
+							'Unable to create category: %s',
+							$term->get_error_message() // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+						)
+					);
+				}
+			}
+
+			$this->categories[ $term->term_taxonomy_id ] = $category instanceof MigrationObjectPropertyWrapper ?
+				new MigrationObjectPropertyWrapper(
+					$term->term_taxonomy_id,
+					explode( '.', $category->get_path() ),
+					$category->get_migration_object()
+				) : $term->term_taxonomy_id;
+		} elseif ( is_numeric( $value ) ) {
+			$term = get_term_by( 'term_taxonomy_id', $value, 'category' );
+
+			if ( false === $term ) {
+				throw new Exception(
+					sprintf(
+						'Category with `term_taxonomy_id`: %d does not exist.',
+						$$value // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+					)
+				);
+			}
+
+			$this->categories[ $term->term_taxonomy_id ] = $category instanceof MigrationObjectPropertyWrapper ?
+				new MigrationObjectPropertyWrapper(
+					$term->term_taxonomy_id,
+					explode( '.', $category->get_path() ),
+					$category->get_migration_object()
+				) : $term->term_taxonomy_id;
 		}
 	}
 }
