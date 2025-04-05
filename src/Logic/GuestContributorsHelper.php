@@ -21,10 +21,14 @@ class GuestContributorsHelper {
 	 * Create a Guest Contributor by Display Name.
 	 *
 	 * @param string $display_name The Display Name of the new user.
+	 * @param array $args {
+	 *     Optional. Array of additional arguments.
+	 *     @type string $user_nicename URL slug for user.
+	 * }
 	 * @param bool   $force        Force the creation even if existing user(s) found.
 	 * @return int|\WP_Error  Inserted user ID or WP_Error.
 	 */
-	public static function create_by_display_name( $display_name, $force = false ): int|\WP_Error {
+	public static function create_by_display_name( $display_name, $args = array(), $force = false ): int|\WP_Error {
 		
 		if ( ! self::validate_newspack_plugin() ) {
 			return new WP_Error( 'ERROR_NEWSPACK_PLUGIN', self::ERROR_NEWSPACK_PLUGIN );
@@ -56,7 +60,7 @@ class GuestContributorsHelper {
 			'role'          => Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME,
 			'user_email'    => self::generate_email( $display_name ),
 			'user_login'    => self::generate_username( $display_name ),
-			'user_nicename' => self::sanitize_for_db( $display_name, 50 ),
+			'user_nicename' => self::sanitize_for_db( $args['user_nicename'] ?? $display_name, 50 ),
 			'user_pass'     => wp_generate_password(), // generate else wp will write to debug.log.
 		];
 
@@ -71,9 +75,7 @@ class GuestContributorsHelper {
 		}
 
 		if ( empty( $userdata['user_nicename'] ) ) {
-			// Set user_nicename ourselves for better security and nicer urls otherwise it will be created from user_login.
-			// If duplicate already in db, WordPress will add -2, -3, etc.
-			// this can happen if sanitization produced empty string. Ex: $display_name = "&nbsp; <div>"
+			// user_nicename must be set otherwise WP will create it from user_login which could be a security risk.
 			return new WP_Error( 'ERROR_USER_NICENAME', self::ERROR_USER_NICENAME );
 		}
 
@@ -220,7 +222,7 @@ class GuestContributorsHelper {
 	 * @return string The sanitized string.
 	 */
 	public static function sanitize_for_db( $display_name, $length = null ) {
-		return mb_substr( \sanitize_title( \sanitize_user( $display_name, true ) ), 0, $length );
+		return trim( mb_substr( \sanitize_title( \sanitize_user( $display_name, true ) ), 0, $length ) );
 	}
 
 	/**

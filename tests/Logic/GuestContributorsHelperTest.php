@@ -102,7 +102,7 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 	 * @dataProvider createByDisplayNameProvider
 	 */
 	public function testCreateByDisplayName( $input, $force, $expect_error = false ) {
-		$result = GuestContributorsHelper::create_by_display_name( $input, $force );
+		$result = GuestContributorsHelper::create_by_display_name( $input, [], $force );
 		
 		if ( $expect_error ) {
 			$this->assertInstanceOf( WP_Error::class, $result );
@@ -139,7 +139,7 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 		$this->assertEquals( 'ERROR_EXISTING_USERS', $result->get_error_code() );
 		
 		// Create with force should succeed
-		$result = GuestContributorsHelper::create_by_display_name( $unique_name, true );
+		$result = GuestContributorsHelper::create_by_display_name( $unique_name, [], true );
 		$this->assertMatchesRegularExpression( '/^\d+$/', $result );
 		
 		// Get should now return multiple IDs
