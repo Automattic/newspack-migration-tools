@@ -193,7 +193,7 @@ class GuestContributorsHelper {
 			return new WP_Error( 'ERROR_NEWSPACK_PLUGIN', self::ERROR_NEWSPACK_PLUGIN );
 		}
 
-		// Preform initial search based on display name and role.
+		// Perform initial search based on display name and role.
 		// Note: Initial sql match is case-insensitive, and also if display name starts/ends with "*"
 		// like " ** Special Person ** " then sql will also wildcard match.
 		// To fix both these issues, exact match will be performed in foreach after this query.
