@@ -20,12 +20,12 @@ class GuestContributorsHelper {
 	/**
 	 * Create a Guest Contributor by Display Name.
 	 *
-	 * @param string $display_name The Display Name of the new user.
-	 * @param array $args {
+	 * @param string $display_name The Display Name of the new user. Duplicates are allowed with $force = true.
+	 * @param array  $args {
 	 *     Optional. Array of additional arguments.
-	 *     @type string $user_nicename URL slug for user.
+	 *     @type string $user_nicename URL slug for user. Duplicates will be appended by WordPress with -2, -3, ...
 	 * }
-	 * @param bool   $force        Force the creation even if existing user(s) found.
+	 * @param bool   $force        Force user creation even if display name matches existing user(s).
 	 * @return int|\WP_Error  Inserted user ID or WP_Error.
 	 */
 	public static function create_by_display_name( $display_name, $args = array(), $force = false ): int|\WP_Error {
