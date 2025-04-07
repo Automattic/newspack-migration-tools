@@ -851,7 +851,9 @@ class WordPressPostsData extends AbstractWordPressData {
 			$value = $category->get_value();
 		}
 
-		if ( is_string( $value ) && ! is_numeric( $value ) ) {
+		if ( $value instanceof WP_Term && 'category' === $value->taxonomy ) {
+			$this->categories[ $value->term_taxonomy_id ] = $value->term_taxonomy_id;
+		} elseif ( is_string( $value ) && ! is_numeric( $value ) ) {
 			// try to get the term by name, and if not found, then by slug.
 			$term = get_term_by( 'name', $value, 'category' );
 			if ( false === $term ) {
