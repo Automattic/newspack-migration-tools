@@ -42,7 +42,7 @@ use WP_User;
 class WordPressPostsData extends AbstractWordPressData {
 
 	const VALID_USER_CACHE_KEY = 'list_of_valid_user_ids';
-	const CACHE_GROUP = 'migration_scaffold';
+	const CACHE_GROUP          = 'migration_scaffold';
 
 	/**
 	 * The CoAuthors Plus instance.
