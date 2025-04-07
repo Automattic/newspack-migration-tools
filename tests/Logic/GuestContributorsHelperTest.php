@@ -132,48 +132,29 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 		// Create by display name.
 		$result = GuestContributorsHelper::create_by_display_name( $display_name );
 		$this->assertIsInt( $result );
+		$this->assertGreaterThan( 0, $result );
 		
 		// Get will return ID now.
 		$result = GuestContributorsHelper::get_by_display_name( $display_name );
 		$this->assertIsArray( $result );
 		$this->assertNotEmpty( $result );
 		$this->assertIsNumeric( reset( $result ) );
+		$this->assertGreaterThan( 0, reset( $result ) );
 		
 		// Create again with same display name should fail.
 		$result = GuestContributorsHelper::create_by_display_name( $display_name );
 		$this->assertInstanceOf( WP_Error::class, $result );
 		$this->assertEquals( 'ERROR_EXISTING_USERS', $result->get_error_code() );
 		
-		// Create with force should succeed
+		// Create with force should succeed.
 		$result = GuestContributorsHelper::create_by_display_name( $display_name, [], true );
-		$this->assertMatchesRegularExpression( '/^\d+$/', $result );
+		$this->assertIsInt( $result );
+		$this->assertGreaterThan( 0, $result );
 		
 		// Get should now return multiple IDs
 		$result = GuestContributorsHelper::get_by_display_name( $display_name );
-		$this->assertMatchesRegularExpression( '/^[\d,]+$/', implode( ',', $result ) );
+		$this->assertIsArray( $result );
+		$this->assertNotEmpty( $result );
+		$this->assertCount( 2, $result );
 	}
-
-	/**
-	 * Test that get_by_display_name works as expected.
-	 * 
-	 * @dataProvider data_provider_get_by_display_name
-	 */
-	/*
-	public function test_get_by_display_name( $input, $expected ) {
-		$result = GuestContributorsHelper::get_by_display_name( $input );
-		if ( is_array( $result ) ) {
-			$result = implode( ',', $result );
-		}
-		$this->assertMatchesRegularExpression( $expected, $result );
-	}
-
-	public function data_provider_get_by_display_name() {
-		// type => input, expected (regex match).
-		return [
-			'empty string'      => [ '', '/^$/' ],
-			'wildcard'          => [ '*', '/^$/' ],
-			'non-existent name' => [ 'John ' . microtime() . ' ' . wp_rand( 11111, 99999 ), '/^$/' ],
-		];
-	}
-	*/
 }
