@@ -118,36 +118,40 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 		];
 	}
 
-	/*
-	public function testCompleteGuestContributorFlow() {
-		$unique_name = 'John ' . microtime() . ' ' . wp_rand( 11111, 99999 );
+	/**
+	 * Test that the complete flow works as expected.
+	 */
+	public function test_complete_flow() {
 		
-		// Initial get should return empty
-		$result = GuestContributorsHelper::get_by_display_name( $unique_name );
-		$this->assertMatchesRegularExpression( '/^$/', implode( ',', $result ) );
+		$display_name = 'John Smith';
 		
-		// Create should succeed
-		$result = GuestContributorsHelper::create_by_display_name( $unique_name );
-		$this->assertMatchesRegularExpression( '/^\d+$/', $result );
+		// Verify not found.
+		$result = GuestContributorsHelper::get_by_display_name( $display_name );
+		$this->assertEmpty( $result );
 		
-		// Get should now return the ID
-		$result = GuestContributorsHelper::get_by_display_name( $unique_name );
-		$this->assertMatchesRegularExpression( '/^\d+$/', implode( ',', $result ) );
+		// Create by display name.
+		$result = GuestContributorsHelper::create_by_display_name( $display_name );
+		$this->assertIsInt( $result );
 		
-		// Create without force should fail
-		$result = GuestContributorsHelper::create_by_display_name( $unique_name );
+		// Get will return ID now.
+		$result = GuestContributorsHelper::get_by_display_name( $display_name );
+		$this->assertIsArray( $result );
+		$this->assertNotEmpty( $result );
+		$this->assertIsNumeric( reset( $result ) );
+		
+		// Create again with same display name should fail.
+		$result = GuestContributorsHelper::create_by_display_name( $display_name );
 		$this->assertInstanceOf( WP_Error::class, $result );
 		$this->assertEquals( 'ERROR_EXISTING_USERS', $result->get_error_code() );
 		
 		// Create with force should succeed
-		$result = GuestContributorsHelper::create_by_display_name( $unique_name, [], true );
+		$result = GuestContributorsHelper::create_by_display_name( $display_name, [], true );
 		$this->assertMatchesRegularExpression( '/^\d+$/', $result );
 		
 		// Get should now return multiple IDs
-		$result = GuestContributorsHelper::get_by_display_name( $unique_name );
+		$result = GuestContributorsHelper::get_by_display_name( $display_name );
 		$this->assertMatchesRegularExpression( '/^[\d,]+$/', implode( ',', $result ) );
 	}
-	*/
 
 	/**
 	 * Test that get_by_display_name works as expected.
