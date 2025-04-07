@@ -395,8 +395,10 @@ class WordPressUsersData extends AbstractWordPressData {
 		if ( isset( $this->user_email ) ) {
 			$user_login_from_email = $this->users_logic->get_unique_user_login( $this->user_email );
 
-			if ( ! empty( $user_login_from_email ) ) {
+			if ( ! empty( $user_login_from_email ) && array_key_exists( 'user_email', $this->data_sources ) ) {
 				$this->concatenate_to_set_property( 'user_login', [ 'user_email' ], $user_login_from_email );
+			} else {
+				$this->set_user_login( $user_login_from_email );
 			}
 		}
 
@@ -405,8 +407,10 @@ class WordPressUsersData extends AbstractWordPressData {
 			$user_login_from_names = preg_replace( '/\s+/', '.', $user_login_from_names );
 			$user_login_from_names = $this->users_logic->get_unique_user_login( $user_login_from_names );
 
-			if ( ! empty( $user_login_from_names ) ) {
+			if ( ! empty( $user_login_from_names ) && isset( $this->data_sources['first_name'] ) && isset( $this->data_sources['last_name'] ) ) {
 				$this->concatenate_to_set_property( 'user_login', [ 'first_name', 'last_name' ], $user_login_from_names );
+			} else {
+				$this->set_user_login( $user_login_from_names );
 			}
 		}
 
@@ -415,8 +419,10 @@ class WordPressUsersData extends AbstractWordPressData {
 			$user_login_from_display_name = preg_replace( '/\s+/', '.', $user_login_from_display_name );
 			$user_login_from_display_name = $this->users_logic->get_unique_user_login( $user_login_from_display_name );
 
-			if ( ! empty( $user_login_from_display_name ) ) {
+			if ( ! empty( $user_login_from_display_name ) && array_key_exists( 'display_name', $this->data_sources ) ) {
 				$this->concatenate_to_set_property( 'user_login', [ 'display_name' ], $user_login_from_display_name );
+			} else {
+				$this->set_user_login( $user_login_from_display_name );
 			}
 		}
 
