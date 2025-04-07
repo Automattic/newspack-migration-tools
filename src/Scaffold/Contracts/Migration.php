@@ -5,15 +5,6 @@ namespace Newspack\MigrationTools\Scaffold\Contracts;
 interface Migration {
 
 	/**
-	 * Sets the name of this particular command.
-	 *
-	 * @param string $name Command name.
-	 *
-	 * @return void
-	 */
-	public function set_name( string $name ): void;
-
-	/**
 	 * Returns the name of this particular command.
 	 *
 	 * @return string
