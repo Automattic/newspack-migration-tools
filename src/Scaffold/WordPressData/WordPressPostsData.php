@@ -613,6 +613,126 @@ class WordPressPostsData extends AbstractWordPressData {
 	}
 
 	/**
+	 * Generalizes the process of handling category and tag assignment. This function handles some logistics around
+	 * term assignment. Given the result of the post creation it assigns terms to the post. If this is a post
+	 * update, it will also handle removing any existing term-post relationships if necessary. Finally, it
+	 * also handles the recording of the term assignments in the migration_destination_sources table.
+	 *
+	 * @param array           $terms An array containing the terms to be assigned.
+	 * @param string          $taxonomy The taxonomy to which the terms will be assigned.
+	 * @param int             $post_id The ID of the post to which the terms will be assigned.
+	 * @param MigrationObject $migration_object The migration object.
+	 *
+	 * @return void
+	 * @throws Exception If unable to set terms successfully.
+	 */
+	private function handle_term_assignment( array $terms, string $taxonomy, int $post_id, MigrationObject $migration_object ): void {
+		// phpcs:disable -- query properly formatted and escaped.
+		$existing_post_terms = $this->wpdb->get_col(
+			$this->wpdb->prepare(
+				"SELECT 
+    				tr.term_taxonomy_id 
+				FROM {$this->wpdb->term_relationships} tr 
+				    INNER JOIN {$this->wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id 
+				WHERE tt.taxonomy = %s 
+				  AND tr.object_id = %d",
+				$taxonomy,
+				$post_id
+			)
+		);
+		// phpcs:enable
+		$existing_post_terms = array_map( 'intval', $existing_post_terms );
+
+		$terms_to_delete = [];
+		foreach ( $existing_post_terms as $index => $term_taxonomy_id ) {
+			if ( ! array_key_exists( $term_taxonomy_id, $terms ) ) {
+				$terms_to_delete[ $term_taxonomy_id ] = $index;
+				unset( $existing_post_terms[ $index ] );
+			}
+		}
+
+		if ( ! empty( $terms_to_delete ) ) {
+			$term_id_placeholders = implode( ',', array_fill( 0, count( $terms_to_delete ), '%d' ) );
+			// phpcs:disable -- query properly formatted and escaped.
+			$maybe_deleted = $this->wpdb->query(
+				$this->wpdb->prepare(
+					"DELETE FROM {$this->wpdb->term_relationships} WHERE object_id = %d AND term_taxonomy_id IN ({$term_id_placeholders})",
+					$post_id,
+					...array_keys( $terms_to_delete ),
+				)
+			);
+			// phpcs:enable
+
+			if ( false === (bool) $maybe_deleted ) {
+				throw new Exception(
+					sprintf(
+						'Unable to delete existing post-%s relationships successfully.',
+						$taxonomy // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+					)
+				);
+			}
+		}
+
+		$term_order = 0;
+		foreach ( $terms as $term_taxonomy_id => $term ) {
+			if ( in_array( $term_taxonomy_id, $existing_post_terms, true ) ) {
+				$this->wpdb->update(
+					$this->wpdb->term_relationships,
+					[
+						'term_order' => $term_order,
+					],
+					[
+						'object_id'        => $post_id,
+						'term_taxonomy_id' => $term_taxonomy_id,
+					]
+				);
+				++$term_order;
+
+				$this->wpdb->insert(
+					'migration_destination_sources',
+					[
+						'migration_object_id'       => $migration_object->get_id(),
+						'wordpress_table_column_id' => WordPressData::get_instance()->get_column_id( 'term_relationships_view', 'virtual_primary_key' ),
+						'wordpress_object_id'       => WordPressTermRelationshipsData::get_virtual_primary_key( $post_id, $term_taxonomy_id ),
+						'json_path'                 => $term instanceof MigrationObjectPropertyWrapper ? $term->get_path() : '',
+					]
+				);
+				continue;
+			}
+
+			$maybe_inserted = $this->wpdb->insert(
+				$this->wpdb->term_relationships,
+				[
+					'object_id'        => $post_id,
+					'term_taxonomy_id' => $term_taxonomy_id,
+					'term_order'       => $term_order,
+				]
+			);
+
+			if ( false === (bool) $maybe_inserted ) {
+				throw new Exception(
+					sprintf(
+						'Unable to insert new post-%s relationships successfully.',
+						$taxonomy // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+					)
+				);
+			}
+
+			++$term_order;
+
+			$this->wpdb->insert(
+				'migration_destination_sources',
+				[
+					'migration_object_id'       => $migration_object->get_id(),
+					'wordpress_table_column_id' => WordPressData::get_instance()->get_column_id( 'term_relationships_view', 'virtual_primary_key' ),
+					'wordpress_object_id'       => WordPressTermRelationshipsData::get_virtual_primary_key( $post_id, $term_taxonomy_id ),
+					'json_path'                 => $term instanceof MigrationObjectPropertyWrapper ? $term->get_path() : '',
+				]
+			);
+		}
+	}
+
+	/**
 	 * This function handles some logistics around category assignment. Given the result of the post creation
 	 * it assigns categories to the post. If this is a post update, it will also handle removing any
 	 * existing category-post relationships if necessary. Finally, it also handles the recording
@@ -823,6 +943,102 @@ class WordPressPostsData extends AbstractWordPressData {
 			}
 
 			$this->authors[ $author_id ] = $author;
+		}
+	}
+
+	/**
+	 * Generalizes the retrieval or creation of terms for the given taxonomy.
+	 *
+	 * @param array                                             $terms An array to store the retrieved or created terms.
+	 * @param string                                            $taxonomy The taxonomy to which the terms belong.
+	 * @param int|string|WP_Term|MigrationObjectPropertyWrapper $term The term to retrieve or create.
+	 * @param bool                                              $create_if_not_found Whether to create the term if it does not exist.
+	 *
+	 * @return void
+	 * @throws Exception If the term does not exist and $create_if_not_found is false.
+	 */
+	private function maintain_terms_arrays( array &$terms, string $taxonomy, int|string|WP_Term|MigrationObjectPropertyWrapper $term, bool $create_if_not_found = false ): void {
+		$value = $term;
+		if ( $term instanceof MigrationObjectPropertyWrapper ) {
+			if ( $term->get_value() instanceof WP_Term ) {
+				$terms[ $term->get_value()->term_taxonomy_id ] = new MigrationObjectPropertyWrapper(
+					$term->get_value()->term_taxonomy_id,
+					explode( '.', $term->get_path() ),
+					$term->get_migration_object()
+				);
+
+				return;
+			}
+
+			$value = $term->get_value();
+		}
+
+		if ( $value instanceof WP_Term && $taxonomy === $value->taxonomy ) {
+			$terms[ $value->term_taxonomy_id ] = $value->term_taxonomy_id;
+		} elseif ( is_string( $value ) && ! is_numeric( $value ) ) {
+			// try to get the term by name, and if not found, then by slug.
+			$db_term = get_term_by( 'name', $value, $taxonomy );
+			if ( false === $db_term ) {
+				$db_term = get_term_by( 'slug', $value, $taxonomy );
+			}
+
+			if ( false === $db_term ) {
+				if ( ! $create_if_not_found ) {
+					throw new Exception(
+						sprintf(
+							'%s with name or slug: %s does not exist.',
+							ucwords( $taxonomy ), // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+							$value // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+						)
+					);
+				}
+
+				// Unable to find the term, create it if flag is set.
+				$db_term = (object) wp_insert_term(
+					$value,
+					$taxonomy,
+					[
+						'description' => '',
+						'slug'        => sanitize_title( $value ),
+					]
+				);
+
+				if ( is_wp_error( $db_term ) ) {
+					throw new Exception(
+						sprintf(
+							'Unable to create %s: %s',
+							ucwords( $taxonomy ), // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+							$term->get_error_message() // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+						)
+					);
+				}
+			}
+
+			$terms[ $db_term->term_taxonomy_id ] = $term instanceof MigrationObjectPropertyWrapper ?
+				new MigrationObjectPropertyWrapper(
+					$db_term->term_taxonomy_id,
+					explode( '.', $term->get_path() ),
+					$term->get_migration_object()
+				) : $db_term->term_taxonomy_id;
+		} elseif ( is_numeric( $value ) ) {
+			$db_term = get_term_by( 'term_taxonomy_id', $value, 'category' );
+
+			if ( false === $db_term ) {
+				throw new Exception(
+					sprintf(
+						'%s with `term_taxonomy_id`: %d does not exist.',
+						ucwords( $taxonomy ), // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+						$$value // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+					)
+				);
+			}
+
+			$terms[ $term->term_taxonomy_id ] = $term instanceof MigrationObjectPropertyWrapper ?
+				new MigrationObjectPropertyWrapper(
+					$db_term->term_taxonomy_id,
+					explode( '.', $term->get_path() ),
+					$term->get_migration_object()
+				) : $db_term->term_taxonomy_id;
 		}
 	}
 
