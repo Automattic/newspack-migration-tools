@@ -66,6 +66,13 @@ class WordPressPostsData extends AbstractWordPressData {
 	protected array $categories = [];
 
 	/**
+	 * The tags to set for a particular post.
+	 *
+	 * @var int[]|WP_Term[]|MigrationObjectPropertyWrapper[] $tags The tags of a particular post.
+	 */
+	protected array $tags = [];
+
+	/**
 	 * WordPressPostsData constructor.
 	 */
 	public function __construct() {
@@ -507,6 +514,38 @@ class WordPressPostsData extends AbstractWordPressData {
 	}
 
 	/**
+	 * Sets the tags for this post.
+	 *
+	 * @param int[]|string[]|WP_Term[]|MigrationObjectPropertyWrapper[] $tags The tags to set for the post.
+	 * @param bool                                                      $create_if_not_found Whether to create the tag if it does not exist.
+	 *
+	 * @return $this
+	 * @throws Exception If the tag is not found and $create_if_not_found is false.
+	 */
+	public function set_tags( array $tags, bool $create_if_not_found = false ): WordPressPostsData {
+		foreach ( $tags as $tag ) {
+			$this->maintain_terms_arrays( $this->tags, 'post_tag', $tag, $create_if_not_found );
+		}
+
+		return $this;
+	}
+
+	/**
+	 * Adds a tag to the list of tags for this post.
+	 *
+	 * @param int|string|WP_Term|MigrationObjectPropertyWrapper $tag The tag to add to the tags array.
+	 * @param bool                                              $create_if_not_found Whether to create the tag if it does not exist.
+	 *
+	 * @return $this
+	 * @throws Exception If the tag is not found and $create_if_not_found is false.
+	 */
+	public function add_tag( int|string|WP_Term|MigrationObjectPropertyWrapper $tag, bool $create_if_not_found = false ): WordPressPostsData {
+		$this->maintain_terms_arrays( $this->tags, 'post_tag', $tag, $create_if_not_found );
+
+		return $this;
+	}
+
+	/**
 	 * Creates a post with the given data.
 	 *
 	 * @return WP_Error|int
@@ -529,6 +568,10 @@ class WordPressPostsData extends AbstractWordPressData {
 
 		if ( ! empty( $this->categories ) ) {
 			$this->handle_term_assignment( $this->categories, 'category', $result, $copy_migration_object );
+		}
+
+		if ( ! empty( $this->tags ) ) {
+			$this->handle_term_assignment( $this->tags, 'post_tag', $result, $copy_migration_object );
 		}
 
 		return $result;
@@ -555,6 +598,10 @@ class WordPressPostsData extends AbstractWordPressData {
 
 		if ( ! empty( $this->categories ) ) {
 			$this->handle_term_assignment( $this->categories, 'category', $result, $copy_migration_object );
+		}
+
+		if ( ! empty( $this->tags ) ) {
+			$this->handle_term_assignment( $this->tags, 'post_tag', $result, $copy_migration_object );
 		}
 
 		return $result;
