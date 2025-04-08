@@ -4,6 +4,8 @@ namespace Newspack\MigrationTools\Command;
 
 use Exception;
 use Laminas\Xml2Json\Xml2Json;
+
+// phpcs:ignore Squiz.PHP.CommentedOutCode.Found,Squiz.Commenting.InlineComment.InvalidEndChar
 // use NewspackCustomContentMigrator\Utils\CommonDataFileIterator\CSVFile;
 use WP_CLI;
 use WP_Filesystem_Base;
@@ -19,6 +21,7 @@ class FileToJsonConverter implements WpCliCommandInterface {
 	 * @var array|string[] $supported_extensions Supported file extensions.
 	 */
 	private static array $supported_extensions = [
+		// phpcs:ignore Squiz.PHP.CommentedOutCode.Found
 		// 'csv', // TODO - Once CSVFile is moved to Newspack Migration Tools, uncomment this line.
 		'xml',
 	];
