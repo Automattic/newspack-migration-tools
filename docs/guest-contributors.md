@@ -6,7 +6,7 @@ The Guest Contributors feature of the Newspack Plugin initializes a new role tha
 
 ## Prerequisites
 
-- The Newspack Plugin must be installed and activated
+- The Newspack Plugin `>= 6.2.0` must be installed and activated to use this helper.  If Newspack Plugin is less than `6.2.0` then this helper will only work for code that is run in wp-admin and will fail in both CLI and PHPUNIT contexts.
 
 ## GuestContributorsHelper
 
