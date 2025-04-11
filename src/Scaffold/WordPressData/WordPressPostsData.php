@@ -673,7 +673,7 @@ class WordPressPostsData extends AbstractWordPressData {
 	 * @return void
 	 * @throws Exception If unable to set terms successfully.
 	 */
-	private function handle_term_assignment( array $terms, string $taxonomy, int $post_id, MigrationObject $migration_object ): void {
+	private function handle_term_assignment( array &$terms, string $taxonomy, int $post_id, MigrationObject $migration_object ): void {
 		// phpcs:disable -- query properly formatted and escaped.
 		$existing_post_terms = $this->wpdb->get_col(
 			$this->wpdb->prepare(
@@ -777,6 +777,8 @@ class WordPressPostsData extends AbstractWordPressData {
 				]
 			);
 		}
+
+		$terms = [];
 	}
 
 	/**
