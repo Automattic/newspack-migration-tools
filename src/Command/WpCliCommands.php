@@ -17,7 +17,7 @@ class WpCliCommands {
 			CampaignsMigrator::class,
 			ContentConverterPluginMigrator::class,
 			CssMigrator::class,
-			FileToJsonConverter::class,
+			XmlConverter::class,
 			GhostCMSMigrator::class,
 			MenusMigrator::class,
 			MetaToContentMigrator::class,

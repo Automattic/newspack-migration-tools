@@ -13,7 +13,7 @@ use WP_Filesystem_Base;
 /**
  * Converts a CSV or an XML file to JSON format.
  */
-class FileToJsonConverter implements WpCliCommandInterface {
+class XmlConverter implements WpCliCommandInterface {
 
 	/**
 	 * List of supported file extensions.
