@@ -279,6 +279,10 @@ abstract class AbstractWordPressData {
 			return new WP_Error( 'failed_to_delete', $this->wpdb->last_error );
 		}
 
+		$this->data             = [];
+		$this->data_sources     = [];
+		$this->migration_object = null;
+
 		return true;
 	}
 
