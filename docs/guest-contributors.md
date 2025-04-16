@@ -16,7 +16,7 @@ The `GuestContributorsHelper` class provides a set of static methods for working
 
 #### create_by_display_name
 
-Create a guest contributor by display name. Duplicate display names are allowed in WordPress, but this function will return an error if a matching display name is found. To bypass this error, set argument `$force = true`. Eitherway, created users will always have a unique `user_login` and unique `user_email`. The function will create a sanitized 'user_nicename' (url slug) but WordPress may still add -2, -3, etc, if a matching slug already exists. To set a specific `user_nicename`, use the `$args` parameter.  
+Create a guest contributor by display name. Duplicate display names are allowed in WordPress, but this function will return an error if a matching display name is found. To bypass this error, set argument `$force = true`. Eitherway, created users will always have a unique `user_login` and unique `user_email`. The function will create a sanitized `user_nicename` (url slug) but WordPress may still add -2, -3, etc, if a matching slug already exists. To set a specific `user_nicename`, use the `$args` parameter.  
 
 Within this function there is an error check for display name `> 250` since this could cause a WordPress bug that returns `int(0)` (instead of `WP_Error`) when calling `wp_insert_user`. Another error could be returned if pre-sanitization causes a blank `user_nicename` which cause WordPress to use `user_login` as the slug which is a security risk.
 
@@ -47,7 +47,7 @@ if ( is_wp_error( $user_id ) ) WP_CLI::error( $user_id->get_error_message() );
 
 #### get_by_display_name
 
-Get an array of guest contributor(s) by display name. Only guest contrubutors with a case-senstive exact match will be returned. 
+Get an array of guest contributor(s) by display name. Only guest contrubutors with a case-sensitive exact match will be returned. 
 
 Example usage:
 ```php
