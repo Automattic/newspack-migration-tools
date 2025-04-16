@@ -6,7 +6,7 @@ Guest Contributors are a feature of the Newspack Plugin that initializes a new r
 
 ## Prerequisites
 
-- Newspack Plugin `>= 6.2.0` must be installed and activated to use this helper.
+* Newspack Plugin `>= 6.2.0` must be installed and activated to use this helper.
 
 ## GuestContributorsHelper
 
