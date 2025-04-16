@@ -4,7 +4,9 @@ namespace Newspack\MigrationTools\Scaffold\WordPressData;
 
 use DateTime;
 use Exception;
+use Newspack\MigrationTools\Scaffold\Contracts\RunAwareMigrationObject;
 use Newspack\MigrationTools\Scaffold\MigrationObjectPropertyWrapper;
+use Newspack\MigrationTools\Scaffold\RunAwareMigrationObjectWrapper;
 use NewspackCustomContentMigrator\Logic\Users;
 use WP_Error;
 
@@ -36,6 +38,11 @@ class WordPressUsersData extends AbstractWordPressData {
 	protected Users $users_logic;
 
 	/**
+	 * Array containing the user's metadata.
+	 *
+	 * @var int[]|string[]|WordPressUserMetaData[]|MigrationObjectPropertyWrapper[] $meta_data The metadata associated with the user.
+	 */
+	protected array $meta_data = [];
 	 * Constructor.
 	 */
 	public function __construct() {
@@ -265,6 +272,83 @@ class WordPressUsersData extends AbstractWordPressData {
 	}
 
 	/**
+
+	/**
+	 * Sets the metadata for the user.
+	 *
+	 * @param array $meta_data Array of key-value pairs for the user's metadata.
+	 *
+	 * @return WordPressUsersData
+	 */
+	public function set_meta_data( array $meta_data ): WordPressUsersData {
+		foreach ( $meta_data as $key => $value ) {
+			if ( $value instanceof WordPressUserMetaData ) {
+				$this->add_user_meta_data( $value );
+			} else {
+				$this->add_meta_data( $key, $value );
+			}
+		}
+
+		return $this;
+	}
+
+	/**
+	 *  "Simpler" function which adds a metadata item to the term. Adding WordPressUserMetaData turns out to be
+	 *  simpler than this function in adding items to the $meta_data array, but WordPressUserMetaData
+	 *  has already been set up by the Migrator at this point. For example, a specific
+	 *  MigrationObject has been set by the implementing dev which determines
+	 *  which value gets stored in `migration_destination_sources`.
+	 *
+	 * @param string|MigrationObjectPropertyWrapper     $key The metadata key.
+	 * @param int|string|MigrationObjectPropertyWrapper $value The metadata value.
+	 *
+	 * @return WordPressUsersData
+	 */
+	public function add_meta_data( string|MigrationObjectPropertyWrapper $key, int|string|MigrationObjectPropertyWrapper $value ): WordPressUsersData {
+		if ( $value instanceof MigrationObjectPropertyWrapper ) {
+			$migration_object = $value->get_migration_object();
+			if ( ! ( $migration_object instanceof RunAwareMigrationObject ) ) {
+				$migration_object = new RunAwareMigrationObjectWrapper( $migration_object, $this->get_migration_object()->get_run_context() );
+			}
+			$user_meta_data = new WordPressUserMetaData();
+			$user_meta_data->set_migration_object( $migration_object );
+			$user_meta_data->set_meta_key( $key )->set_meta_value( $value );
+
+			if ( $key instanceof MigrationObjectPropertyWrapper ) {
+				$key = $key->get_value();
+			}
+
+			$value = $user_meta_data;
+		} elseif ( $key instanceof MigrationObjectPropertyWrapper ) {
+			$migration_object = $key->get_migration_object();
+			if ( ! ( $migration_object instanceof RunAwareMigrationObject ) ) {
+				$migration_object = new RunAwareMigrationObjectWrapper( $migration_object, $this->get_migration_object()->get_run_context() );
+			}
+			$user_meta_data = new WordPressUserMetaData();
+			$user_meta_data->set_migration_object( $migration_object );
+			$user_meta_data->set_meta_value( $value )->set_meta_key( $key->get_value() );
+			$value = $user_meta_data;
+		}
+
+		$this->meta_data[ $key ] = $value;
+
+		return $this;
+	}
+
+	/**
+	 * Adds a WordPressUserMetaData object to the user's metadata.
+	 *
+	 * @param WordPressUserMetaData $meta_data The WordPressUserMetaData object to add.
+	 *
+	 * @return WordPressUsersData
+	 */
+	public function add_user_meta_data( WordPressUserMetaData $meta_data ): WordPressUsersData {
+		$this->meta_data[ $meta_data->meta_key ] = $meta_data;
+
+		return $this;
+	}
+
+	/**
 	 * Creates a WP_User record with the underlying data that has been set. This will also record the source
 	 * of the data used to generate the WP_User record.
 	 *
@@ -376,7 +460,17 @@ class WordPressUsersData extends AbstractWordPressData {
 			$this->set_user_registered( new DateTime() );
 		}
 
-		return parent::create();
+		$copy_migration_object = $this->get_migration_object();
+
+		$maybe_user_id = parent::create();
+
+		if ( is_wp_error( $maybe_user_id ) ) {
+			return $maybe_user_id;
+		}
+
+		if ( ! empty( $this->meta_data ) ) {
+			$this->handle_meta_data( $maybe_user_id, $copy_migration_object );
+		}
 	}
 
 	public function update(): WP_Error|bool {
@@ -489,5 +583,101 @@ class WordPressUsersData extends AbstractWordPressData {
 		if ( ! isset( $this->user_nicename ) ) {
 			throw new Exception( 'Unable to set unique `user_nicename`' );
 		}
+	}
+
+	/**
+	 * Handles creating or updating user metadata.
+	 *
+	 * @param int                     $user_id The ID of the user.
+	 * @param RunAwareMigrationObject $migration_object The migration object.
+	 *
+	 * @return void
+	 * @throws Exception If the user ID is not set, or if the metadata cannot be created or updated.
+	 */
+	private function handle_meta_data( int $user_id, RunAwareMigrationObject $migration_object ): void {
+		// phpcs:disable -- query is properly prepared and escaped.
+		$existing_meta_data = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT * FROM {$this->wpdb->usermeta} WHERE user_id = %d",
+				$user_id
+			)
+		);
+		// phpcs:enable
+
+		foreach ( $existing_meta_data as $meta_data ) {
+			if ( array_key_exists( $meta_data->meta_key, $this->meta_data ) ) {
+				$value = $this->meta_data[ $meta_data->meta_key ];
+				// phpcs:ignore Universal.Operators.StrictComparisons.LooseNotEqual -- this is intentional, values from the DB will be strings. Letting PHP handle the implicit type conversions.
+				if ( $value instanceof WordPressUserMetaData && $value->meta_value != $meta_data->meta_value ) {
+					if ( ! array_key_exists( 'migration_object', get_object_vars( $value ) ) ) {
+						$value->set_migration_object( $migration_object );
+					}
+					$value->set_umeta_id( $meta_data->umeta_id )->set_meta_value( $value->meta_value )->update();
+					unset( $this->meta_data[ $meta_data->meta_key ] );
+					continue;
+				}
+
+				// phpcs:ignore Universal.Operators.StrictComparisons.LooseNotEqual -- this is intentional, values from the DB will be strings. Letting PHP handle the implicit type conversions.
+				if ( $value instanceof MigrationObjectPropertyWrapper && $value->get_value() != $meta_data->meta_value ) {
+					$post_meta_data = new WordPressUserMetaData();
+					$post_meta_data->set_migration_object( $migration_object );
+					$post_meta_data->set_umeta_id( $meta_data->umeta_id )->set_meta_value( $value->get_value() )->update();
+					unset( $this->meta_data[ $meta_data->meta_key ] );
+					continue;
+				}
+
+				$this->wpdb->update(
+					$this->wpdb->usermeta,
+					[
+						// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- this query targets metadata by meta ID.
+						'meta_value' => $value,
+
+					],
+					[
+						'umeta_id' => $meta_data->umeta_id,
+					]
+				);
+				unset( $this->meta_data[ $meta_data->meta_key ] );
+			} else {
+				$this->wpdb->delete(
+					$this->wpdb->usermeta,
+					[
+						'umeta_id' => $meta_data->umeta_id,
+					]
+				);
+			}
+		}
+
+		foreach ( $this->meta_data as $key => $value ) {
+			if ( $value instanceof WordPressUserMetaData ) {
+				if ( ! array_key_exists( 'migration_object', get_object_vars( $value ) ) ) {
+					$value->set_migration_object( $migration_object );
+				}
+				$value->set_user_id( $user_id )->create();
+				continue;
+			}
+
+			if ( $value instanceof MigrationObjectPropertyWrapper ) {
+				$post_meta_data         = new WordPressUserMetaData();
+				$value_migration_object = $value->get_migration_object();
+				if ( ! ( $value_migration_object instanceof RunAwareMigrationObject ) ) {
+					$value_migration_object = new RunAwareMigrationObjectWrapper( $value_migration_object, $migration_object->get_run_context() );
+				}
+				$post_meta_data->set_migration_object( $value_migration_object );
+				$post_meta_data->set_user_id( $user_id )->set_meta_value( $value->get_value() )->create();
+				continue;
+			}
+
+			$this->wpdb->insert(
+				$this->wpdb->usermeta,
+				[
+					'user_id'    => $user_id,
+					'meta_key'   => $key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+					'meta_value' => $value, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+				]
+			);
+		}
+
+		$this->meta_data = [];
 	}
 }
