@@ -2,11 +2,11 @@
 
 ## Overview
 
-The Guest Contributors feature of the Newspack Plugin initializes a new role that can be used to create WordPress Users for assigning authorship to posts, but the users themselves will not have access to the WordPress Admin.
+Guest Contributors are a feature of the Newspack Plugin that initializes a new role for WordPress Users for assigning users to posts, but the users themselves do not have access to the WordPress Admin. The `GuestContributorsHelper` class provides standardized ways to create and get these users.
 
 ## Prerequisites
 
-- The Newspack Plugin `>= 6.2.0` must be installed and activated to use this helper.  If Newspack Plugin is less than `6.2.0` then this helper will only work for code that is run in wp-admin and will fail in both CLI and PHPUNIT contexts.
+- Newspack Plugin `>= 6.2.0` must be installed and activated to use this helper.
 
 ## GuestContributorsHelper
 
@@ -16,140 +16,60 @@ The `GuestContributorsHelper` class provides a set of static methods for working
 
 #### create_by_display_name
 
-Create a guest contributor by display name.
+Create a guest contributor by display name. Duplicate display names are allowed in WordPress, but this function will return an error if a matching display name is found. To bypass this error, set argument `$force = true`. Eitherway, created users will always have a unique `user_login` and unique `user_email`. The function will create a sanitized 'user_nicename' (url slug) but WordPress may still add -2, -3, etc, if a matching slug already exists. To set a specific `user_nicename`, use the `$args` parameter.  
 
-### Display Name Sanitization
-Display names are sanitized following WordPress core standards:
-- Trimmed of whitespace
-- Limited to 250 characters (WordPress core limitation)
-- Must result in a non-empty string after sanitization
+Within this function there is an error check for display name `> 250` since this could cause a WordPress bug that returns `int(0)` (instead of `WP_Error`) when calling `wp_insert_user`. Another error could be returned if pre-sanitization causes a blank `user_nicename` which cause WordPress to use `user_login` as the slug which is a security risk.
 
-
-
-```php
-public static function create_by_display_name( $display_name, $args = array(), $force = false ): int|\WP_Error
-```
-
-Parameters:
-
-- `$display_name`: The display name of the guest contributor.
-- `$args`: Optional. Additional arguments.
-- `$force`: Optional. Whether to force user creation even if display name matches existing user(s).
-
-Returns:
-
-- `int`: The ID of the created user.
-- `\WP_Error`: An error object if an error occurred. Possible error codes:
-  - `ERROR_NEWSPACK_PLUGIN`: Newspack plugin's Guest Contributors feature is not available
-  - `ERROR_DISPLAY_NAME`: Display name is invalid (empty or > 250 characters)
-  - `ERROR_EXISTING_USERS`: Users with this display name already exist (when `$force = false`)
-  - `ERROR_SANITIZE_INPUT`: Display name sanitization resulted in an empty string
-  - `ERROR_USER_NICENAME`: User nicename cannot be blank
-  - `ERROR_CREATE_USER`: WordPress failed to create the user
-  - `ERROR_ATTEMPTS`: Too many attempts to generate unique email/username
-
-Example Usage:
+Example usage:
 
 ```php
 use Newspack\MigrationTools\Logic\GuestContributorsHelper;
 
 // Create a simple guest contributor
 $user_id = GuestContributorsHelper::create_by_display_name( 'John Smith' );
+if ( is_wp_error( $user_id ) ) WP_CLI::error( $user_id->get_error_message() );
 
-// Create with custom user_nicename (url)
-$user_id = GuestContributorsHelper::create_by_display_name(
-    'John Smith',
-    [ 'user_nicename' => 'johnsmith-guest' ],
-);
-
-// Create with force creation even if matching display name exists.
+// Create with force creation, even if a matching display name exists.
 $user_id = GuestContributorsHelper::create_by_display_name(
     'John Smith',
     [],
     true
 );
+if ( is_wp_error( $user_id ) ) WP_CLI::error( $user_id->get_error_message() );
 
+// Create with custom user_nicename (url slug).
+$user_id = GuestContributorsHelper::create_by_display_name(
+    'John Smith',
+    [ 'user_nicename' => 'johnsmith-custom-url' ]
+);
+if ( is_wp_error( $user_id ) ) WP_CLI::error( $user_id->get_error_message() );
 ```
 
 #### get_by_display_name
 
-Get guest contributors by display name.
+Get an array of guest contributor(s) by display name. Only guest contrubutors with a case-senstive exact match will be returned. 
 
+Example usage:
 ```php
-public static function get_by_display_name( $display_name ): array|\WP_Error
+use Newspack\MigrationTools\Logic\GuestContributorsHelper;
+
+$users = GuestContributorsHelper::get_by_display_name( 'John Smith' );
+if ( is_wp_error( $users ) ) WP_CLI::error( $users->get_error_message() );
 ```
-
-Parameters:
-
-- `$display_name`: The display name of the guest contributor to find.
-
-Returns:
-
-- `array`: An array of user IDs.
-- `\WP_Error`: An error object if an error occurred.
-
-
-#### generate_email
-
-Generate a unique dummy email address with a random suffix.
-
-Guest contributor email addresses are automatically generated using a dummy domain provided by the Newspack plugin. The format is:
-```
-{sanitized-display-name}-{random-suffix}@{dummy-domain}
-```
-
-
-```php
-public static function generate_email( $display_name ): string|\WP_Error
-```
-
-Parameters:
-
-- `$display_name`: The display name of the guest contributor.
-
-Returns:
-
-- `string`: The generated email address.
-- `\WP_Error`: An error object if an error occurred.
-
-
-
-#### generate_username
-
-Generate a unique username (user_login) with a random suffix.
-
-### Username Generation
-Usernames (user_login) are automatically generated from the display name. The format is:
-```
-{sanitized-display-name}-{random-suffix}
-```
-
-
-```php
-public static function generate_username( $display_name ): string|\WP_Error
-```
-
-Parameters:
-
-- `$display_name`: The display name of the guest contributor.
-
-Returns:
-
-- `string`: The generated username.
-- `\WP_Error`: An error object if an error occurred.
-
 
 ## Notes
+
 ### To assign Guest Contributors to posts, use CoAuthors Plus
 
 CoAuthors Plus is still required for Newspack (plugin and theme) as the way to handle multiple authors per post.  Only the CoAuthors Plus "Guest Authors" features is turned-off by default in Newspack Plugin, but the CoAuthors Plus multiple author taxonomy is still used.
 
-Dependent on the site you're working on, the NMT [CoAuthorsPlusHelper](https://github.com/Automattic/newspack-migration-tools/blob/trunk/src/Logic/CoAuthorsPlusHelper.php) may not work.  Until it is refactored due to "Guest Authors" being defaulted to "off", please use this code:
+Depending on the site you're working on, the Newspack Migration Tools `CoAuthorsPlusHelper` may not work.  Until that helper is refactored due to "Guest Authors" being defaulted to "off", please use the following code:
 
-```
+```php
+
 // CAP Plugin is required.
 if ( ! is_plugin_active( "co-authors-plus/co-authors-plus.php" ) ) {
-    WP_CLI::error( 'Co-Authors Plus plugin not found. Install and activate it before using this command.', true );
+    WP_CLI::error( 'Co-Authors Plus plugin not found. Install and activate it before using this code.' );
 }
 
 global $coauthors_plus;
@@ -158,11 +78,9 @@ global $coauthors_plus;
 $author_ids = [ 1, 2, 3 ]; 
 
 // Assign ids to post. 
-// False means do not append; replace existing authors if exists. 
-// 'id' since we're using IDs in the $author_ids array.
 $success = $coauthors_plus->add_coauthors( $post_id, $author_ids, false, 'id' );
 if ( ! $success ) {
-    WP_CLI::error( sprintf( 'Failed to set authors - add_coauthors return: %s', wp_json_encode( $success ) ), true );
+    WP_CLI::error( sprintf( 'Failed to set authors - add_coauthors return: %s', wp_json_encode( $success ) ) );
 }
 ```
 
