@@ -22,11 +22,7 @@ use WP_Error;
  * @property string $user_registered
  * @property string $user_activation_key
  * @property int $user_status
- * @property string $first_name
- * @property string $last_name
- * @property string $nickname
  * @property string $display_name
- * @property string $role
  */
 class WordPressUsersData extends AbstractWordPressData {
 
@@ -43,12 +39,23 @@ class WordPressUsersData extends AbstractWordPressData {
 	 * @var int[]|string[]|WordPressUserMetaData[]|MigrationObjectPropertyWrapper[] $meta_data The metadata associated with the user.
 	 */
 	protected array $meta_data = [];
+
+	/**
+	 * Array containing allowed roles for the user.
+	 *
+	 * @var string[] $roles List of allowed roles for the user.
+	 */
+	protected array $allowed_roles = [];
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
 		parent::__construct();
 		$this->primary_key = 'ID';
 		$this->users_logic = new Users();
+		global $wp_roles;
+		$this->allowed_roles = array_keys( $wp_roles->roles );
 	}
 
 	/**
@@ -227,7 +234,13 @@ class WordPressUsersData extends AbstractWordPressData {
 	 * @return $this
 	 */
 	public function set_first_name( string|MigrationObjectPropertyWrapper $first_name ): WordPressUsersData {
-		$this->set_property( 'first_name', $first_name );
+		if ( $first_name instanceof MigrationObjectPropertyWrapper ) {
+			$this->add_user_meta_data(
+				( new WordPressUserMetaData() )->set_meta_key( 'first_name' )->set_meta_value( $first_name )
+			);
+		} else {
+			$this->add_meta_data( 'first_name', $first_name );
+		}
 
 		return $this;
 	}
@@ -240,7 +253,13 @@ class WordPressUsersData extends AbstractWordPressData {
 	 * @return $this
 	 */
 	public function set_last_name( string|MigrationObjectPropertyWrapper $last_name ): WordPressUsersData {
-		$this->set_property( 'last_name', $last_name );
+		if ( $last_name instanceof MigrationObjectPropertyWrapper ) {
+			$this->add_user_meta_data(
+				( new WordPressUserMetaData() )->set_meta_key( 'last_name' )->set_meta_value( $last_name )
+			);
+		} else {
+			$this->add_meta_data( 'last_name', $last_name );
+		}
 
 		return $this;
 	}
@@ -253,7 +272,13 @@ class WordPressUsersData extends AbstractWordPressData {
 	 * @return $this
 	 */
 	public function set_nickname( string|MigrationObjectPropertyWrapper $nickname ): WordPressUsersData {
-		$this->set_property( 'nickname', $nickname );
+		if ( $nickname instanceof MigrationObjectPropertyWrapper ) {
+			$this->add_user_meta_data(
+				( new WordPressUserMetaData() )->set_meta_key( 'nickname' )->set_meta_value( $nickname )
+			);
+		} else {
+			$this->add_meta_data( 'nickname', $nickname );
+		}
 
 		return $this;
 	}
@@ -272,6 +297,48 @@ class WordPressUsersData extends AbstractWordPressData {
 	}
 
 	/**
+	 * Sets the role for the user.
+	 *
+	 * @param string|MigrationObjectPropertyWrapper $role The desired role to set.
+	 *
+	 * @return WordPressUsersData
+	 * @throws Exception If the role is not allowed.
+	 */
+	public function set_role( string|MigrationObjectPropertyWrapper $role ): WordPressUsersData {
+		$copy_role = $role;
+		if ( $copy_role instanceof MigrationObjectPropertyWrapper ) {
+			$copy_role = $copy_role->get_value();
+		}
+		$copy_role = strtolower( $copy_role );
+
+		if ( ! in_array( $copy_role, $this->allowed_roles, true ) ) {
+			throw new Exception(
+				sprintf(
+					'Invalid role: %s',
+					$copy_role // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+				)
+			);
+		}
+
+		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize -- this is how role data is stored.
+		$meta_value = serialize( [ $copy_role => true ] );
+
+		if ( $role instanceof MigrationObjectPropertyWrapper ) {
+			$this->add_user_meta_data(
+				( new WordPressUserMetaData() )->set_meta_key( 'wp_capabilities' )->set_meta_value(
+					new MigrationObjectPropertyWrapper(
+						$meta_value,
+						explode( '.', $role->get_path() ),
+						$role->get_migration_object()
+					)
+				)
+			);
+		} else {
+			$this->add_meta_data( 'wp_capabilities', $meta_value );
+		}
+
+		return $this;
+	}
 
 	/**
 	 * Sets the metadata for the user.
@@ -370,26 +437,33 @@ class WordPressUsersData extends AbstractWordPressData {
 
 		// Ensure that user_login and user_nicename are unique.
 		if ( ! isset( $this->display_name ) ) {
-			try {
-				$this->concatenate_to_set_property( 'display_name', [ 'first_name', 'last_name' ] );
-			} catch ( Exception $e ) {
-				$missing_props = [];
-
-				if ( ! isset( $this->first_name ) ) {
-					$missing_props[] = '`first_name`';
+			if ( isset( $this->meta_data['first_name'] ) && isset( $this->meta_data['last_name'] ) ) {
+				$first_name = $this->meta_data['first_name'];
+				if ( $first_name instanceof WordPressUserMetaData ) {
+					$first_name = (string) $first_name->meta_value;
 				}
+				$first_name = ucwords( strtolower( $first_name ) );
 
-				if ( ! isset( $this->last_name ) ) {
-					$missing_props[] = '`last_name`';
+				$last_name = $this->meta_data['last_name'];
+				if ( $last_name instanceof WordPressUserMetaData ) {
+					$last_name = (string) $last_name->meta_value;
 				}
+				$last_name = ucwords( strtolower( $last_name ) );
 
+				$this->display_name = "$first_name $last_name";
+			} else {
 				$this->data         = $original_data;
 				$this->data_sources = $original_data_sources;
 
-				throw new Exception( sprintf( '`display_name` is empty. Attempting to set with %s, but those are empty/missing also.', implode( ' and ', $missing_props ) ) );
+				throw new Exception( '`display_name` is empty. Attempting to set with `first_name` and `last_name`, but those are empty/missing also.' );
 			}
 		} elseif ( is_email( $this->display_name ) ) {
-			throw new Exception( sprintf( "`display_name` ('%s') should not be an email.", $this->display_name ) );
+			throw new Exception(
+				sprintf(
+					"`display_name` ('%s') should not be an email.",
+					$this->display_name // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+				)
+			);
 		}
 
 		// At this point we know we potentially have `display_name`, `first_name`, and `last_name` set.
@@ -460,6 +534,10 @@ class WordPressUsersData extends AbstractWordPressData {
 			$this->set_user_registered( new DateTime() );
 		}
 
+		if ( ! isset( $this->meta_data['wp_capabilities'] ) ) {
+			$this->set_role( $this->allowed_roles[ array_key_last( $this->allowed_roles ) ] );
+		}
+
 		$copy_migration_object = $this->get_migration_object();
 
 		$maybe_user_id = parent::create();
@@ -471,6 +549,8 @@ class WordPressUsersData extends AbstractWordPressData {
 		if ( ! empty( $this->meta_data ) ) {
 			$this->handle_meta_data( $maybe_user_id, $copy_migration_object );
 		}
+
+		return $maybe_user_id;
 	}
 
 	public function update(): WP_Error|bool {
@@ -557,18 +637,22 @@ class WordPressUsersData extends AbstractWordPressData {
 			}
 		}
 
-		if ( ! isset( $this->user_nicename ) && isset( $this->first_name ) && isset( $this->last_name ) ) {
-			$unique_user_nicename = $this->users_logic->get_unique_user_nicename( sanitize_title( $this->first_name . '-' . $this->last_name ) );
+		if ( ! isset( $this->user_nicename ) && isset( $this->meta_data['first_name'] ) && isset( $this->meta_data['last_name'] ) ) {
+			$first_name = $this->meta_data['first_name'];
+			if ( $first_name instanceof WordPressUserMetaData ) {
+				$first_name = (string) $first_name->meta_value;
+			}
+			$last_name = $this->meta_data['last_name'];
+			if ( $last_name instanceof WordPressUserMetaData ) {
+				$last_name = (string) $last_name->meta_value;
+			}
+			$unique_user_nicename = $this->users_logic->get_unique_user_nicename( sanitize_title( $first_name . '-' . $last_name ) );
 
 			if ( isset( $this->user_login ) && $this->user_login === $unique_user_nicename ) {
 				$unique_user_nicename = $this->users_logic->get_unique_user_nicename( "$sanitized_display_name-1" );
 			}
 
-			if ( ! empty( $unique_user_nicename ) && isset( $this->data_sources['first_name'] ) && isset( $this->data_sources['last_name'] ) ) {
-				$this->concatenate_to_set_property( 'user_nicename', [ 'first_name', 'last_name' ], $unique_user_nicename );
-			} else {
-				$this->set_user_nicename( $unique_user_nicename );
-			}
+			$this->set_user_nicename( $unique_user_nicename );
 		}
 
 		// Last resort.
