@@ -6,7 +6,9 @@ use CoAuthors_Plus;
 use DateTimeInterface;
 use Exception;
 use Newspack\MigrationTools\Scaffold\Contracts\MigrationObject;
+use Newspack\MigrationTools\Scaffold\Contracts\RunAwareMigrationObject;
 use Newspack\MigrationTools\Scaffold\MigrationObjectPropertyWrapper;
+use Newspack\MigrationTools\Scaffold\RunAwareMigrationObjectWrapper;
 use Newspack\MigrationTools\Scaffold\Singletons\WordPressData;
 use WP_Error;
 use WP_Term;
@@ -71,6 +73,13 @@ class WordPressPostsData extends AbstractWordPressData {
 	 * @var int[]|WP_Term[]|MigrationObjectPropertyWrapper[] $tags The tags of a particular post.
 	 */
 	protected array $tags = [];
+
+	/**
+	 * Array containing the post metadata.
+	 *
+	 * @var int[]|string[]|WordPressPostMetaData[]|MigrationObjectPropertyWrapper[] $meta_data The metadata of a particular post.
+	 */
+	protected array $meta_data = [];
 
 	/**
 	 * WordPressPostsData constructor.
@@ -546,6 +555,81 @@ class WordPressPostsData extends AbstractWordPressData {
 	}
 
 	/**
+	 * Sets the metadata for the post.
+	 *
+	 * @param array $meta_data Array of key-value pairs for the post's metadata.
+	 *
+	 * @return WordPressPostsData
+	 */
+	public function set_meta_data( array $meta_data ): WordPressPostsData {
+		foreach ( $meta_data as $key => $value ) {
+			if ( $value instanceof WordPressPostMetaData ) {
+				$this->add_post_meta_data( $value );
+			} else {
+				$this->add_meta_data( $key, $value );
+			}
+		}
+
+		return $this;
+	}
+
+	/**
+	 * "Simpler" function which adds a metadata item to the term. Adding WordPressPostMetaData turns out to be
+	 * simpler than this function in adding items to the $meta_data array, but WordPressPostMetaData
+	 * has already been set up by the Migrator at this point. For example, a specific
+	 * MigrationObject has been set by the implementing dev which determines
+	 * which value gets stored in `migration_destination_sources`.
+	 *
+	 * @param string|MigrationObjectPropertyWrapper     $key The metadata key.
+	 * @param int|string|MigrationObjectPropertyWrapper $value The metadata value.
+	 *
+	 * @return WordPressPostsData
+	 */
+	public function add_meta_data( string|MigrationObjectPropertyWrapper $key, int|string|MigrationObjectPropertyWrapper $value ): WordPressPostsData {
+		if ( $value instanceof MigrationObjectPropertyWrapper ) {
+			$migration_object = $value->get_migration_object();
+			if ( ! ( $migration_object instanceof RunAwareMigrationObject ) ) {
+				$migration_object = new RunAwareMigrationObjectWrapper( $migration_object, $this->get_migration_object()->get_run_context() );
+			}
+			$post_meta_data = new WordPressPostMetaData();
+			$post_meta_data->set_migration_object( $migration_object );
+			$post_meta_data->set_meta_key( $key )->set_meta_value( $value );
+
+			if ( $key instanceof MigrationObjectPropertyWrapper ) {
+				$key = $key->get_value();
+			}
+
+			$value = $post_meta_data;
+		} elseif ( $key instanceof MigrationObjectPropertyWrapper ) {
+			$migration_object = $key->get_migration_object();
+			if ( ! ( $migration_object instanceof RunAwareMigrationObject ) ) {
+				$migration_object = new RunAwareMigrationObjectWrapper( $migration_object, $this->get_migration_object()->get_run_context() );
+			}
+			$post_meta_data = new WordPressPostMetaData();
+			$post_meta_data->set_migration_object( $migration_object );
+			$post_meta_data->set_meta_value( $value )->set_meta_key( $key->get_value() );
+			$value = $post_meta_data;
+		}
+
+		$this->meta_data[ $key ] = $value;
+
+		return $this;
+	}
+
+	/**
+	 * Adds a WordPressPostMetaData object to the post's metadata.
+	 *
+	 * @param WordPressPostMetaData $meta_data The WordPressPostMetaData object to add.
+	 *
+	 * @return WordPressPostsData
+	 */
+	public function add_post_meta_data( WordPressPostMetaData $meta_data ): WordPressPostsData {
+		$this->meta_data[ $meta_data->meta_key ] = $meta_data;
+
+		return $this;
+	}
+
+	/**
 	 * Creates a post with the given data.
 	 *
 	 * @return WP_Error|int
@@ -572,6 +656,10 @@ class WordPressPostsData extends AbstractWordPressData {
 
 		if ( ! empty( $this->tags ) ) {
 			$this->handle_term_assignment( $this->tags, 'post_tag', $result, $copy_migration_object );
+		}
+
+		if ( ! empty( $this->meta_data ) ) {
+			$this->handle_meta_data( $result, $copy_migration_object );
 		}
 
 		return $result;
@@ -602,6 +690,10 @@ class WordPressPostsData extends AbstractWordPressData {
 
 		if ( ! empty( $this->tags ) ) {
 			$this->handle_term_assignment( $this->tags, 'post_tag', $result, $copy_migration_object );
+		}
+
+		if ( ! empty( $this->meta_data ) ) {
+			$this->handle_meta_data( $result, $copy_migration_object );
 		}
 
 		return $result;
@@ -641,7 +733,6 @@ class WordPressPostsData extends AbstractWordPressData {
 			if ( $guest_authors_enabled ) {
 				$user = $this->co_authors_plus->get_coauthor_by( 'email', $user->user_email );
 			}
-
 
 			$author_term = $this->co_authors_plus->get_author_term( $user );
 
@@ -779,6 +870,102 @@ class WordPressPostsData extends AbstractWordPressData {
 		}
 
 		$terms = [];
+	}
+
+	/**
+	 * Handles creating or updating post metadata.
+	 *
+	 * @param int                     $post_id The ID of the post to which the metadata will be assigned.
+	 * @param RunAwareMigrationObject $migration_object The migration object.
+	 *
+	 * @return void
+	 * @throws Exception If the post ID is not set, or if the metadata cannot be created or updated.
+	 */
+	private function handle_meta_data( int $post_id, RunAwareMigrationObject $migration_object ): void {
+		// phpcs:disable -- query is properly prepared and escaped.
+		$existing_meta_data = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT * FROM {$this->wpdb->postmeta} WHERE post_id = %d",
+				$post_id
+			)
+		);
+		// phpcs:enable
+
+		foreach ( $existing_meta_data as $meta_data ) {
+			if ( array_key_exists( $meta_data->meta_key, $this->meta_data ) ) {
+				$value = $this->meta_data[ $meta_data->meta_key ];
+				// phpcs:ignore Universal.Operators.StrictComparisons.LooseNotEqual -- this is intentional, values from the DB will be strings. Letting PHP handle the implicit type conversions.
+				if ( $value instanceof WordPressPostMetaData && $value->meta_value != $meta_data->meta_value ) {
+					if ( ! array_key_exists( 'migration_object', get_object_vars( $value ) ) ) {
+						$value->set_migration_object( $migration_object );
+					}
+					$value->set_meta_id( $meta_data->meta_id )->set_meta_value( $value->meta_value )->update();
+					unset( $this->meta_data[ $meta_data->meta_key ] );
+					continue;
+				}
+
+				// phpcs:ignore Universal.Operators.StrictComparisons.LooseNotEqual -- this is intentional, values from the DB will be strings. Letting PHP handle the implicit type conversions.
+				if ( $value instanceof MigrationObjectPropertyWrapper && $value->get_value() != $meta_data->meta_value ) {
+					$post_meta_data = new WordPressPostMetaData();
+					$post_meta_data->set_migration_object( $migration_object );
+					$post_meta_data->set_meta_id( $meta_data->meta_id )->set_meta_value( $value->get_value() )->update();
+					unset( $this->meta_data[ $meta_data->meta_key ] );
+					continue;
+				}
+
+				$this->wpdb->update(
+					$this->wpdb->postmeta,
+					[
+						// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- this query targets metadata by meta ID.
+						'meta_value' => $value,
+
+					],
+					[
+						'meta_id' => $meta_data->meta_id,
+					]
+				);
+				unset( $this->meta_data[ $meta_data->meta_key ] );
+			} else {
+				$this->wpdb->delete(
+					$this->wpdb->postmeta,
+					[
+						'meta_id' => $meta_data->meta_id,
+					]
+				);
+			}
+		}
+
+		foreach ( $this->meta_data as $key => $value ) {
+			if ( $value instanceof WordPressPostMetaData ) {
+				if ( ! array_key_exists( 'migration_object', get_object_vars( $value ) ) ) {
+					$value->set_migration_object( $migration_object );
+				}
+				$value->set_post_id( $post_id )->create();
+				continue;
+			}
+
+			if ( $value instanceof MigrationObjectPropertyWrapper ) {
+				$post_meta_data         = new WordPressPostMetaData();
+				$value_migration_object = $value->get_migration_object();
+				if ( ! ( $value_migration_object instanceof RunAwareMigrationObject ) ) {
+					$value_migration_object = new RunAwareMigrationObjectWrapper( $value_migration_object, $migration_object->get_run_context() );
+				}
+				$post_meta_data->set_migration_object( $value_migration_object );
+				$post_meta_data->set_post_id( $post_id )->set_meta_value( $value->get_value() )->create();
+				continue;
+			}
+
+			$this->wpdb->insert(
+				$this->wpdb->postmeta,
+				[
+					'post_id'    => $post_id,
+					'meta_key'   => $key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+					'meta_value' => $value, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+				]
+			);
+		}
+
+		$this->meta_data = [];
 	}
 
 	/**
