@@ -116,9 +116,8 @@ class Attachments {
 		if ( is_wp_error( $att_id ) ) {
 			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			@unlink( $file_array['tmp_name'] );
-			CliLog::get_logger( 'attachments' )->warning( $att_id->get_error_message() );
+			return new WP_Error( sprintf( 'File %s was not sideloaded: %s', $file_array['name'], $att_id->get_error_message() ) );
 		}
-
 
 		if ( $alt ) {
 			update_post_meta( $att_id, '_wp_attachment_image_alt', $alt );
