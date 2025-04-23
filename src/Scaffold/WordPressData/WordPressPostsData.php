@@ -508,7 +508,7 @@ class WordPressPostsData extends AbstractWordPressData {
 	}
 
 	/**
-	 * Adds a category to the list of categories for this post.
+	 * Adds a category to the list of categories for this post. If adding by ID, the ID must be a `term_taxonomy_id`.
 	 *
 	 * @param int|string|WP_Term|MigrationObjectPropertyWrapper $category The category to add to the categories array.
 	 * @param bool                                              $create_if_not_found Whether to create the category if it does not exist.
@@ -540,7 +540,7 @@ class WordPressPostsData extends AbstractWordPressData {
 	}
 
 	/**
-	 * Adds a tag to the list of tags for this post.
+	 * Adds a tag to the list of tags for this post. if adding by ID, the ID must be a `term_taxonomy_id`.
 	 *
 	 * @param int|string|WP_Term|MigrationObjectPropertyWrapper $tag The tag to add to the tags array.
 	 * @param bool                                              $create_if_not_found Whether to create the tag if it does not exist.
