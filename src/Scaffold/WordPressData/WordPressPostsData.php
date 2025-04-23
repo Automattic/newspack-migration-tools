@@ -1162,7 +1162,7 @@ class WordPressPostsData extends AbstractWordPressData {
 				);
 			}
 
-			$terms[ $term->term_taxonomy_id ] = $term instanceof MigrationObjectPropertyWrapper ?
+			$terms[ $db_term->term_taxonomy_id ] = $term instanceof MigrationObjectPropertyWrapper ?
 				new MigrationObjectPropertyWrapper(
 					$db_term->term_taxonomy_id,
 					explode( '.', $term->get_path() ),
