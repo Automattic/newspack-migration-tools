@@ -193,7 +193,7 @@ class WordPressTermTaxonomiesData extends AbstractWordPressData {
 			);
 		}
 
-		if ( $current_term_and_taxonomy->taxonomy !== $this->taxonomy ) {
+		if ( isset( $this->taxonomy ) && $current_term_and_taxonomy->taxonomy !== $this->taxonomy ) {
 			// phpcs:disable -- query is properly prepared and escaped.
 			$term_and_taxonomy_exists = $this->wpdb->get_var(
 				$this->wpdb->prepare(
