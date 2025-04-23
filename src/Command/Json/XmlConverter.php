@@ -1,9 +1,10 @@
 <?php
 
-namespace Newspack\MigrationTools\Command;
+namespace Newspack\MigrationTools\Command\Json;
 
 use Exception;
 use Laminas\Xml2Json\Xml2Json;
+use Newspack\MigrationTools\Command\WpCliCommandInterface;
 
 // phpcs:ignore Squiz.PHP.CommentedOutCode.Found,Squiz.Commenting.InlineComment.InvalidEndChar
 // use NewspackCustomContentMigrator\Utils\CommonDataFileIterator\CSVFile;
