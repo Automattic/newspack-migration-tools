@@ -269,7 +269,7 @@ class WordPressTermsData extends AbstractWordPressData {
 				return $maybe_term_id;
 			}
 
-			$this->create_term_taxonomy_record( $maybe_term_id, $this->taxonomy );
+			$this->create_term_taxonomy_record( $maybe_term_id, $this->taxonomy, $copy_migration_object );
 
 			if ( ! empty( $this->meta_data ) ) {
 				$this->handle_meta_data( $maybe_term_id, $copy_migration_object );
@@ -387,7 +387,7 @@ class WordPressTermsData extends AbstractWordPressData {
 					)
 				);
 			} elseif ( 0 === $count_taxonomy_exists ) {
-				$this->create_term_taxonomy_record( $term_id, $this->taxonomy );
+				$this->create_term_taxonomy_record( $term_id, $this->taxonomy, $copy_migration_object );
 			}
 
 			return parent::update();
@@ -571,15 +571,16 @@ class WordPressTermsData extends AbstractWordPressData {
 	/**
 	 * Creates a new term taxonomy record for the given term ID and taxonomy.
 	 *
-	 * @param int    $term_id   The term ID.
-	 * @param string $taxonomy The taxonomy.
+	 * @param int                     $term_id The term ID.
+	 * @param string                  $taxonomy The taxonomy.
+	 * @param RunAwareMigrationObject $migration_object The migration object.
 	 *
 	 * @return WordPressTermTaxonomiesData
 	 * @throws Exception If unable to create term taxonomy record.
 	 */
-	private function create_term_taxonomy_record( int $term_id, string $taxonomy ): WordPressTermTaxonomiesData {
+	private function create_term_taxonomy_record( int $term_id, string $taxonomy, RunAwareMigrationObject $migration_object ): WordPressTermTaxonomiesData {
 		$taxonomies_data = new WordPressTermTaxonomiesData();
-		$taxonomies_data->set_migration_object( $this->get_migration_object() );
+		$taxonomies_data->set_migration_object( $migration_object );
 		$maybe_term_taxonomy_id = $taxonomies_data->set_term_id( $term_id )
 													->set_taxonomy( $taxonomy )
 													->create();
