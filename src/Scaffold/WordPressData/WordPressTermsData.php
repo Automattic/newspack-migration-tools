@@ -237,9 +237,10 @@ class WordPressTermsData extends AbstractWordPressData {
 			}
 
 			// phpcs:disable -- query is properly prepared and escaped.
-			$term_and_taxonomy_exists = $this->wpdb->get_var(
+			$term_and_taxonomy_exists = $this->wpdb->get_row(
 				$this->wpdb->prepare(
 					"SELECT 
+    					t.term_id,
     					tt.term_taxonomy_id 
 					FROM {$this->wpdb->terms} t 
 					    INNER JOIN {$this->wpdb->term_taxonomy} tt 
@@ -255,7 +256,9 @@ class WordPressTermsData extends AbstractWordPressData {
 			if ( ! empty( $term_and_taxonomy_exists ) ) {
 				throw new Exception(
 					sprintf(
-						'Term already exists: Name: %s | Slug: %s | Taxonomy: %s',
+						'Term already exists: Term_ID: %d | Term_Tax_ID: %d | Name: %s | Slug: %s | Taxonomy: %s',
+						$term_and_taxonomy_exists->term_id, // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+						$term_and_taxonomy_exists->term_taxonomy_id, // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 						$this->name, // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 						$this->slug, // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 						$this->taxonomy // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
