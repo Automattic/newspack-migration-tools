@@ -1157,7 +1157,7 @@ class WordPressPostsData extends AbstractWordPressData {
 					sprintf(
 						'%s with `term_taxonomy_id`: %d does not exist.',
 						ucwords( $taxonomy ), // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
-						$$value // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+						$value // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 					)
 				);
 			}
