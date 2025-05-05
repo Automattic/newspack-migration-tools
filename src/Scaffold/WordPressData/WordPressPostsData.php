@@ -674,6 +674,10 @@ class WordPressPostsData extends AbstractWordPressData {
 	public function update(): bool|WP_Error {
 		$copy_migration_object = $this->get_migration_object();
 
+		if ( array_key_exists( 'post_content', $this->data ) ) {
+			wp_save_post_revision( $this->get_primary_id() );
+		}
+
 		$result = parent::update();
 
 		if ( is_wp_error( $result ) ) {
