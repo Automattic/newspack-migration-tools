@@ -641,7 +641,7 @@ class WordPressPostsData extends AbstractWordPressData {
 		$result = parent::create();
 
 		if ( is_wp_error( $result ) ) {
-			return $result;
+			throw new Exception( $result->get_error_message() );
 		}
 
 		// At this point, $data, $data_sources, $migration_object have been reset.
