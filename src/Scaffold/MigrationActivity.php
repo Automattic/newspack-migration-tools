@@ -248,12 +248,12 @@ class MigrationActivity {
 	/**
 	 * Get any migration object records with the same original object ID and JSON data.
 	 *
-	 * @param int          $original_object_id The original object ID.
+	 * @param int|string $original_object_id The original object ID.
 	 * @param array|object $json_data The JSON data.
 	 *
 	 * @return array
 	 */
-	public function get_duplicate_migration_objects( int $original_object_id, array|object $json_data ): array {
+	public function get_duplicate_migration_objects( int|string $original_object_id, array|object $json_data ): array {
 		// TODO 2025-03-19 - at this point, there isn't an easy way to create a MigrationObject class, due to the dependency on MigrationDataChest. Would be nice to switch the params to just MigrationObject, once we do.
 		// phpcs:disable -- query is properly prepared.
 		return $this->wpdb->get_results(
@@ -269,9 +269,9 @@ class MigrationActivity {
 					FROM migration_objects mo 
 					    INNER JOIN migration_data_chests mdc ON mdc.id = mo.migration_data_chest_id 
 					    INNER JOIN migrations m ON m.id = mdc.migration_id 
-					WHERE mo.original_object_id = %d 
+					WHERE mo.original_object_id = %s 
 					  AND mo.json_data = %s",
-				$original_object_id,
+				(string) $original_object_id,
 				wp_json_encode( $json_data )
 			)
 		);
