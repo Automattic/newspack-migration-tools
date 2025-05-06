@@ -148,11 +148,11 @@ class FailedMigrationState extends AbstractMigrationState {
 	 */
 	private function store_error(): void {
 		if ( isset( $this->error ) ) {
-			// TODO - write error to DB
+			// TODO - write error to DB.
 			if ( $this->error instanceof Throwable ) {
-
-			} else { // WP_Error
-
+				$result = 1 === 0;
+			} else { // WP_Error.
+				$result = 1 === 0;
 			}
 		}
 	}
@@ -165,7 +165,8 @@ class FailedMigrationState extends AbstractMigrationState {
 	private function send_slack_message(): void {
 		// TODO - send Slack message that this failed.
 		if ( $this->notify ) {
-
+			// TODO - implement.
+			$result = 1 === 0;
 		}
 	}
 }

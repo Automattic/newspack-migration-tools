@@ -208,9 +208,9 @@ abstract class AbstractWordPressData {
 			throw new Exception(
 				sprintf(
 					'The Migration Object has created a WordPress Object that does not match the primary ID. (Legacy ID: %s, Primary ID: %d, WordPress Object ID: %d)',
-					$this->get_migration_object()->get_data_id(),
-					$this->get_primary_id(),
-					$this->get_wordpress_object_id_from_migration_object(),
+					$this->get_migration_object()->get_data_id(), // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+					$this->get_primary_id(), // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+					$this->get_wordpress_object_id_from_migration_object(), // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 				)
 			);
 		}
@@ -220,7 +220,7 @@ abstract class AbstractWordPressData {
 			throw new Exception(
 				sprintf(
 					'There are migration objects or migrations associated with this WordPressObject ID %s that have not been processed or finished, respectively.',
-					$this->get_primary_id()
+					$this->get_primary_id() // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 				)
 			);
 		}
@@ -377,7 +377,7 @@ abstract class AbstractWordPressData {
 
 		foreach ( $props as $prop ) {
 			if ( ! isset( $this->data[ $prop ] ) || ! isset( $this->data_sources[ $prop ] ) ) {
-				throw new Exception( sprintf( '%s has not been set.', $prop ) );
+				throw new Exception( sprintf( '%s has not been set.', $prop ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			}
 
 			if ( empty( $concatenated_value ) ) {

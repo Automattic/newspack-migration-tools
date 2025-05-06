@@ -208,7 +208,13 @@ class WordPressTermRelationshipsData extends AbstractWordPressData {
 		);
 
 		if ( false === $maybe_deleted ) {
-			throw new Exception( "Failed to delete {$this->get_table_name()} data: $this->wpdb->last_error" );
+			throw new Exception( 
+				sprintf(
+					'Failed to delete %s data: %s',
+					$this->get_table_name(), // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+					$this->wpdb->last_error // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+				)
+			);
 		}
 
 		return true;

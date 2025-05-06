@@ -16,6 +16,7 @@ class MigrationObject extends AbstractMigrationObject {
 	 * @param string             $pointer_to_identifier Pointer to the identifier.
 	 * @param MigrationDataChest $data_container The data container.
 	 */
+	// phpcs:ignore Generic.CodeAnalysis.UselessOverridingMethod.Found -- may end up being useless, we can remove later on if we agree.
 	public function __construct( object|array $data, string $pointer_to_identifier, MigrationDataChest $data_container ) {
 		parent::__construct( $data, $pointer_to_identifier, $data_container );
 	}

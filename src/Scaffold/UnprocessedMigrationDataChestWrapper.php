@@ -57,7 +57,7 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 	public function __construct( MigrationDataChest $data_container, MigrationRunContext $run_context ) {
 		global $wpdb;
 		$this->wpdb           = $wpdb;
-		$this->run_context = $run_context;
+		$this->run_context    = $run_context;
 		$this->data_container = $data_container;
 
 		$this->has_been_stored();

@@ -248,7 +248,7 @@ class MigrationActivity {
 	/**
 	 * Get any migration object records with the same original object ID and JSON data.
 	 *
-	 * @param int|string $original_object_id The original object ID.
+	 * @param int|string   $original_object_id The original object ID.
 	 * @param array|object $json_data The JSON data.
 	 *
 	 * @return array

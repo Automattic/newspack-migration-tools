@@ -14,15 +14,6 @@ use WP_UnitTestCase;
 class MigrationObjectTest extends WP_UnitTestCase {
 
 	/**
-	 * Sets up the test.
-	 *
-	 * @return void
-	 */
-	public function setUp(): void {
-		parent::setUp();
-	}
-
-	/**
 	 * Returns raw data for the Migration Object to use.
 	 *
 	 * @return array

@@ -131,7 +131,9 @@ class ScaffoldTables {
 		dbDelta( $migration_destination_sources );
 
 		// Views aren't supported by `dbDelta`, so we create them manually.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,
 		$wpdb->query(
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange -- This is a custom application.
 			"CREATE VIEW {$wpdb->prefix}term_relationships_view AS 
 			SELECT 
 				(object_id << 32) | term_taxonomy_id AS virtual_primary_key, 

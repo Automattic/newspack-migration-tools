@@ -42,11 +42,11 @@ abstract class AbstractRunAwareMigrationDataChest extends AbstractMigrationDataC
 		/**
 		 * Constructor.
 		 *
-		 * @param iterable        $data The data set that needs to be migrated.
-		 * @param string          $pointer_to_identifier Pointer to the data attribute which uniquely identifies individual objects with the data set.
+		 * @param iterable            $data The data set that needs to be migrated.
+		 * @param string              $pointer_to_identifier Pointer to the data attribute which uniquely identifies individual objects with the data set.
 		 * @param MigrationRunContext $run_context The migration run context.
-		 * @param int|null        $id The Database ID for the migration data set.
-		 * @param bool|null       $stored Whether the data set has been successfully stored or not.
+		 * @param int|null            $id The Database ID for the migration data set.
+		 * @param bool|null           $stored Whether the data set has been successfully stored or not.
 		 *
 		 * @throws Exception If $id does not exist in `migration_data_chests` table.
 		 */
