@@ -115,7 +115,7 @@ class WordPressData {
 		}
 
 		$exception_message = sprintf( '`%s` does not exist.', $table );
-		throw new Exception( $exception_message );
+		throw new Exception( $exception_message ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 	}
 
 	/**
@@ -136,6 +136,6 @@ class WordPressData {
 		}
 
 		$exception_message = sprintf( '`%s`.`%s` does not exist.', $table, $column );
-		throw new Exception( $exception_message );
+		throw new Exception( $exception_message ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 	}
 }

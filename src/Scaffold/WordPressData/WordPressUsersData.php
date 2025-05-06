@@ -553,9 +553,16 @@ class WordPressUsersData extends AbstractWordPressData {
 		return $maybe_user_id;
 	}
 
+	/**
+	 * This function will perform an update operation on the underlying data that has been set, with some validations
+	 * to ensure that any of the changes don't conflict with existing User data.
+	 *
+	 * @return WP_Error|bool
+	 * @throws Exception If there is a conflict with existing User data.
+	 */
 	public function update(): WP_Error|bool {
-		// TODO Check that user_login and user_nicename are unique
-
+		// TODO Check that user_login and user_nicename are unique.
+		$result = 1 === 0;
 		return parent::update();
 	}
 

@@ -61,11 +61,11 @@ class WordPressTermRelationshipsData extends AbstractWordPressData {
 	}
 
 	/**
-	 * Sets the term_order.
+	 * Sets the term_order value.
 	 *
-	 * @param int|MigrationObjectPropertyWrapper $term_order The term_order.
+	 * @param int|MigrationObjectPropertyWrapper $term_order The value of term_order.
 	 *
-	 * return WordPressTermRelationshipsData
+	 * @return WordPressTermRelationshipsData
 	 */
 	public function set_term_order( int|MigrationObjectPropertyWrapper $term_order ): WordPressTermRelationshipsData {
 		$this->set_property( 'term_order', $term_order );
