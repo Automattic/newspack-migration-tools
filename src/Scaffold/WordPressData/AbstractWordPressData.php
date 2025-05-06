@@ -451,9 +451,17 @@ abstract class AbstractWordPressData {
 	 * @throws Exception If the date string is malformed.
 	 */
 	protected function set_date_property( string|MigrationObjectPropertyWrapper|DateTimeInterface $date, string $property_name ): void {
-		$date_time = $this->get_date_time( $date );
+		$date_time_property = $this->get_date_time( $date )->format( 'Y-m-d H:i:s' );
 
-		$this->set_property( $property_name, $date_time->format( 'Y-m-d H:i:s' ) );
+		if ( $date instanceof MigrationObjectPropertyWrapper ) {
+			$date_time_property = new MigrationObjectPropertyWrapper(
+				$date_time_property,
+				explode( '.', $date->get_path() ),
+				$date->get_migration_object()
+			);
+		}
+
+		$this->set_property( $property_name, $date_time_property );
 	}
 
 	/**
@@ -476,7 +484,17 @@ abstract class AbstractWordPressData {
 			}
 		}
 
-		$this->set_property( $property_name, $date_time->format( 'Y-m-d H:i:s' ) );
+		$date_time_property = $date_time->format( 'Y-m-d H:i:s' );
+
+		if ( $date instanceof MigrationObjectPropertyWrapper ) {
+			$date_time_property = new MigrationObjectPropertyWrapper(
+				$date_time_property,
+				explode( '.', $date->get_path() ),
+				$date->get_migration_object()
+			);
+		}
+
+		$this->set_property( $property_name, $date_time_property );
 	}
 
 	/**
