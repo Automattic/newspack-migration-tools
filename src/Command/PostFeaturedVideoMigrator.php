@@ -21,6 +21,11 @@ class PostFeaturedVideoMigrator implements WpCliCommandInterface {
 	const META_KEY = 'featured_video';
 
 	/**
+	 * Post meta to signify that the featured video migration has been done, and not to duplicate the migration.
+	 */
+	const META_KEY_MIGRATION_DONE = 'newspack_featured_video_migration_done';
+
+	/**
 	 * Gutenberg block generator.
 	 * 
 	 * @var GutenbergBlockGenerator
@@ -127,6 +132,12 @@ class PostFeaturedVideoMigrator implements WpCliCommandInterface {
 		foreach ( $post_ids as $key_post_id => $post_id ) {
 			WP_CLI::line( sprintf( '(%d/%d) post ID %d', $key_post_id + 1, count( $post_ids ), $post_id ) );
 			
+			// Skip if migration has already been done.
+			if ( get_post_meta( $post_id, self::META_KEY_MIGRATION_DONE ) ) {
+				WP_CLI::line( sprintf( 'Skipping post ID %d since migration was already done.', $post_id ) );
+				continue;
+			}
+
 			// Get postmeta.
 			$video_url = get_post_meta( $post_id, self::META_KEY );
 			if ( empty( trim( $video_url ) ) ) {
@@ -172,6 +183,9 @@ class PostFeaturedVideoMigrator implements WpCliCommandInterface {
 				if ( is_wp_error( $updated ) ) {
 					WP_CLI::warning( sprintf( 'Failed to update post ID %d: %s', $post_id, $updated->get_error_message() ) );
 				}
+
+				// Add custom post meta.
+				update_post_meta( $post_id, self::META_KEY_MIGRATION_DONE, true );
 			}
 			WP_CLI::line( sprintf( 'Updated post ID %d', $post_id ) );
 		}
