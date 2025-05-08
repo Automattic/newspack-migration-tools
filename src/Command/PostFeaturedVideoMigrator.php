@@ -86,7 +86,7 @@ class PostFeaturedVideoMigrator implements WpCliCommandInterface {
 	}
 
 	/**
-	 * Migrate featured video from postmeta to post content.
+	 * Migrate featured video from post meta to post content.
 	 *
 	 * @param array $pos_args   Positional arguments.
 	 * @param array $assoc_args Associative arguments.
