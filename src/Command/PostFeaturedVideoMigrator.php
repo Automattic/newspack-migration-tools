@@ -1,6 +1,6 @@
 <?php
 /**
- * Custom migration scripts for Post Featured Video.
+ * Custom migration for Post Featured Video plugin, https://wordpress.org/plugins/post-featured-video/.
  * 
  * @package NewspackCustomContentMigrator\Command\General
  */
@@ -11,14 +11,15 @@ use WP_CLI;
 use Newspack\MigrationTools\Logic\GutenbergBlockGenerator;
 
 /**
- * Custom migration scripts for Post Featured Video.
+ * Custom migration for Post Featured Video plugin.
+ * See the https://wordpress.org/plugins/post-featured-video/ plugin page.
  */
 class PostFeaturedVideoMigrator implements WpCliCommandInterface {
 
 	/**
 	 * Post meta key for featured video.
 	 */
-	const META_KEY = 'featured_video';
+	const META_KEY = '_pfv_custom_vid_url';
 
 	/**
 	 * Post meta to signify that the featured video migration has been done, and not to duplicate the migration.
@@ -58,6 +59,14 @@ class PostFeaturedVideoMigrator implements WpCliCommandInterface {
 						],
 						[
 							'type'        => 'assoc',
+							'name'        => 'meta-key',
+							'description' => 'Optional, custom name of the meta_key assigned to post which contains the video URL. If not provided will default to "' . self::META_KEY . '".',
+							'optional'    => true,
+							'repeating'   => false,
+							'default'     => self::META_KEY,
+						],
+						[
+							'type'        => 'assoc',
 							'name'        => 'post-ids',
 							'description' => 'Optional, if not provided will replace for all posts and pages. IDs of posts and pages to remove shortcodes from their content separated by a comma (e.g. 123,456)',
 							'optional'    => true,
@@ -93,6 +102,7 @@ class PostFeaturedVideoMigrator implements WpCliCommandInterface {
 	 */
 	public function cmd_migrate_post_featured_video_to_post_content( $pos_args, $assoc_args ) {
 		$dry_run       = isset( $assoc_args['dry-run'] ) ? true : false;
+		$meta_key      = isset( $assoc_args['meta-key'] ) ? esc_sql( $assoc_args['meta-key'] ) : self::META_KEY;
 		$post_ids      = isset( $assoc_args['post-ids'] ) ? explode( ',', $assoc_args['post-ids'] ) : null;
 		$post_types    = isset( $assoc_args['post-types'] ) ? explode( ',', $assoc_args['post-types'] ) : [ 'post', 'page' ];
 		$post_statuses = isset( $assoc_args['post-statuses'] ) ? explode( ',', $assoc_args['post-statuses'] ) : [ 'publish' ];
@@ -114,7 +124,7 @@ class PostFeaturedVideoMigrator implements WpCliCommandInterface {
 				AND p.post_type IN ($post_types_placeholder)
 				AND p.post_status IN ($post_statuses_placeholder); ",
 					array_merge(
-						[ self::META_KEY ],
+						[ $meta_key ],
 						$post_types,
 						$post_statuses
 					)
@@ -124,7 +134,7 @@ class PostFeaturedVideoMigrator implements WpCliCommandInterface {
 		}
 
 		if ( empty( $post_ids ) ) {
-			WP_CLI::warning( 'No posts found with featured video meta.' );
+			WP_CLI::warning( sprintf( 'No posts found with featured video meta, meta_key=%s', $meta_key ) );
 			return;
 		}
 
@@ -139,7 +149,7 @@ class PostFeaturedVideoMigrator implements WpCliCommandInterface {
 			}
 
 			// Get postmeta.
-			$video_url = trim( get_post_meta( $post_id, self::META_KEY, true ) );
+			$video_url = trim( get_post_meta( $post_id, $meta_key, true ) );
 			if ( empty( $video_url ) ) {
 				continue;
 			}
