@@ -49,8 +49,8 @@ class Attachments {
 	 * @param bool   $try_existing Optional. Default true. Try to match an existing file using self::maybe_get_existing_attachment_id().
 	 *                             Set this to false to skip the existing lookup if, for example, you are uploading two images that have the
 	 *                             same filename and binary data, but you need them to be unique attachments in the db, so they can have different
-	 *                             alt/captions and also different postmeta. 
-	 *
+	 *                             alt/captions and also different postmeta.
+	 * 
 	 * @return int|WP_Error Attachment ID.
 	 */
 	public static function import_external_file( $path, $title = null, $caption = null, $description = null, $alt = null, $post_id = 0, $args = [], $desired_filename = '', $try_existing = true ) {
