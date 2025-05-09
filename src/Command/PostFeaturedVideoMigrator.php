@@ -226,7 +226,7 @@ class PostFeaturedVideoMigrator implements WpCliCommandInterface {
 		$is_vimeo_video    = 1 === preg_match( '/(^|\.)vimeo\.com$/', $parsed_url['host'] );
 
 		// Generate replacements for shortcode.
-		$video_block_html = '';
+		$video_block_html = null;
 		if ( $is_facebook_video ) {
 			$video_block_html = serialize_block( $this->blocks->get_facebook( $video_url ) );
 		} elseif ( $is_youtube_video ) {
