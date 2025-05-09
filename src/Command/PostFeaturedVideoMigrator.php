@@ -139,8 +139,8 @@ class PostFeaturedVideoMigrator implements WpCliCommandInterface {
 			}
 
 			// Get postmeta.
-			$video_url = get_post_meta( $post_id, self::META_KEY );
-			if ( empty( trim( $video_url ) ) ) {
+			$video_url = trim( get_post_meta( $post_id, self::META_KEY, true ) );
+			if ( empty( $video_url ) ) {
 				continue;
 			}
 
@@ -153,7 +153,7 @@ class PostFeaturedVideoMigrator implements WpCliCommandInterface {
 			// Convert to video block or to <a> link if the video URL is not supported.
 			$video_block_html = $this->convert_url_to_video_block( $video_url );
 			if ( false === $video_block_html ) {
-				WP_CLI::warning( sprintf( 'Invalid video URL for post ID %d: %s', $post_id, $video_url ) );
+				WP_CLI::warning( sprintf( 'Invalid video URL for post ID %d: %s . Skipping.', $post_id, $video_url ) );
 				continue;
 			} elseif ( is_null( $video_block_html ) ) {
 				WP_CLI::warning( sprintf( 'Inserting link for post ID %d since video is not supported: %s', $post_id, $video_url ) );
@@ -161,18 +161,11 @@ class PostFeaturedVideoMigrator implements WpCliCommandInterface {
 			}
 
 			// Prepend video block to post content.
-			$post_content = $wpdb->get_var( $wpdb->prepare( "SELECT post_content FROM {$wpdb->posts} WHERE ID = %d", $post_id ) ); // phpcs:ignore -- WordPress.DB.DirectDatabaseQuery.NoCaching.
-			if ( null === $post_content ) {
-				continue;
-			}
-			
+			$post_content         = $wpdb->get_var( $wpdb->prepare( "SELECT post_content FROM {$wpdb->posts} WHERE ID = %d", $post_id ) ); // phpcs:ignore -- WordPress.DB.DirectDatabaseQuery.NoCaching.
 			$post_content_updated = $video_block_html . "\n\n" . $post_content;
 
 			// Update post.
 			if ( ! $dry_run && ( $post_content_updated !== $post_content ) ) {
-				// Hide featured image.
-				update_post_meta( $post_id, 'newspack_featured_image_position', 'hidden' );
-
 				// Update post_content.
 				$updated = wp_update_post(
 					[
@@ -181,13 +174,20 @@ class PostFeaturedVideoMigrator implements WpCliCommandInterface {
 					] 
 				);
 				if ( is_wp_error( $updated ) ) {
-					WP_CLI::warning( sprintf( 'Failed to update post ID %d: %s', $post_id, $updated->get_error_message() ) );
+					WP_CLI::warning( sprintf( 'ERROR: Failed to update post ID %d: %s', $post_id, $updated->get_error_message() ) );
+					continue;
 				}
 
+				WP_CLI::line( sprintf( 'Updated post ID %d', $post_id ) );
+
+				// Hide featured image.
+				update_post_meta( $post_id, 'newspack_featured_image_position', 'hidden' );
 				// Add custom post meta.
 				update_post_meta( $post_id, self::META_KEY_MIGRATION_DONE, true );
+			} else {
+				// For dry runs, just a simple message to indicate the post was processed.
+				WP_CLI::success( sprintf( 'Updated post ID %d', $post_id ) );
 			}
-			WP_CLI::line( sprintf( 'Updated post ID %d', $post_id ) );
 		}
 
 		wp_cache_flush();
