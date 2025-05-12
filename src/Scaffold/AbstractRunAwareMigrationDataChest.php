@@ -39,23 +39,32 @@ abstract class AbstractRunAwareMigrationDataChest extends AbstractMigrationDataC
 	 */
 	private bool $stored;
 
-		/**
-		 * Constructor.
-		 *
-		 * @param iterable            $data The data set that needs to be migrated.
-		 * @param string              $pointer_to_identifier Pointer to the data attribute which uniquely identifies individual objects with the data set.
-		 * @param MigrationRunContext $run_context The migration run context.
-		 * @param int|null            $id The Database ID for the migration data set.
-		 * @param bool|null           $stored Whether the data set has been successfully stored or not.
-		 *
-		 * @throws Exception If $id does not exist in `migration_data_chests` table.
-		 */
+	/**
+	 * The maximum allowed packet byte size.
+	 *
+	 * @var int $max_allowed_packet_byte_size The maximum allowed packet byte size.
+	 */
+	protected int $max_allowed_packet_byte_size;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param iterable            $data The data set that needs to be migrated.
+	 * @param string              $pointer_to_identifier Pointer to the data attribute which uniquely identifies individual objects with the data set.
+	 * @param MigrationRunContext $run_context The migration run context.
+	 * @param int|null            $id The Database ID for the migration data set.
+	 * @param bool|null           $stored Whether the data set has been successfully stored or not.
+	 *
+	 * @throws Exception If $id does not exist in `migration_data_chests` table.
+	 */
 	public function __construct( iterable $data, string $pointer_to_identifier, MigrationRunContext $run_context, ?int $id = null, ?bool $stored = null ) {
 		parent::__construct( $data, $pointer_to_identifier );
 		$this->run_context = $run_context;
 
 		global $wpdb;
 		$this->wpdb = $wpdb;
+
+		$this->max_allowed_packet_byte_size = $this->wpdb->get_row( "SHOW VARIABLES LIKE 'max_allowed_packet'" )->Value;
 
 		if ( null !== $id ) {
 			// phpcs:disable
@@ -101,6 +110,24 @@ abstract class AbstractRunAwareMigrationDataChest extends AbstractMigrationDataC
 	}
 
 	/**
+	 * Returns the maximum allowed packet byte size.
+	 *
+	 * @return int
+	 */
+	public function get_max_allowed_packet_byte_size(): int {
+		return $this->max_allowed_packet_byte_size;
+	}
+
+	/**
+	 * Returns whether the underlying data is larger than the maximum allowed packet byte size.
+	 *
+	 * @return bool
+	 */
+	public function is_larger_than_max_allowed_packet(): bool {
+		return $this->get_byte_size() > $this->get_max_allowed_packet_byte_size();
+	}
+
+	/**
 	 * Saves the migration objects container data.
 	 *
 	 * @return bool
@@ -110,11 +137,16 @@ abstract class AbstractRunAwareMigrationDataChest extends AbstractMigrationDataC
 			return true;
 		}
 
+		$json_encoded_data = wp_json_encode( $this->get_raw_data() );
 		$store_data = [
-			'json_data'            => wp_json_encode( $this->get_raw_data() ),
+			'json_data'            => $json_encoded_data,
 			'pointer_to_object_id' => $this->get_pointer_to_identifier(),
 			'source_type'          => $this->get_source_type(),
 		];
+
+		if ( $this->is_larger_than_max_allowed_packet() ) {
+			$store_data['json_data'] = hash( 'sha256', $json_encoded_data );
+		}
 
 		$maybe_stored = false;
 		if ( isset( $this->id ) ) {
@@ -160,6 +192,12 @@ abstract class AbstractRunAwareMigrationDataChest extends AbstractMigrationDataC
 	 */
 	public function has_been_stored(): bool {
 		if ( ! isset( $this->stored ) ) {
+			$json_encoded_data = wp_json_encode( $this->get_raw_data() );
+
+			if ( $this->is_larger_than_max_allowed_packet() ) {
+				$json_encoded_data = hash( 'sha256', $json_encoded_data );
+			}
+
 			$data_chest = $this->wpdb->get_row(
 				$this->wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 					'SELECT * FROM migration_data_chests 
@@ -169,7 +207,7 @@ abstract class AbstractRunAwareMigrationDataChest extends AbstractMigrationDataC
          				ORDER BY created_at DESC',
 					$this->get_run_key()->get_migration_id(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 					$this->get_pointer_to_identifier(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-					wp_json_encode( $this->get_raw_data() ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+					$json_encoded_data // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				)
 			);
 
