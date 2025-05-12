@@ -31,6 +31,13 @@ abstract class AbstractMigrationDataChest implements MigrationDataChest {
 	protected string $source_type = 'query';
 
 	/**
+	 * Size of the underlying data in bytes.
+	 *
+	 * @var int $byte_size Size of the underlying data in bytes.
+	 */
+	protected int $byte_size;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param iterable $data Data to be used to create the migration objects.
@@ -66,5 +73,19 @@ abstract class AbstractMigrationDataChest implements MigrationDataChest {
 	 */
 	public function get_raw_data(): iterable {
 		return $this->data;
+	}
+
+	/**
+	 * Returns the byte size of the underlying data. It is ok to be an estimation. Child classes can override this method to provide accurate size.
+	 *
+	 * @return int
+	 */
+	public function get_byte_size(): int {
+		if ( ! isset( $this->byte_size ) ) {
+			// Not ideal, but let's get an approximate size of the data.
+			$this->byte_size = strlen( wp_json_encode( $this->get_raw_data() ) );
+		}
+
+		return $this->byte_size;
 	}
 }
