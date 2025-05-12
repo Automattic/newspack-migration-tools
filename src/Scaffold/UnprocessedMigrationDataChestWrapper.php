@@ -49,6 +49,20 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 	private bool $stored;
 
 	/**
+	 * The maximum allowed packet byte size.
+	 *
+	 * @var int $max_allowed_packet_byte_size The maximum allowed packet byte size.
+	 */
+	private int $max_allowed_packet_byte_size;
+
+	/**
+	 * The size of the underlying data in bytes.
+	 *
+	 * @var int $byte_size The size of the underlying data in bytes.
+	 */
+	private int $byte_size;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param MigrationDataChest  $data_container The Migration Data Set Container.
@@ -59,6 +73,10 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 		$this->wpdb           = $wpdb;
 		$this->run_context    = $run_context;
 		$this->data_container = $data_container;
+
+		if ( ! ( $this->data_container instanceof RunAwareMigrationDataChest ) ) {
+			$this->max_allowed_packet_byte_size = $this->wpdb->get_row( "SHOW VARIABLES LIKE 'max_allowed_packet'" )->Value;
+		}
 
 		$this->has_been_stored();
 	}
@@ -100,6 +118,41 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 	}
 
 	/**
+	 * Returns the maximum allowed packet byte size.
+	 *
+	 * @return int
+	 */
+	public function get_max_allowed_packet_byte_size(): int {
+		if ( $this->data_container instanceof RunAwareMigrationDataChest ) {
+			return $this->data_container->get_max_allowed_packet_byte_size();
+		}
+
+		return $this->max_allowed_packet_byte_size;
+	}
+
+	/**
+	 * Returns the size of the underlying data in bytes.
+	 *
+	 * @return int
+	 */
+	public function get_byte_size(): int {
+		return $this->data_container->get_byte_size();
+	}
+
+	/**
+	 * Returns whether the size of the underlying data is larger than the maximum allowed packet byte size.
+	 *
+	 * @return bool
+	 */
+	public function is_larger_than_max_allowed_packet(): bool {
+		if ( $this->data_container instanceof RunAwareMigrationDataChest ) {
+			return $this->data_container->is_larger_than_max_allowed_packet();
+		}
+
+		return $this->get_byte_size() > $this->get_max_allowed_packet_byte_size();
+	}
+
+	/**
 	 * Stores the underlying data that has been defined as needing to be migrated.
 	 *
 	 * @return bool
@@ -110,15 +163,19 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 		}
 
 		if ( ! isset( $this->stored ) || ! $this->stored ) {
-			$maybe_inserted = $this->wpdb->insert(
-				'migration_data_chests',
-				[
-					'json_data'            => wp_json_encode( $this->get_raw_data() ),
-					'pointer_to_object_id' => $this->get_pointer_to_identifier(),
-					'source_type'          => $this->get_source_type(),
-					'migration_id'         => $this->get_run_key()->get_migration_id(),
-				]
-			);
+			$json_encoded_data = wp_json_encode( $this->get_raw_data() );
+			$insert_data       = [
+				'json_data'            => $json_encoded_data,
+				'pointer_to_object_id' => $this->get_pointer_to_identifier(),
+				'source_type'          => $this->get_source_type(),
+				'migration_id'         => $this->get_run_key()->get_migration_id(),
+			];
+
+			if ( $this->is_larger_than_max_allowed_packet() ) {
+				$insert_data['json_data'] = hash( 'sha256', $json_encoded_data );
+			}
+
+			$maybe_inserted = $this->wpdb->insert( 'migration_data_chests', $insert_data );
 
 			if ( 1 !== $maybe_inserted ) {
 				$this->stored = false;
@@ -142,6 +199,12 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 		}
 
 		if ( ! isset( $this->stored ) ) {
+			$json_encoded_data = wp_json_encode( $this->get_raw_data() );
+
+			if ( $this->is_larger_than_max_allowed_packet() ) {
+				$json_encoded_data = hash( 'sha256', $json_encoded_data );
+			}
+
 			// phpcs:disable
 			$data_chest = $this->wpdb->get_row(
 				$this->wpdb->prepare(
@@ -152,7 +215,7 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
          				  ORDER BY created_at DESC',
 					$this->get_run_key()->get_migration_id(),
 					$this->get_pointer_to_identifier(),
-					wp_json_encode( $this->get_raw_data() )
+					$json_encoded_data
 				)
 			);
 			// phpcs:enable
@@ -203,6 +266,12 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 		if ( ! $this->has_been_stored() ) {
 			$this->store();
 		} else {
+			$json_encoded_data = wp_json_encode( $this->get_raw_data() );
+
+			if ( $this->is_larger_than_max_allowed_packet() ) {
+				$json_encoded_data = hash( 'sha256', $json_encoded_data );
+			}
+
 			// phpcs:disable
 			$this->id = $this->wpdb->get_var(
 				$this->wpdb->prepare(
@@ -213,7 +282,7 @@ class UnprocessedMigrationDataChestWrapper implements RunAwareMigrationDataChest
 		 				  ORDER BY created_at DESC',
 					$this->get_run_key()->get_migration_id(),
 					$this->get_pointer_to_identifier(),
-					wp_json_encode( $this->get_raw_data() )
+					$json_encoded_data
 				)
 			);
 			// phpcs:enable
