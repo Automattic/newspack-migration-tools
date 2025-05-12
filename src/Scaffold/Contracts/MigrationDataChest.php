@@ -31,4 +31,11 @@ interface MigrationDataChest {
 	 * @return iterable
 	 */
 	public function get_raw_data(): iterable;
+
+	/**
+	 * Returns the size of the underlying data in bytes. It should be accurate, but may not be the exact size.
+	 *
+	 * @return int
+	 */
+	public function get_byte_size(): int;
 }

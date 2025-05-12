@@ -21,6 +21,20 @@ interface RunAwareMigrationDataChest extends MigrationDataChest {
 	public function get_run_key(): MigrationRunKey;
 
 	/**
+	 * Returns the maximum allowed packet byte size.
+	 *
+	 * @return int
+	 */
+	public function get_max_allowed_packet_byte_size(): int;
+
+	/**
+	 * Returns whether the size of the underlying data is larger than the maximum allowed packet byte size.
+	 *
+	 * @return bool
+	 */
+	public function is_larger_than_max_allowed_packet(): bool;
+
+	/**
 	 * Stores the underlying data that has been defined as needing to be migrated.
 	 *
 	 * @return bool
