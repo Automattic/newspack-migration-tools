@@ -138,7 +138,7 @@ abstract class AbstractRunAwareMigrationDataChest extends AbstractMigrationDataC
 		}
 
 		$json_encoded_data = wp_json_encode( $this->get_raw_data() );
-		$store_data = [
+		$store_data        = [
 			'json_data'            => $json_encoded_data,
 			'pointer_to_object_id' => $this->get_pointer_to_identifier(),
 			'source_type'          => $this->get_source_type(),
