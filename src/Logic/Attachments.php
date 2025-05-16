@@ -44,12 +44,16 @@ class Attachments {
 	 * @param array  $args        Optional. Attachment creation argument to override used by the \media_handle_sideload(), used
 	 *                            internally by the \wp_insert_attachment(), and even more internally by the \wp_insert_post().
 	 * @param string $desired_filename Optional. If the file you are importing has a different (or no) file extension than the one
-	 * you want the resulting attachment to have, you can specify it here. Make sure that it
-	 * actually matches the file mime type.
-	 *
+	 *                                 you want the resulting attachment to have, you can specify it here. Make sure that it
+	 *                                 actually matches the file mime type.
+	 * @param bool   $try_existing Optional. Default true. Try to match an existing file using self::maybe_get_existing_attachment_id().
+	 *                             Set this to false to skip the existing lookup if, for example, you are uploading two images that have the
+	 *                             same filename and binary data, but you need them to be unique attachments in the db, so they can have different
+	 *                             alt/captions and also different postmeta.
+	 * 
 	 * @return int|WP_Error Attachment ID.
 	 */
-	public static function import_external_file( $path, $title = null, $caption = null, $description = null, $alt = null, $post_id = 0, $args = [], $desired_filename = '' ) {
+	public static function import_external_file( $path, $title = null, $caption = null, $description = null, $alt = null, $post_id = 0, $args = [], $desired_filename = '', $try_existing = true ) {
 		// Fetch remote or local file.
 		$is_http = 'http' == substr( $path, 0, 4 );
 		if ( $is_http ) {
@@ -104,7 +108,7 @@ class Attachments {
 			$args['post_content'] = $description;
 		}
 
-		$maybe_exising_attachment_id = self::maybe_get_existing_attachment_id( $file_array['tmp_name'], $file_array['name'], array_merge( $args, [ 'alt' => $alt ] ) );
+    $maybe_exising_attachment_id = ( $try_existing ) ? self::maybe_get_existing_attachment_id( $file_array['tmp_name'], $file_array['name'], array_merge( $args, [ 'alt' => $alt ] ) ) : null;
 		if ( null !== $maybe_exising_attachment_id ) {
 			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			@unlink( $file_array['tmp_name'] );
