@@ -66,7 +66,7 @@ class FgHelper {
 		}
 
 		if ( ! is_plugin_active( "fg-{$this->type}-to-wp-premium/fg-{$this->type}-to-wp-premium.php" ) ) {
-			NMT::exit_with_message( 'FG {$this->type} to WP Premium plugin not found. Install and activate it before using this class.' );
+			NMT::exit_with_message( "FG {$this->type} to WP Premium plugin not found. Install and activate it before using this class." );
 		}
 
 		$this->type = $type;
