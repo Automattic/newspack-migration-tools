@@ -3,7 +3,13 @@
 namespace Newspack\MigrationTools\Command;
 
 use Newspack\MigrationTools\Logic\Posts;
+use Newspack\MigrationTools\Logic\ProgressBar;
+use Newspack\MigrationTools\Logic\Taxonomy;
+use Newspack\MigrationTools\Util\CsvWriter;
+use Newspack\MigrationTools\Util\Log\CliLog;
+use Newspack\MigrationTools\Util\Log\FileLog;
 use Newspack\MigrationTools\Util\Log\Logger;
+use Newspack\MigrationTools\Util\Log\MultiLog;
 use WP_CLI;
 
 class PostsMigrator implements WpCliCommandInterface {
@@ -31,6 +37,11 @@ class PostsMigrator implements WpCliCommandInterface {
 	private $posts_logic;
 
 	/**
+	 * @var Taxonomy.
+	 */
+	private $taxonomy_logic;
+
+	/**
 	 * @var Logger.
 	 */
 	private $logger;
@@ -39,8 +50,9 @@ class PostsMigrator implements WpCliCommandInterface {
 	 * Constructor.
 	 */
 	private function __construct() {
-		$this->posts_logic = new Posts();
-		$this->logger      = new Logger();
+		$this->posts_logic    = new Posts();
+		$this->taxonomy_logic = new Taxonomy();
+		$this->logger         = new Logger();
 	}
 
 	/**
@@ -271,6 +283,30 @@ class PostsMigrator implements WpCliCommandInterface {
 						],
 					],
 				],
+			],
+
+			[
+				'newspack-content-migrator migrate-cpt-to-posts',
+				self::get_command_closure( 'cmd_migrate_cpt_to_posts' ),
+				array(
+					'shortdesc' => 'Migrates Posts from CPT to regular Posts with optional category.',
+					'synopsis'  => array(
+						array(
+							'type'        => 'assoc',
+							'name'        => 'post_type',
+							'description' => 'The Post Type to migrate from.',
+							'optional'    => false,
+							'repeating'   => false,
+						),
+						array(
+							'type'        => 'assoc',
+							'name'        => 'category_name',
+							'description' => 'The name of the Category to migrate to.',
+							'optional'    => true,
+							'repeating'   => false,
+						),
+					),
+				),
 			],
 		];
 	}
@@ -768,6 +804,170 @@ class PostsMigrator implements WpCliCommandInterface {
 				true
 			);
 		}
+
+		wp_cache_flush();
+	}
+
+	/**
+	 * Callable for `newspack-content-migrator migrate-cpt-to-posts`.
+	 *
+	 * @param array $pos_args   Positional arguments.
+	 * @param array $assoc_args Associative arguments.
+	 * @return void
+	 */
+	public function cmd_migrate_cpt_to_posts( array $pos_args, array $assoc_args ): void {
+		$post_type     = $assoc_args['post_type'] ?? null;
+		$category_name = $assoc_args['category_name'] ?? null;
+
+		if ( ! $post_type ) {
+			WP_CLI::error( 'Post Type is required' );
+		}
+
+		$posts_ids = $this->posts_logic->get_all_posts_ids( $post_type );
+
+		if ( empty( $posts_ids ) ) {
+			\WP_CLI::warning( sprintf( 'No posts found for Post Type: %s', $post_type ) );
+
+			return;
+		}
+
+		$logger = MultiLog::get_logger(
+			'cpt-to-posts-migrator',
+			[
+				CliLog::get_logger( 'cpt-to-posts-migrator' ),
+				FileLog::get_logger( 'cpt-to-posts-migrator' ),
+			] 
+		);
+
+		$logger->info( sprintf( '🟢 Starting migration (Post Type: %s, Category: %s)...', $post_type, $category_name ) );
+
+		$redirects_csv_writer = new CsvWriter( sprintf( 'migration-%s-to-posts.csv', $post_type ) );
+
+		global $wpdb;
+
+		$category_id = ! empty( $category_name )
+			? ( new Taxonomy() )->get_or_create_category_by_name_and_parent_id( $category_name, 0 )
+			: null;
+
+		$progress_bar = new ProgressBar( '⏳ Migrating Posts', count( $posts_ids ) );
+
+		foreach ( $posts_ids as $post_id ) {
+			$progress_bar->advance();
+
+			$logger->info( sprintf( '👉 Processing Post #%d (%s)', $post_id, get_the_title( $post_id ) ) );
+
+			/**
+			 * Fires before the post is migrated.
+			 * 
+			 * @param int $post_id Post ID.
+			 */
+			do_action( 'nmt_posts_migrator_cpt_to_posts_pre_post_migration', $post_id );
+
+			$post_name     = get_post_field( 'post_name', $post_id );
+			$post_status   = get_post_field( 'post_status', $post_id );
+			$new_post_name = wp_unique_post_slug(
+				$post_name,
+				$post_id,
+				$post_status,
+				'post',
+				0
+			);
+
+			$update_data = [
+				'post_type' => 'post',
+			];
+
+			// Handle post name update.
+			if ( $post_name !== $new_post_name ) {
+				$old_slugs = (array) get_post_meta( $post_id, '_wp_old_slug' );
+
+				$logger->info( 'Post Name will be updated. Saving to `_wp_old_slug` post meta.' );
+				$logger->info( sprintf( '—— Old: %s', $post_name ) );
+				$logger->info( sprintf( '—— New: %s', $new_post_name ) );
+				
+				if ( ! in_array( $post_name, $old_slugs ) ) {
+					add_post_meta( $post_id, '_wp_old_slug', $post_name );
+				}
+
+				$update_data['post_name'] = $new_post_name;
+			}
+
+			// Set the post type to 'post'.
+			// Using $wpdb in order to avoid updating the modified datetime.
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$update_result = $wpdb->update(
+				$wpdb->posts,
+				$update_data,
+				[
+					'ID' => $post_id,
+				]
+			);
+
+			if ( ! $update_result ) {
+				$logger->error( 'Couldn\'t update post.' );
+
+				continue;
+			}
+
+			clean_post_cache( $post_id );
+
+			$logger->info( '✅ Successfully updated post' );
+
+			if ( ! empty( $category_id ) ) {
+				$category_updated = wp_set_post_categories( $post_id, $category_id, true );
+
+				if ( false === $category_updated || is_wp_error( $category_updated ) ) {
+					$logger->error( sprintf( '🚫 Couldn\'t set category "%s" for post', $category_name ) );
+				} else {
+					$logger->info( sprintf( '✅ Successfully set category "%s" for post', $category_name ) );
+				}
+			}
+
+			/**
+			 * Filters the source URL of the post being migrated.
+			 * The Source URL should contain the relative URL of the Post before the migration.
+			 * 
+			 * @param string $source_url The source URL of the post in the format /{POST_TYPE}/{POST_NAME}.
+			 * @param int    $post_id    The post ID.
+			 * @param string $post_name  The original post name before migration.
+			 */
+			$source_url = apply_filters(
+				'nmt_posts_migrator_cpt_to_posts_post_source_url',
+				sprintf( '/%s/%s', $post_type, $post_name ),
+				$post_id,
+				$post_name
+			);
+
+			/**
+			 * Filters the target URL of the post being migrated.
+			 * The Target URL should contain the relative URL of the Post after the migration.
+			 * 
+			 * @param string $target_url The target URL of the post in the format /{POST_NAME}.
+			 * @param int    $post_id    The post ID.
+			 * @param string $post_name  The updated post name after migration.
+			 */
+			$target_url = apply_filters(
+				'nmt_posts_migrator_cpt_to_posts_post_target_url',
+				str_replace( home_url(), '', get_permalink( $post_id ) ),
+				$post_id,
+				$new_post_name
+			);
+
+			// Populate CSV redirection record.
+			$redirects_csv_writer->put( [ $source_url, $target_url ] );
+
+			/**
+			 * Fires once the Post has been migrated.
+			 * 
+			 * @param int $post_id Post ID.
+			 */
+			do_action( 'nmt_posts_migrator_cpt_to_posts_post_migrated', $post_id );
+		}
+
+		$redirects_csv_writer->close();
+		$progress_bar->finish();
+
+		$logger->info( '🏁 Migration completed successfully!' );
 
 		wp_cache_flush();
 	}
