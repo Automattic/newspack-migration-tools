@@ -3,13 +3,13 @@
 namespace Newspack\MigrationTools\Command;
 
 use Newspack\MigrationTools\Logic\Posts;
-use Newspack\MigrationTools\Logic\ProgressBar;
 use Newspack\MigrationTools\Logic\Taxonomy;
 use Newspack\MigrationTools\Util\CsvWriter;
 use Newspack\MigrationTools\Util\Log\CliLog;
 use Newspack\MigrationTools\Util\Log\FileLog;
 use Newspack\MigrationTools\Util\Log\Logger;
 use Newspack\MigrationTools\Util\Log\MultiLog;
+use Newspack\MigrationTools\Util\ProgressBar;
 use WP_CLI;
 
 class PostsMigrator implements WpCliCommandInterface {
