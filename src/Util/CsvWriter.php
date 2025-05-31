@@ -26,11 +26,11 @@ class CsvWriter {
 	public function __construct(
 		private string $filename
 	) {
-        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
 		$this->file_pointer = fopen( getcwd() . '/' . $this->filename, 'a+' );
 
 		if ( false === $this->file_pointer ) {
-            // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			throw new Exception( "Could not open file: {$this->filename}" );
 		}
 	}
@@ -58,9 +58,9 @@ class CsvWriter {
 	 * @throws Exception If the row cannot be written to the file.
 	 */
 	public function put( array $row ): void {
-        // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fputcsv
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fputcsv
 		if ( false === fputcsv( $this->file_pointer, $row ) ) {
-            // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			throw new Exception( "Could not write to file: {$this->filename}" );
 		}
 	}
@@ -73,7 +73,7 @@ class CsvWriter {
 	 */
 	public function close(): void {
 		if ( false === fclose( $this->file_pointer ) ) {
-            // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			throw new Exception( "Could not close file: {$this->filename}" );
 		}
 	}

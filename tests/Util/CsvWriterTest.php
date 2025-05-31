@@ -46,7 +46,7 @@ class CsvWriterTest extends TestCase {
 		$csv_writer->set_header( $header );
 		$csv_writer->close();
 
-        // phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+		// phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
 		$content = file_get_contents( $this->test_file );
 		$this->assertStringContainsString( 'Column1,Column2,Column3', $content );
 	}
@@ -57,7 +57,7 @@ class CsvWriterTest extends TestCase {
 		$csv_writer->put( $row );
 		$csv_writer->close();
 
-        // phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+		// phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
 		$content = file_get_contents( $this->test_file );
 		$this->assertStringContainsString( 'Data1,Data2,Data3', $content );
 	}
@@ -68,7 +68,7 @@ class CsvWriterTest extends TestCase {
 		$csv_writer->set_header( [ 'Header1', 'Header2' ] );
 		$csv_writer->close();
 
-        // phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+		// phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
 		$content = file_get_contents( $this->test_file );
 		$this->assertStringNotContainsString( 'Header1,Header2', $content );
 	}
