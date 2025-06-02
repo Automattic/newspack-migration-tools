@@ -308,6 +308,30 @@ class PostsMigrator implements WpCliCommandInterface {
 					),
 				),
 			],
+
+			[
+				'newspack-content-migrator rollback-posts-to-cpt',
+				self::get_command_closure( 'cmd_rollback_posts_to_cpt' ),
+				array(
+					'shortdesc' => 'Rollbacks Posts from regular Posts to CPT.',
+					'synopsis'  => array(
+						array(
+							'type'        => 'assoc',
+							'name'        => 'category_name',
+							'description' => 'The name of the Category to migrate from.',
+							'optional'    => false,
+							'repeating'   => false,
+						),
+						array(
+							'type'        => 'assoc',
+							'name'        => 'post_type',
+							'description' => 'The Post Type to rollback to.',
+							'optional'    => false,
+							'repeating'   => false,
+						),
+					),
+				),
+			],
 		];
 	}
 
@@ -968,6 +992,80 @@ class PostsMigrator implements WpCliCommandInterface {
 		$progress_bar->finish();
 
 		$logger->info( '🏁 Migration completed successfully!' );
+
+		wp_cache_flush();
+	}
+
+	/**
+	 * Callable for `newspack-content-migrator rollback-posts-to-cpt`.
+	 *
+	 * @param array $pos_args   Positional arguments.
+	 * @param array $assoc_args Associative arguments.
+	 * @return void
+	 */
+	public function cmd_rollback_posts_to_cpt( array $pos_args, array $assoc_args ): void {
+		$post_type     = $assoc_args['post_type'] ?? null;
+		$category_name = $assoc_args['category_name'] ?? null;
+
+		if ( ! $post_type ) {
+			WP_CLI::error( 'Post Type is required' );
+
+			return;
+		}
+
+		$category = get_term_by( 'name', $category_name, 'category' );
+		if ( ! $category ) {
+			WP_CLI::error( 'Invalid Category name' );
+
+			return;
+		}
+
+		$posts_ids = $this->posts_logic->get_all_posts_ids_in_category( $category->term_id );
+
+		if ( empty( $posts_ids ) ) {
+			\WP_CLI::warning( sprintf( 'No posts found for Category: %s', $category_name ) );
+
+			return;
+		}
+
+		$log_name = sprintf( 'posts-to-%s-rollback', $post_type );
+		$logger   = MultiLog::get_logger(
+			$log_name,
+			[
+				CliLog::get_logger( $log_name ),
+				FileLog::get_logger( $log_name ),
+			]
+		);
+
+		$logger->info( sprintf( '🟢 Starting rollback ( Category: %s, Post Type: %s)...', $category_name, $post_type ) );
+
+		global $wpdb;
+
+		$posts_ids_placeholders = implode( ', ', array_fill( 0, count( $posts_ids ), '%d' ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query(
+			// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+			$wpdb->prepare(
+				"UPDATE {$wpdb->posts}
+				SET `post_type` = %s
+				WHERE `ID` IN ($posts_ids_placeholders)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$post_type,
+				...$posts_ids
+			)
+		);
+
+		$logger->info( sprintf( '✅ Posts rollbacked to CPT %s.', $post_type ) );
+
+		$logger->info( sprintf( '🟢 Removing the relation to category %s', $category_name ) );
+
+		$this->taxonomy_logic->delete_object_relational_mapping_term_taxonomy_id( $category->term_taxonomy_id, $posts_ids );
+
+		wp_update_term_count( $category->term_taxonomy_id, 'category', true );
+
+		$logger->info( sprintf( '✅ Category %s removed from Posts', $category_name ) );
+
+		$logger->info( '🏁 Rollback completed successfully!' );
 
 		wp_cache_flush();
 	}
