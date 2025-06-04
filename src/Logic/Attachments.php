@@ -120,7 +120,7 @@ class Attachments {
 		if ( is_wp_error( $att_id ) ) {
 			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			@unlink( $file_array['tmp_name'] );
-			CliLog::get_logger( 'attachments' )->warning( $att_id->get_error_message() );
+			return new WP_Error( sprintf( 'File %s was not sideloaded: %s', $file_array['name'], $att_id->get_error_message() ) );
 		}
 
 		if ( $alt ) {
@@ -147,12 +147,10 @@ class Attachments {
 			$filename = basename( $filepath );
 		}
 
-		$filename = sanitize_file_name( $filename );
-
 		global $wpdb;
 
 		// Check if the file with same name exists in the DB.
-		$like = '%' . $wpdb->esc_like( $filename );
+		$like = '%' . $wpdb->esc_like( sanitize_file_name( $filename ) );
 
 		/*
 		 * Check if files with numeric suffix like `filename-1.jpg` exist in DB.
@@ -164,7 +162,7 @@ class Attachments {
 		 */
 		$filename_path_parts    = pathinfo( $filename );
 		$filename_before_suffix = $filename_path_parts['filename'];
-		$filename_after_suffix  = isset( $filename_path_parts['extension'] ) ? '.' . $filename_path_parts['extension'] : '';
+		$filename_after_suffix  = '.' . $filename_path_parts['extension'];
 		/**
 		 * Constructs a regular expression to find attachments that could be duplicates.
 		 * The regex matches filenames with optional numeric and "-scaled" suffixes,
@@ -192,21 +190,21 @@ class Attachments {
 		);
 
 		// The $regex_pattern is used with $wpdb->prepare, which will handle SQL escaping.
-		$sql            = $wpdb->prepare(
+		// phpcs:disable -- Direct SQL query is OK here and the filename is escaped.
+		$sql = $wpdb->prepare(
 			"SELECT post_id
 			FROM {$wpdb->postmeta}
 			WHERE meta_key = '_wp_attached_file'
 			AND meta_value REGEXP %s;",
 			$regex_pattern
 		);
+
 		$attachment_ids = $wpdb->get_col( $sql );
 		// phpcs:enable
 
 		foreach ( $attachment_ids as $attachment_id ) {
 
 			$candidate_path = get_attached_file( $attachment_id );
-			// remove the -scaled from the candidate path.
-			$candidate_path = str_replace( '-scaled', '', $candidate_path );
 			// Check the file sizes first. It's a fast operation and will save us from having to do the md5 check.
 			if ( ! file_exists( $candidate_path ) || ( filesize( $candidate_path ) !== filesize( $filepath ) ) ) {
 				continue;
