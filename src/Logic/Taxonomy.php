@@ -8,6 +8,7 @@ namespace Newspack\MigrationTools\Logic;
 use InvalidArgumentException;
 use RuntimeException;
 use WP_Term;
+use WP_Error;
 
 /**
  * Taxonomy logic
@@ -215,6 +216,111 @@ class Taxonomy {
 	}
 
 	/**
+	 * Gets or creates a category by its name and parent term_id.
+	 *
+	 * The array is the same as wp_insert_category accepts. https://developer.wordpress.org/reference/functions/wp_insert_category
+	 *
+	 * Note that you *have* to provide at least the 'cat_name' field.
+	 *
+	 * @param array $data              The data to create the category with.
+	 *
+	 * @return int|null|WP_Error Category term ID or WP_Error if the category cannot be created.
+	 * @throws \RuntimeException If the category cannot be created.
+	 */
+	public function get_or_create_category( array $data ) {
+		global $wpdb;
+
+		if ( ! array_key_exists( 'cat_name', $data ) || empty( $data['cat_name'] ) ) {
+			return new WP_Error( 'missing_cat_name', 'Refusing to create category without a name.' );
+		}
+
+		$cat_name        = $data['cat_name'];
+		$cat_parent_id   = $data['category_parent'] ?? 0;
+		$cat_description = $data['category_description'] ?? '';
+		$cat_nicename    = $data['category_nicename'] ?? '';
+
+		// Get term_id if it exists.
+		$existing_term_id = $this->get_term_id_by_taxonmy_name_and_parent( 'category', $cat_name, $cat_parent_id );
+		if ( ! is_null( $existing_term_id ) ) {
+			return (int) $existing_term_id;
+		}
+
+		// If it doesn't exist, then create it.
+
+		// Double check this parent exists.
+		if ( 0 != $cat_parent_id ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			$existing_cat_parent_id = $wpdb->get_var(
+				$wpdb->prepare(
+					"select t.term_id
+						from {$wpdb->terms} t
+						join {$wpdb->term_taxonomy} tt on tt.term_id = t.term_id
+						where tt.taxonomy = 'category' and tt.term_id = %d;",
+					$cat_parent_id
+				)
+			);
+			if ( is_null( $existing_cat_parent_id ) ) {
+				return new WP_Error( 'wrong_parent_category_term_id', sprintf( 'Wrong parent category term_id=%d given, does not exist.', $cat_parent_id ) );
+			}
+		}
+
+		// Create cat.
+		return wp_insert_category(
+			[
+				'cat_name'             => $cat_name,
+				'category_parent'      => $cat_parent_id,
+				'category_description' => $cat_description,
+				'category_nicename'    => $cat_nicename,
+			]
+		);
+	}
+
+	/**
+	 * Gets or creates a tag by its name.
+	 *
+	 * The array is the same as wp_insert_term accepts for tags. https://developer.wordpress.org/reference/functions/wp_insert_term
+	 *
+	 * Note that you *have* to provide at least the 'name' field.
+	 *
+	 * @param array $data The data to create the tag with. Must include 'name' field.
+	 *
+	 * @return int|WP_Error Tag term ID or WP_Error if the tag cannot be created.
+	 */
+	public function get_or_create_tag( array $data ) {
+		global $wpdb;
+
+		if ( ! array_key_exists( 'name', $data ) || empty( $data['name'] ) ) {
+			return new WP_Error( 'missing_tag_name', 'Refusing to create tag without a name.' );
+		}
+
+		$tag_name        = $data['name'];
+		$tag_description = $data['description'] ?? '';
+		$tag_slug        = $data['slug'] ?? '';
+
+		// Get term_id if it exists.
+		$existing_term_id = $this->get_term_id_by_taxonmy_name_and_parent( 'post_tag', $tag_name, 0 );
+		if ( ! is_null( $existing_term_id ) ) {
+			return (int) $existing_term_id;
+		}
+
+		// Create tag.
+		$result = wp_insert_term(
+			$tag_name,
+			'post_tag',
+			[
+				'description' => $tag_description,
+				'slug'        => $tag_slug,
+			]
+		);
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return $result['term_id'];
+	}
+
+	/**
 	 * Gets duplicate term slugs.
 	 *
 	 * @return array
@@ -338,14 +444,14 @@ class Taxonomy {
 
 	/**
 	 * Sets a new top parent category for a post, moving all categories under the new top parent.
-	 * 
+	 *
 	 * *** WARNING *** only run this method once on a post! If ran more times, it will create duplicately nested categories.
-	 * 
+	 *
 	 * @param int $post_id                    Post ID.
 	 * @param int $new_top_parent_category_id New top parent category ID.
-	 * 
+	 *
 	 * @throws \InvalidArgumentException      If the post or new top parent category does not exist.
-	 * 
+	 *
 	 * @return bool|null                      true if successful, null if no categories were assigned to the post.
 	 */
 	public function move_category_tree_under_new_top_parent( int $post_id, int $new_top_parent_category_id ) {
@@ -378,16 +484,16 @@ class Taxonomy {
 
 	/**
 	 * Gets or creates a category under a new parent, respecting the original hierarchy.
-	 * 
+	 *
 	 * $category is the category to recreate under the new parent, along with its full category tree.
 	 * E.g., if the existing category is "Child Category < Parent Category",
 	 * the newly created category tree will be nested as "Parent Category < Child Category < New Top Parent".
-	 * 
+	 *
 	 * @param WP_Term $category Category to recreate.
 	 * @param int     $parent_id    New parent category ID.
-	 * 
+	 *
 	 * @throws \RuntimeException If the category cannot be created.
-	 * 
+	 *
 	 * @return int              New category ID.
 	 */
 	public function recreate_category_tree( WP_Term $category, int $parent_id ) {
