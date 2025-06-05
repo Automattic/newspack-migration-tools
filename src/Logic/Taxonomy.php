@@ -5,6 +5,7 @@
 
 namespace Newspack\MigrationTools\Logic;
 
+use Newspack\MigrationTools\Util\TaxonomyMeta;
 use InvalidArgumentException;
 use RuntimeException;
 use WP_Term;
@@ -14,6 +15,16 @@ use WP_Error;
  * Taxonomy logic
  */
 class Taxonomy {
+
+	/**
+	 * Meta key for the unique identifier for categories.
+	 */
+	public const UNIQUE_CATEGORY_IDENTIFIER_META_KEY = '_nmt_category_uniqid';
+
+	/**
+	 * Meta key for the unique identifier for tags.
+	 */
+	public const UNIQUE_TAG_IDENTIFIER_META_KEY = '_nmt_tag_uniqid';
 
 	/**
 	 * Fixes counts for taxonomy.
@@ -222,12 +233,12 @@ class Taxonomy {
 	 *
 	 * Note that you *have* to provide at least the 'cat_name' field.
 	 *
-	 * @param array $data              The data to create the category with.
+	 * @param array  $data              The data to create the category with.
+	 * @param string $unique_identifier A unique identifier for your category – can be any string, but should be unique.
 	 *
 	 * @return int|null|WP_Error Category term ID or WP_Error if the category cannot be created.
-	 * @throws \RuntimeException If the category cannot be created.
 	 */
-	public function get_or_create_category( array $data ) {
+	public function get_or_create_category( array $data, ?string $unique_identifier = null ) {
 		global $wpdb;
 
 		if ( ! array_key_exists( 'cat_name', $data ) || empty( $data['cat_name'] ) ) {
@@ -240,7 +251,10 @@ class Taxonomy {
 		$cat_nicename    = $data['category_nicename'] ?? '';
 
 		// Get term_id if it exists.
-		$existing_term_id = $this->get_term_id_by_taxonmy_name_and_parent( 'category', $cat_name, $cat_parent_id );
+		$existing_term_id = $unique_identifier
+			? $this->get_term_id_by_unique_identifier( self::UNIQUE_CATEGORY_IDENTIFIER_META_KEY, $unique_identifier )
+			: $this->get_term_id_by_taxonmy_name_and_parent( 'category', $cat_name, $cat_parent_id );
+
 		if ( ! is_null( $existing_term_id ) ) {
 			return (int) $existing_term_id;
 		}
@@ -265,14 +279,21 @@ class Taxonomy {
 		}
 
 		// Create cat.
-		return wp_insert_category(
+		$cat_id = wp_insert_category(
 			[
 				'cat_name'             => $cat_name,
 				'category_parent'      => $cat_parent_id,
 				'category_description' => $cat_description,
 				'category_nicename'    => $cat_nicename,
-			]
+			],
+			true
 		);
+
+		if ( ! is_wp_error( $cat_id ) ) {
+			update_term_meta( $cat_id, self::UNIQUE_CATEGORY_IDENTIFIER_META_KEY, $unique_identifier );
+		}
+
+		return $cat_id; // Will be a WP_Error if the category cannot be created.
 	}
 
 	/**
@@ -282,11 +303,12 @@ class Taxonomy {
 	 *
 	 * Note that you *have* to provide at least the 'name' field.
 	 *
-	 * @param array $data The data to create the tag with. Must include 'name' field.
+	 * @param array  $data              The data to create the tag with. Must include 'name' field.
+	 * @param string $unique_identifier A unique identifier for your tag – can be any string, but should be unique.
 	 *
 	 * @return int|WP_Error Tag term ID or WP_Error if the tag cannot be created.
 	 */
-	public function get_or_create_tag( array $data ) {
+	public function get_or_create_tag( array $data, ?string $unique_identifier = null ) {
 		global $wpdb;
 
 		if ( ! array_key_exists( 'name', $data ) || empty( $data['name'] ) ) {
@@ -298,7 +320,10 @@ class Taxonomy {
 		$tag_slug        = $data['slug'] ?? '';
 
 		// Get term_id if it exists.
-		$existing_term_id = $this->get_term_id_by_taxonmy_name_and_parent( 'post_tag', $tag_name, 0 );
+		$existing_term_id = $unique_identifier
+			? $this->get_term_id_by_unique_identifier( self::UNIQUE_TAG_IDENTIFIER_META_KEY, $unique_identifier )
+			: $this->get_term_id_by_taxonmy_name_and_parent( 'post_tag', $tag_name, 0 );
+
 		if ( ! is_null( $existing_term_id ) ) {
 			return (int) $existing_term_id;
 		}
@@ -317,7 +342,30 @@ class Taxonomy {
 			return $result;
 		}
 
+		if ( ! is_wp_error( $result ) ) {
+			update_term_meta( $result['term_id'], self::UNIQUE_TAG_IDENTIFIER_META_KEY, $unique_identifier );
+		}
+
 		return $result['term_id'];
+	}
+
+	/**
+	 * Get a term by its unique identifier.
+	 *
+	 * The identifier was set when the term was created (if it was created by this class), so you probably know what it is.
+	 * Make sure you read the docs linked to at the top of the class.
+	 *
+	 * @param string $taxonomy_unique_identifier_meta_key The meta key to search for.
+	 * @param string $unique_identifier The unique identifier to search for.
+	 *
+	 * @return int|null A term ID if found, null otherwise.
+	 */
+	public function get_term_id_by_unique_identifier( string $taxonomy_unique_identifier_meta_key, string $unique_identifier ): int|null {
+		$term_id = TaxonomyMeta::get_term_id_from_key_and_value( $taxonomy_unique_identifier_meta_key, $unique_identifier );
+		if ( empty( $term_id ) ) {
+			return null;
+		}
+		return (int) $term_id;
 	}
 
 	/**

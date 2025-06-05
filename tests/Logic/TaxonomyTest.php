@@ -270,4 +270,208 @@ class TaxonomyTest extends WP_UnitTestCase {
 		$this->assertEquals( 'Second Tag', $term->name );
 		$this->assertStringStartsWith( 'test-slug', $term->slug );
 	}
+
+	/**
+	 * Test creating a category with a unique identifier.
+	 */
+	public function test_create_category_with_unique_identifier() {
+		$unique_id = 'test-unique-id-123';
+		$result    = $this->taxonomy->get_or_create_category(
+			[
+				'cat_name' => 'Test Category Unique',
+			],
+			$unique_id
+		);
+
+		$this->assertIsInt( $result );
+		$this->assertGreaterThan( 0, $result );
+
+		// Verify the unique identifier was stored
+		$stored_unique_id = get_term_meta( $result, Taxonomy::UNIQUE_CATEGORY_IDENTIFIER_META_KEY, true );
+		$this->assertEquals( $unique_id, $stored_unique_id );
+	}
+
+	/**
+	 * Test getting an existing category by unique identifier.
+	 */
+	public function test_get_existing_category_by_unique_identifier() {
+		$unique_id = 'test-unique-id-456';
+
+		// First create a category with a unique identifier
+		$first_result = $this->taxonomy->get_or_create_category(
+			[
+				'cat_name' => 'Existing Category Unique',
+			],
+			$unique_id
+		);
+
+		// Try to create another category with the same unique identifier but different name
+		$second_result = $this->taxonomy->get_or_create_category(
+			[
+				'cat_name' => 'Different Name Should Not Matter',
+			],
+			$unique_id
+		);
+
+		$this->assertEquals( $first_result, $second_result );
+
+		// Verify the original category name was preserved
+		$term = get_term( $first_result, 'category' );
+		$this->assertEquals( 'Existing Category Unique', $term->name );
+	}
+
+	/**
+	 * Test that categories with same name but different unique identifiers are treated as different.
+	 */
+	public function test_categories_with_same_name_different_unique_identifiers() {
+		// Create first category with unique identifier
+		$first_result = $this->taxonomy->get_or_create_category(
+			[
+				'cat_name' => 'Same Name Category',
+			],
+			'unique-id-1'
+		);
+
+		// Create second category with same name but different unique identifier
+		$second_result = $this->taxonomy->get_or_create_category(
+			[
+				'cat_name' => 'Same Name Category',
+			],
+			'unique-id-2'
+		);
+
+		$this->assertNotEquals( $first_result, $second_result );
+
+		// Verify the first category exists and has a unique identifier, and that the second category wasn't created.
+		$first_unique_id  = get_term_meta( $first_result, Taxonomy::UNIQUE_CATEGORY_IDENTIFIER_META_KEY, true );
+		$second_unique_id = get_term_meta( $second_result, Taxonomy::UNIQUE_CATEGORY_IDENTIFIER_META_KEY, true );
+
+		$this->assertNotEmpty( $first_unique_id );
+		$this->assertEmpty( $second_unique_id );
+
+		$this->assertEquals( 'unique-id-1', $first_unique_id );
+
+		$this->assertInstanceOf( WP_Error::class, $second_result );
+		$this->assertEquals( 'term_exists', $second_result->get_error_code() );
+	}
+
+	/**
+	 * Test that unique identifier is optional.
+	 */
+	public function test_category_without_unique_identifier() {
+		$result = $this->taxonomy->get_or_create_category(
+			[
+				'cat_name' => 'Category Without Unique ID',
+			]
+		);
+
+		$this->assertIsInt( $result );
+		$this->assertGreaterThan( 0, $result );
+
+		// Verify no unique identifier was stored
+		$stored_unique_id = get_term_meta( $result, Taxonomy::UNIQUE_CATEGORY_IDENTIFIER_META_KEY, true );
+		$this->assertEmpty( $stored_unique_id );
+	}
+
+	/**
+	 * Test creating a tag with a unique identifier.
+	 */
+	public function test_create_tag_with_unique_identifier() {
+		$unique_id = 'test-tag-unique-id-123';
+		$result    = $this->taxonomy->get_or_create_tag(
+			[
+				'name' => 'Test Tag Unique',
+			],
+			$unique_id
+		);
+
+		$this->assertIsInt( $result );
+		$this->assertGreaterThan( 0, $result );
+
+		// Verify the unique identifier was stored
+		$stored_unique_id = get_term_meta( $result, Taxonomy::UNIQUE_TAG_IDENTIFIER_META_KEY, true );
+		$this->assertEquals( $unique_id, $stored_unique_id );
+	}
+
+	/**
+	 * Test getting an existing tag by unique identifier.
+	 */
+	public function test_get_existing_tag_by_unique_identifier() {
+		$unique_id = 'test-tag-unique-id-456';
+
+		// First create a tag with a unique identifier
+		$first_result = $this->taxonomy->get_or_create_tag(
+			[
+				'name' => 'Existing Tag Unique',
+			],
+			$unique_id
+		);
+
+		// Try to create another tag with the same unique identifier but different name
+		$second_result = $this->taxonomy->get_or_create_tag(
+			[
+				'name' => 'Different Name Should Not Matter',
+			],
+			$unique_id
+		);
+
+		$this->assertEquals( $first_result, $second_result );
+
+		// Verify the original tag name was preserved
+		$term = get_term( $first_result, 'post_tag' );
+		$this->assertEquals( 'Existing Tag Unique', $term->name );
+	}
+
+	/**
+	 * Test that tags with same name but different unique identifiers are treated as different.
+	 */
+	public function test_tags_with_same_name_different_unique_identifiers() {
+		// Create first tag with unique identifier
+		$first_result = $this->taxonomy->get_or_create_tag(
+			[
+				'name' => 'Same Name Tag',
+			],
+			'unique-tag-id-1'
+		);
+
+		// Create second tag with same name but different unique identifier
+		$second_result = $this->taxonomy->get_or_create_tag(
+			[
+				'name' => 'Same Name Tag',
+			],
+			'unique-tag-id-2'
+		);
+
+		$this->assertNotEquals( $first_result, $second_result );
+
+		// Verify the first tag exists and has a unique identifier, and that the second tag wasn't created
+		$first_unique_id  = get_term_meta( $first_result, Taxonomy::UNIQUE_TAG_IDENTIFIER_META_KEY, true );
+		$second_unique_id = get_term_meta( $second_result, Taxonomy::UNIQUE_TAG_IDENTIFIER_META_KEY, true );
+
+		$this->assertNotEmpty( $first_unique_id );
+		$this->assertEmpty( $second_unique_id );
+
+		$this->assertEquals( 'unique-tag-id-1', $first_unique_id );
+
+		$this->assertInstanceOf( WP_Error::class, $second_result );
+		$this->assertEquals( 'term_exists', $second_result->get_error_code() );
+	}
+
+	/**
+	 * Test that unique identifier is optional for tags.
+	 */
+	public function test_tag_without_unique_identifier() {
+		$result = $this->taxonomy->get_or_create_tag(
+			[
+				'name' => 'Tag Without Unique ID',
+			]
+		);
+
+		$this->assertIsInt( $result );
+		$this->assertGreaterThan( 0, $result );
+
+		// Verify no unique identifier was stored
+		$stored_unique_id = get_term_meta( $result, Taxonomy::UNIQUE_TAG_IDENTIFIER_META_KEY, true );
+		$this->assertEmpty( $stored_unique_id );
+	}
 }
