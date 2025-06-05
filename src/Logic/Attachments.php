@@ -195,7 +195,8 @@ class Attachments {
 			"SELECT post_id
 			FROM {$wpdb->postmeta}
 			WHERE meta_key = '_wp_attached_file'
-			AND meta_value REGEXP %s;",
+			AND (meta_value LIKE %s OR meta_value REGEXP %s);",
+			$like,
 			$regex_pattern
 		);
 
