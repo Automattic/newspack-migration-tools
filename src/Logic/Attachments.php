@@ -206,6 +206,8 @@ class Attachments {
 		foreach ( $attachment_ids as $attachment_id ) {
 
 			$candidate_path = get_attached_file( $attachment_id );
+			// Remove the "-scaled" suffix from the candidate path to check the original file size.
+			$candidate_path = str_replace( '-scaled', '', $candidate_path );
 			// Check the file sizes first. It's a fast operation and will save us from having to do the md5 check.
 			if ( ! file_exists( $candidate_path ) || ( filesize( $candidate_path ) !== filesize( $filepath ) ) ) {
 				continue;
