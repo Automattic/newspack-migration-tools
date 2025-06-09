@@ -207,7 +207,7 @@ class Attachments {
 
 			$candidate_path = get_attached_file( $attachment_id );
 			// Remove the "-scaled" suffix from the candidate path to check the original file size.
-			$candidate_path = str_replace( '-scaled', '', $candidate_path );
+			$candidate_path = self::remove_scaled_suffix_from_image_url( $candidate_path ) ?? $candidate_path;
 			// Check the file sizes first. It's a fast operation and will save us from having to do the md5 check.
 			if ( ! file_exists( $candidate_path ) || ( filesize( $candidate_path ) !== filesize( $filepath ) ) ) {
 				continue;
@@ -218,6 +218,45 @@ class Attachments {
 			}
 		}
 
+		return null;
+	}
+
+	/**
+	 * Remove the '-scaled' suffix from the image URL, or return null if the URL is not a scaled image.
+	 * 
+	 * @param string $url  The image URL.
+	 * @return string|null The image URL without the '-scaled' suffix, or null if $url does not contain a scaled image.
+	 */
+	public static function remove_scaled_suffix_from_image_url( string $url ): string|null {
+		
+		// Supported WordPress image extensions.
+		$wp_supported_extensions = [ 'jpg', 'jpeg', 'png', 'gif', 'webp' ];
+	
+		// Extract filename and extension from URL.
+		$parsed_url = wp_parse_url( $url );
+		if ( ! isset( $parsed_url['path'] ) ) {
+			return null;
+		}
+		$path     = $parsed_url['path'];
+		$filename = basename( $path );
+	
+		// Match WP-supported image filenames that end in -scaled.
+		if ( preg_match( '/^(.*)-scaled\.(' . implode( '|', $wp_supported_extensions ) . ')$/i', $filename, $matches ) ) {
+			// $new_filename = {str_before_scaled} + {str_extension}. phpignore: Squiz.PHP.CommentedOutCode.Found.
+			$new_filename = $matches[1] . '.' . $matches[2];
+	
+			// Replace the filename in the path.
+			$new_path = str_replace( $filename, $new_filename, $path );
+	
+			// Rebuild URL with the modified path and original query string
+			$rebuilt_url = ( isset( $parsed_url['scheme'] ) ? "{$parsed_url['scheme']}://" : '' ) .
+							( isset( $parsed_url['host'] ) ? "{$parsed_url['host']}" : '' ) .
+							$new_path .
+							( isset( $parsed_url['query'] ) ? "?{$parsed_url['query']}" : '' );
+	
+			return $rebuilt_url;
+		}
+	
 		return null;
 	}
 
