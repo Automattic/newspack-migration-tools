@@ -5,7 +5,7 @@
 
 namespace Newspack\MigrationTools\Logic;
 
-use Newspack\MigrationTools\Util\TaxonomyMeta;
+use Newspack\MigrationTools\Util\Log\FileLog;
 use InvalidArgumentException;
 use RuntimeException;
 use WP_Term;
@@ -229,12 +229,8 @@ class Taxonomy {
 	/**
 	 * Gets or creates a category by its name and parent term_id.
 	 *
-	 * The array is the same as wp_insert_category accepts. https://developer.wordpress.org/reference/functions/wp_insert_category
-	 *
-	 * Note that you *have* to provide at least the 'cat_name' field.
-	 *
-	 * @param array  $data              The data to create the category with.
-	 * @param string $unique_identifier A unique identifier for your category – can be any string, but should be unique.
+	 * @param array       $data              The data to create the category with. The array is the same as wp_insert_category accepts. https://developer.wordpress.org/reference/functions/wp_insert_category. Note that you *have* to provide at least the 'cat_name' field.
+	 * @param string|null $unique_identifier A unique identifier for your category – can be any string, but should be unique.
 	 *
 	 * @return int|null|WP_Error Category term ID or WP_Error if the category cannot be created.
 	 */
@@ -299,12 +295,8 @@ class Taxonomy {
 	/**
 	 * Gets or creates a tag by its name.
 	 *
-	 * The array is the same as wp_insert_term accepts for tags. https://developer.wordpress.org/reference/functions/wp_insert_term
-	 *
-	 * Note that you *have* to provide at least the 'name' field.
-	 *
-	 * @param array  $data              The data to create the tag with. Must include 'name' field.
-	 * @param string $unique_identifier A unique identifier for your tag – can be any string, but should be unique.
+	 * @param array       $data              The data to create the tag with. Must include 'name' field. The array is the same as wp_insert_term accepts for tags. https://developer.wordpress.org/reference/functions/wp_insert_term. Note that you *have* to provide at least the 'name' field.
+	 * @param string|null $unique_identifier A unique identifier for your tag – can be any string, but should be unique.
 	 *
 	 * @return int|WP_Error Tag term ID or WP_Error if the tag cannot be created.
 	 */
@@ -361,7 +353,7 @@ class Taxonomy {
 	 * @return int|null A term ID if found, null otherwise.
 	 */
 	public function get_term_id_by_unique_identifier( string $taxonomy_unique_identifier_meta_key, string $unique_identifier ): int|null {
-		$term_id = TaxonomyMeta::get_term_id_from_key_and_value( $taxonomy_unique_identifier_meta_key, $unique_identifier );
+		$term_id = $this->get_term_id_from_key_and_value( $taxonomy_unique_identifier_meta_key, $unique_identifier );
 		if ( empty( $term_id ) ) {
 			return null;
 		}
@@ -573,5 +565,41 @@ class Taxonomy {
 		}
 
 		return $new_category_id;
+	}
+
+	/**
+	 * Get a taxonomy ID from a taxonomy meta key and value.
+	 *
+	 * Note that if the taxonomy meta key is not unique, this will return the first taxonomy ID found.
+	 *
+	 * @param string $key   The meta key.
+	 * @param string $value The meta value to search for.
+	 *
+	 * @return int Term ID or 0 if not found.
+	 */
+	private function get_term_id_from_key_and_value( string $key, string $value ): int {
+		if ( empty( $key ) || empty( $value ) ) {
+			FileLog::get_logger( 'TaxonomyMeta' )->error(
+				'Key or value is empty. Refusing to find a taxonomy with empty values.',
+				[
+					'key'   => $key,
+					'value' => $value,
+				]
+			);
+
+			return 0;
+		}
+
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$term_id = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT term_id FROM $wpdb->termmeta WHERE meta_key = %s AND meta_value = %s LIMIT 1",
+				$key,
+				$value
+			)
+		);
+
+		return empty( $term_id ) ? 0 : (int) $term_id;
 	}
 }
