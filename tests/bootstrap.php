@@ -36,6 +36,8 @@ function set_up_contrib_plugins(): void {
 	$plugins_active_in_tests = [
 		// The CAP plugin is used so much in our code that it is hard to test without it.
 		'co-authors-plus' => 'co-authors-plus/co-authors-plus.php',
+		// The Newspack plugin is required for GuestContributorsHelper tests.
+		'newspack-plugin' => 'newspack-plugin/newspack.php',
 	];
 
 	$wordpress_dir = rtrim( sys_get_temp_dir(), '/\\' ) . '/wordpress';

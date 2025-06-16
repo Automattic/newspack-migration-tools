@@ -11,6 +11,7 @@ The repository contains a set of WP commands to migrate different data to WordPr
 
 ## Documentation for logic and utility classes
 * [Logging](./docs/logging.md)
+* [GuestContributors](./docs/guest-contributors.md)
 * [UsersHelper](./docs/users-helper.md)
 * [UserMeta](./docs/user-meta.md)
 * [FG Helper](./docs/fg-helper.md)

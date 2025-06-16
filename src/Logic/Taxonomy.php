@@ -5,14 +5,26 @@
 
 namespace Newspack\MigrationTools\Logic;
 
+use Newspack\MigrationTools\Util\Log\FileLog;
 use InvalidArgumentException;
 use RuntimeException;
 use WP_Term;
+use WP_Error;
 
 /**
  * Taxonomy logic
  */
 class Taxonomy {
+
+	/**
+	 * Meta key for the unique identifier for categories.
+	 */
+	public const UNIQUE_CATEGORY_IDENTIFIER_META_KEY = '_nmt_category_uniqid';
+
+	/**
+	 * Meta key for the unique identifier for tags.
+	 */
+	public const UNIQUE_TAG_IDENTIFIER_META_KEY = '_nmt_tag_uniqid';
 
 	/**
 	 * Fixes counts for taxonomy.
@@ -215,6 +227,140 @@ class Taxonomy {
 	}
 
 	/**
+	 * Gets or creates a category by its name and parent term_id.
+	 *
+	 * @param array       $data              The data to create the category with. The array is the same as wp_insert_category accepts. https://developer.wordpress.org/reference/functions/wp_insert_category. Note that you *have* to provide at least the 'cat_name' field.
+	 * @param string|null $unique_identifier A unique identifier for your category – can be any string, but should be unique.
+	 *
+	 * @return int|null|WP_Error Category term ID or WP_Error if the category cannot be created.
+	 */
+	public function get_or_create_category( array $data, ?string $unique_identifier = null ) {
+		global $wpdb;
+
+		if ( ! array_key_exists( 'cat_name', $data ) || empty( $data['cat_name'] ) ) {
+			return new WP_Error( 'missing_cat_name', 'Refusing to create category without a name.' );
+		}
+
+		$cat_name        = $data['cat_name'];
+		$cat_parent_id   = $data['category_parent'] ?? 0;
+		$cat_description = $data['category_description'] ?? '';
+		$cat_nicename    = $data['category_nicename'] ?? '';
+
+		// Get term_id if it exists.
+		$existing_term_id = $unique_identifier
+			? $this->get_term_id_by_unique_identifier( self::UNIQUE_CATEGORY_IDENTIFIER_META_KEY, $unique_identifier )
+			: $this->get_term_id_by_taxonmy_name_and_parent( 'category', $cat_name, $cat_parent_id );
+
+		if ( ! is_null( $existing_term_id ) ) {
+			return (int) $existing_term_id;
+		}
+
+		// If it doesn't exist, then create it.
+
+		// Double check this parent exists.
+		if ( 0 != $cat_parent_id ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			$existing_cat_parent_id = $wpdb->get_var(
+				$wpdb->prepare(
+					"select t.term_id
+						from {$wpdb->terms} t
+						join {$wpdb->term_taxonomy} tt on tt.term_id = t.term_id
+						where tt.taxonomy = 'category' and tt.term_id = %d;",
+					$cat_parent_id
+				)
+			);
+			if ( is_null( $existing_cat_parent_id ) ) {
+				return new WP_Error( 'wrong_parent_category_term_id', sprintf( 'Wrong parent category term_id=%d given, does not exist.', $cat_parent_id ) );
+			}
+		}
+
+		// Create cat.
+		$cat_id = wp_insert_category(
+			[
+				'cat_name'             => $cat_name,
+				'category_parent'      => $cat_parent_id,
+				'category_description' => $cat_description,
+				'category_nicename'    => $cat_nicename,
+			],
+			true
+		);
+
+		if ( ! is_wp_error( $cat_id ) ) {
+			update_term_meta( $cat_id, self::UNIQUE_CATEGORY_IDENTIFIER_META_KEY, $unique_identifier );
+		}
+
+		return $cat_id; // Will be a WP_Error if the category cannot be created.
+	}
+
+	/**
+	 * Gets or creates a tag by its name.
+	 *
+	 * @param array       $data              The data to create the tag with. Must include 'name' field. The array is the same as wp_insert_term accepts for tags. https://developer.wordpress.org/reference/functions/wp_insert_term. Note that you *have* to provide at least the 'name' field.
+	 * @param string|null $unique_identifier A unique identifier for your tag – can be any string, but should be unique.
+	 *
+	 * @return int|WP_Error Tag term ID or WP_Error if the tag cannot be created.
+	 */
+	public function get_or_create_tag( array $data, ?string $unique_identifier = null ) {
+		global $wpdb;
+
+		if ( ! array_key_exists( 'name', $data ) || empty( $data['name'] ) ) {
+			return new WP_Error( 'missing_tag_name', 'Refusing to create tag without a name.' );
+		}
+
+		$tag_name        = $data['name'];
+		$tag_description = $data['description'] ?? '';
+		$tag_slug        = $data['slug'] ?? '';
+
+		// Get term_id if it exists.
+		$existing_term_id = $unique_identifier
+			? $this->get_term_id_by_unique_identifier( self::UNIQUE_TAG_IDENTIFIER_META_KEY, $unique_identifier )
+			: $this->get_term_id_by_taxonmy_name_and_parent( 'post_tag', $tag_name, 0 );
+
+		if ( ! is_null( $existing_term_id ) ) {
+			return (int) $existing_term_id;
+		}
+
+		// Create tag.
+		$result = wp_insert_term(
+			$tag_name,
+			'post_tag',
+			[
+				'description' => $tag_description,
+				'slug'        => $tag_slug,
+			]
+		);
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		if ( ! is_wp_error( $result ) ) {
+			update_term_meta( $result['term_id'], self::UNIQUE_TAG_IDENTIFIER_META_KEY, $unique_identifier );
+		}
+
+		return $result['term_id'];
+	}
+
+	/**
+	 * Get a term by its unique identifier.
+	 *
+	 * The identifier was set when the term was created (if it was created by this class), so you probably know what it is.
+	 * Make sure you read the docs linked to at the top of the class.
+	 *
+	 * @param string $taxonomy_unique_identifier_meta_key The meta key to search for.
+	 * @param string $unique_identifier The unique identifier to search for.
+	 *
+	 * @return int|null A term ID if found, null otherwise.
+	 */
+	public function get_term_id_by_unique_identifier( string $taxonomy_unique_identifier_meta_key, string $unique_identifier ): int|null {
+		$term_id = $this->get_term_id_from_key_and_value( $taxonomy_unique_identifier_meta_key, $unique_identifier );
+		if ( empty( $term_id ) ) {
+			return null;
+		}
+		return (int) $term_id;
+	}
+
+	/**
 	 * Gets duplicate term slugs.
 	 *
 	 * @return array
@@ -338,14 +484,14 @@ class Taxonomy {
 
 	/**
 	 * Sets a new top parent category for a post, moving all categories under the new top parent.
-	 * 
+	 *
 	 * *** WARNING *** only run this method once on a post! If ran more times, it will create duplicately nested categories.
-	 * 
+	 *
 	 * @param int $post_id                    Post ID.
 	 * @param int $new_top_parent_category_id New top parent category ID.
-	 * 
+	 *
 	 * @throws \InvalidArgumentException      If the post or new top parent category does not exist.
-	 * 
+	 *
 	 * @return bool|null                      true if successful, null if no categories were assigned to the post.
 	 */
 	public function move_category_tree_under_new_top_parent( int $post_id, int $new_top_parent_category_id ) {
@@ -378,16 +524,16 @@ class Taxonomy {
 
 	/**
 	 * Gets or creates a category under a new parent, respecting the original hierarchy.
-	 * 
+	 *
 	 * $category is the category to recreate under the new parent, along with its full category tree.
 	 * E.g., if the existing category is "Child Category < Parent Category",
 	 * the newly created category tree will be nested as "Parent Category < Child Category < New Top Parent".
-	 * 
+	 *
 	 * @param WP_Term $category Category to recreate.
 	 * @param int     $parent_id    New parent category ID.
-	 * 
+	 *
 	 * @throws \RuntimeException If the category cannot be created.
-	 * 
+	 *
 	 * @return int              New category ID.
 	 */
 	public function recreate_category_tree( WP_Term $category, int $parent_id ) {
@@ -419,5 +565,41 @@ class Taxonomy {
 		}
 
 		return $new_category_id;
+	}
+
+	/**
+	 * Get a taxonomy ID from a taxonomy meta key and value.
+	 *
+	 * Note that if the taxonomy meta key is not unique, this will return the first taxonomy ID found.
+	 *
+	 * @param string $key   The meta key.
+	 * @param string $value The meta value to search for.
+	 *
+	 * @return int Term ID or 0 if not found.
+	 */
+	private function get_term_id_from_key_and_value( string $key, string $value ): int {
+		if ( empty( $key ) || empty( $value ) ) {
+			FileLog::get_logger( 'TaxonomyMeta' )->error(
+				'Key or value is empty. Refusing to find a taxonomy with empty values.',
+				[
+					'key'   => $key,
+					'value' => $value,
+				]
+			);
+
+			return 0;
+		}
+
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$term_id = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT term_id FROM $wpdb->termmeta WHERE meta_key = %s AND meta_value = %s LIMIT 1",
+				$key,
+				$value
+			)
+		);
+
+		return empty( $term_id ) ? 0 : (int) $term_id;
 	}
 }

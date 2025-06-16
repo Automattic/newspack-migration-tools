@@ -44,12 +44,16 @@ class Attachments {
 	 * @param array  $args        Optional. Attachment creation argument to override used by the \media_handle_sideload(), used
 	 *                            internally by the \wp_insert_attachment(), and even more internally by the \wp_insert_post().
 	 * @param string $desired_filename Optional. If the file you are importing has a different (or no) file extension than the one
-	 * you want the resulting attachment to have, you can specify it here. Make sure that it
-	 * actually matches the file mime type.
+	 *                                 you want the resulting attachment to have, you can specify it here. Make sure that it
+	 *                                 actually matches the file mime type.
+	 * @param bool   $try_existing Optional. Default true. Try to match an existing file using self::maybe_get_existing_attachment_id().
+	 *                             Set this to false to skip the existing lookup if, for example, you are uploading two images that have the
+	 *                             same filename and binary data, but you need them to be unique attachments in the db, so they can have different
+	 *                             alt/captions and also different postmeta.
 	 *
 	 * @return int|WP_Error Attachment ID.
 	 */
-	public static function import_external_file( $path, $title = null, $caption = null, $description = null, $alt = null, $post_id = 0, $args = [], $desired_filename = '' ) {
+	public static function import_external_file( $path, $title = null, $caption = null, $description = null, $alt = null, $post_id = 0, $args = [], $desired_filename = '', $try_existing = true ) {
 		// Fetch remote or local file.
 		$is_http = 'http' == substr( $path, 0, 4 );
 		if ( $is_http ) {
@@ -94,7 +98,7 @@ class Attachments {
 			}
 		}
 
-		$maybe_exising_attachment_id = self::maybe_get_existing_attachment_id( $file_array['tmp_name'], $file_array['name'] );
+		$maybe_exising_attachment_id = ( $try_existing ) ? self::maybe_get_existing_attachment_id( $file_array['tmp_name'], $file_array['name'] ) : null;
 		if ( null !== $maybe_exising_attachment_id ) {
 			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			@unlink( $file_array['tmp_name'] );
@@ -116,9 +120,8 @@ class Attachments {
 		if ( is_wp_error( $att_id ) ) {
 			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			@unlink( $file_array['tmp_name'] );
-			CliLog::get_logger( 'attachments' )->warning( $att_id->get_error_message() );
+			return new WP_Error( sprintf( 'File %s was not sideloaded: %s', $file_array['name'], $att_id->get_error_message() ) );
 		}
-
 
 		if ( $alt ) {
 			update_post_meta( $att_id, '_wp_attachment_image_alt', $alt );
@@ -161,37 +164,50 @@ class Attachments {
 		$filename_before_suffix = $filename_path_parts['filename'];
 		$filename_after_suffix  = '.' . $filename_path_parts['extension'];
 		/**
-		 * Here's the regex explained:
-		 *  - .+ -- anything first
-		 *  - %s -- is for filename before suffix
-		 *  - -[0-9]+ -- dash and one or more numbers
-		 *  - \%s -- is for filename after suffix
+		 * Constructs a regular expression to find attachments that could be duplicates.
+		 * The regex matches filenames with optional numeric and "-scaled" suffixes,
+		 * where the "-scaled" suffix appears after any numeric suffix if both are present.
+		 * For a base filename like "myimage.jpg", it will match:
+		 * - myimage.jpg
+		 * - myimage-scaled.jpg
+		 * - myimage-1.jpg
+		 * - myimage-1-scaled.jpg
+		 * It also handles paths, e.g., "2023/10/myimage.jpg".
+		 *
+		 * Regex breakdown:
+		 *  - (?:^|.*\/) : Matches the beginning of the string or any characters followed by a slash.
+		 *                 This handles cases where the meta_value is just "filename.ext" or "path/to/filename.ext".
+		 *  - %s         : The base filename (e.g., "myimage"), after being escaped by preg_quote.
+		 *  - (-[0-9]+)? : Optionally matches a numeric suffix (e.g., "-1", "-123").
+		 *  - (-scaled)? : Optionally matches a "-scaled" suffix. This comes after the numeric suffix if present.
+		 *  - %s         : The file extension (e.g., "\.jpg"), after being escaped by preg_quote. The dot is escaped.
+		 *  - $          : Matches the end of the string.
 		 */
-		$regex_duplicates = esc_sql(
-			sprintf(
-				'.+%s-[0-9]+\\%s',
-				$filename_before_suffix,
-				$filename_after_suffix
-			)
+		$regex_pattern = sprintf(
+			'(?:^|.*/)%s(-[0-9]+)?(-scaled)?%s$',
+			preg_quote( $filename_before_suffix, '/' ),
+			preg_quote( $filename_after_suffix, '/' )
 		);
 
-		// phpcs:disable -- $regex_duplicates is properly sanitized.
-		$sql  = $wpdb->prepare(
+		// The $regex_pattern is used with $wpdb->prepare, which will handle SQL escaping.
+		// phpcs:disable -- Direct SQL query is OK here and the filename is escaped.
+		$sql = $wpdb->prepare(
 			"SELECT post_id
 			FROM {$wpdb->postmeta}
 			WHERE meta_key = '_wp_attached_file'
-			AND (
-			    meta_value LIKE '%s'
-				OR meta_value REGEXP '$regex_duplicates'
-			) ;",
-			$like
+			AND (meta_value LIKE %s OR meta_value REGEXP %s);",
+			$like,
+			$regex_pattern
 		);
+
 		$attachment_ids = $wpdb->get_col( $sql );
 		// phpcs:enable
 
 		foreach ( $attachment_ids as $attachment_id ) {
 
 			$candidate_path = get_attached_file( $attachment_id );
+			// Remove the "-scaled" suffix from the candidate path to check the original file size.
+			$candidate_path = str_replace( '-scaled.', '.', $candidate_path );
 			// Check the file sizes first. It's a fast operation and will save us from having to do the md5 check.
 			if ( ! file_exists( $candidate_path ) || ( filesize( $candidate_path ) !== filesize( $filepath ) ) ) {
 				continue;
