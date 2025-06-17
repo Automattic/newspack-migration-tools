@@ -77,6 +77,8 @@ class UsersHelper {
 	 * @return bool
 	 */
 	public static function is_username_unused( string $username, int $exclude_user_id = 0 ): bool {
+		// Check to see if raw $username is unused. Assumption is that all sanitation (if necessary under the context) has already been performed on $username.
+		// `get_user_by` is not used here because it does some sanitization (via `sanitize_user()`), as well as caching.
 		global $wpdb;
 		$prepared_sql = $wpdb->prepare( "SELECT ID FROM $wpdb->users WHERE user_login = %s", $username );
 
