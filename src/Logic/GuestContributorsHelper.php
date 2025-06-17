@@ -134,7 +134,7 @@ class GuestContributorsHelper {
 		// Assign ids to post.
 		$success = $coauthors_plus->add_coauthors( $post_id, $contributor_ids, false, 'id' );
 		if ( ! $success ) {
-			return new WP_Error( 'ERROR_ASSIGN_CONTRIBUTORS', sprintf( 'Failed to set authors - add_coauthors return: %s', wp_json_encode( $success ) ) );
+			return new WP_Error( 'ERROR_ASSIGN_CONTRIBUTORS', 'Failed to set authors. The add_coauthors() function did not successfully add contributors to the post.' );
 		}
 
 		return true;
