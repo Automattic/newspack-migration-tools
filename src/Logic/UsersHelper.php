@@ -331,7 +331,7 @@ class UsersHelper {
 		// Now make sure all these values are unused.
 		$data['user_email']    = self::get_unused_fake_email( $user_email );
 		$data['user_nicename'] = self::get_unused_nicename( $user_nicename );
-		$data['user_login'] = self::get_unused_username( $user_login );
+		$data['user_login']    = self::get_unused_username( $user_login );
 
 		// Add the unique identifier to the user's meta so we can find them later.
 		$data['meta_input'][ self::UNIQUE_IDENTIFIER_META_KEY ] = $unique_identifier;
