@@ -106,6 +106,8 @@ class UsersHelper {
 	 * @param string $desired_username Desired username (`wp_users`.`user_login`).
 	 *
 	 * @return string An unused username.
+	 *
+	 * @throws InvalidArgumentException If the desired username is empty.
 	 */
 	public static function get_unused_username( string $desired_username ): string {
 		if ( empty( $desired_username ) ) {
