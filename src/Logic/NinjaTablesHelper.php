@@ -21,6 +21,10 @@ class NinjaTablesHelper {
 	 * NinjaTables constructor.
 	 */
 	public function __construct() {
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
 		if ( ! is_plugin_active( 'ninja-tables/ninja-tables.php' ) ) {
 			NMT::exit_with_message( 'Ninja Tables is a dependency, and will have to be installed and activated before this command can be used.' );
 		}
