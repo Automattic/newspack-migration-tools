@@ -149,4 +149,3 @@ if ( is_wp_error( $result ) ) {
 -   `ERROR_EXISTING_USERS`: Existing user(s) found. Use `$force = true` to skip this check
 -   `ERROR_COAUTHORS_PLUS`: Co-Authors Plus plugin not found
 -   `ERROR_USER_NICENAME`: User nicename cannot be blank
-    s
