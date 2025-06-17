@@ -86,25 +86,14 @@ class UsersHelper {
 		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
-		$test = null === $wpdb->get_var( $prepared_sql );
+		$found_no_match = null === $wpdb->get_var( $prepared_sql );
 
-		if ( $test && apply_filters( 'newspack_migration_tools_confirm_user_login_unique_across_coauthors_plus_data', false ) ) {
-			do_action( 'newspack_migration_tools_verify_user_login_unique_across_coauthors_plus_data', $user_login, $exclude_user_id );
+		if ( $found_no_match && has_filter( 'nmt_additional_unused_username_check' ) ) {
+			// We've confirmed that the $username is unused, but certain plugins might want to add their own logic to check for additional conditions.
+			$found_no_match = apply_filters( 'nmt_additional_unused_username_check', $username, $exclude_user_id );
 		}
 
-		/*
-		 * Sometimes we have old data in the terms table. Perhaps CAP was turned on at some point, and then turned off.
-		 * Perhaps we had them on, and then migrated them to Guest Contributors. Or perhaps they're coming from
-		 * a custom flavor of WordPress where we didn't remove any data for posterity and so there may
-		 * be a clash. Or perhaps we are updating a user's login because we have to, and therefore
-		 * we should confirm that we don't already have some terms data with the same name.
-		 */
-		if ( $test ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$test = null === $wpdb->get_var( $wpdb->prepare( "SELECT term_id FROM $wpdb->terms WHERE name = %s", $user_login ) );
-		}
-
-		return $test;
+		return $found_no_match;
 	}
 
 	/**
