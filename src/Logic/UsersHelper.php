@@ -69,17 +69,16 @@ class UsersHelper {
 	}
 
 	/**
-	 * Confirms that a user login is unused.
+	 * Confirms that the given username (`wp_users`.`user_login`) is unused.
 	 *
-	 * @param string $user_login The user login to check.
+	 * @param string $username The username (`wp_users`.`user_login`) to check.
 	 * @param int    $exclude_user_id A user ID to exclude from the check.
 	 *
 	 * @return bool
 	 */
-	public static function is_user_login_unused( string $user_login, int $exclude_user_id = 0 ): bool {
+	public static function is_username_unused( string $username, int $exclude_user_id = 0 ): bool {
 		global $wpdb;
-
-		$prepared_sql = $wpdb->prepare( "SELECT ID FROM $wpdb->users WHERE user_login = %s", $user_login );
+		$prepared_sql = $wpdb->prepare( "SELECT ID FROM $wpdb->users WHERE user_login = %s", $username );
 
 		if ( $exclude_user_id ) {
 			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Reason: $sql_prepared is a prepared statement.
@@ -109,47 +108,48 @@ class UsersHelper {
 	}
 
 	/**
-	 * Get a user login that is not in use, starting with a desired user login.
+	 * Get a username (`wp_users`.`user_login`) that is not in use, starting with a desired username.
 	 *
-	 * If the desired user login is in use, a counter will be appended to it until an unused user login is found.
+	 * If the desired username is in use, a counter will be appended to it until an unused username is found.
 	 *
-	 * @param string $desired_user_login Desired user login.
+	 * @param string $desired_username Desired username (`wp_users`.`user_login`).
 	 *
 	 * @return string An unused username.
 	 */
-	public static function get_unused_user_login( string $desired_user_login ): string {
-		if ( empty( $desired_user_login ) ) {
-			throw new InvalidArgumentException( 'Desired user login cannot be empty.' );
+	public static function get_unused_username( string $desired_username ): string {
+		if ( empty( $desired_username ) ) {
+			throw new InvalidArgumentException( 'Desired username (`wp_users`.`user_login`) cannot be empty.' );
 		}
 
-		$original_user_login = $desired_user_login;
-		$desired_user_login  = sanitize_user( $desired_user_login );
+		$original_user_login = $desired_username;
 
-		if ( is_email( $desired_user_login ) ) {
-			$desired_user_login = substr( $desired_user_login, 0, strpos( $desired_user_login, '@' ) );
+		if ( is_email( $desired_username ) ) {
+			$desired_username = substr( $desired_username, 0, strpos( $desired_username, '@' ) );
 		}
 
-		if ( strlen( $desired_user_login ) >= self::MAX_USER_LOGIN_LENGTH ) {
-			$desired_user_login = trim( mb_substr( $desired_user_login, 0, self::MAX_USER_LOGIN_LENGTH ) );
+		$desired_username = sanitize_user( $desired_username );
+
+		if ( strlen( $desired_username ) >= self::MAX_USER_LOGIN_LENGTH ) {
+			$desired_username = trim( mb_substr( $desired_username, 0, self::MAX_USER_LOGIN_LENGTH ) );
 			FileLog::get_logger( 'UsersHelper' )->warning(
 				sprintf(
 					'Shortened user login to under %d chars from "%s" to "%s".',
 					self::MAX_USER_LOGIN_LENGTH,
 					$original_user_login,
-					$desired_user_login
+					$desired_username
 				)
 			);
 		}
 
 		$i = 0;
-		while ( ! self::is_user_login_unused( $desired_user_login ) ) {
-			$desired_user_login = self::append_number_and_ensure_length( $desired_user_login, ++$i, self::MAX_USER_LOGIN_LENGTH );
+		while ( ! self::is_username_unused( $desired_username ) ) {
+			$desired_username = self::append_number_and_ensure_length( $desired_username, ++$i, self::MAX_USER_LOGIN_LENGTH );
 		}
 		if ( $i > 0 ) {
-			CliLog::get_logger( 'UsersHelper' )->debug( sprintf( 'Generated user login: %s', $desired_user_login ) );
+			CliLog::get_logger( 'UsersHelper' )->debug( sprintf( 'Generated user login: %s', $desired_username ) );
 		}
 
-		return $desired_user_login;
+		return $desired_username;
 	}
 
 	/**
@@ -338,7 +338,7 @@ class UsersHelper {
 		// Now make sure all these values are unused.
 		$data['user_email']    = self::get_unused_fake_email( $user_email );
 		$data['user_nicename'] = self::get_unused_nicename( $user_nicename );
-		$data['user_login'] = self::get_unused_user_login( $user_login );
+		$data['user_login'] = self::get_unused_username( $user_login );
 
 		// Add the unique identifier to the user's meta so we can find them later.
 		$data['meta_input'][ self::UNIQUE_IDENTIFIER_META_KEY ] = $unique_identifier;

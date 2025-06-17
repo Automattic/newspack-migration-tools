@@ -52,7 +52,7 @@ class TestUsersHelper extends WP_UnitTestCase {
 	public function test_unused_username() {
 		$peter = get_user_by( 'ID', $this->peter_parker_id );
 
-		$incremented_peter = UsersHelper::get_unused_user_login( $peter->user_login );
+		$incremented_peter = UsersHelper::get_unused_username( $peter->user_login );
 		$this->assertNotEquals( $peter->user_login, $incremented_peter );
 		$this->assertTrue( validate_username( $incremented_peter ) );
 	}
@@ -120,7 +120,7 @@ class TestUsersHelper extends WP_UnitTestCase {
 	public function test_too_long_unused_username() {
 		$max_length        = 60;
 		$long_username     = 'this_is_a_very_long_username_that_is_too_long_to_be_used_so_should_come_back_shorter';
-		$should_be_shorter = UsersHelper::get_unused_user_login( $long_username );
+		$should_be_shorter = UsersHelper::get_unused_username( $long_username );
 		$this->assertTrue( strlen( $should_be_shorter ) <= $max_length );
 		$user = UsersHelper::create_or_get_user(
 			[
@@ -130,7 +130,7 @@ class TestUsersHelper extends WP_UnitTestCase {
 		);
 		$this->assertEquals( $should_be_shorter, $user->user_login );
 
-		$should_also_be_shorter_and_different = UsersHelper::get_unused_user_login( $long_username );
+		$should_also_be_shorter_and_different = UsersHelper::get_unused_username( $long_username );
 		$this->assertTrue( strlen( $should_also_be_shorter_and_different ) <= $max_length );
 		$this->assertNotEquals( $user->user_login, $should_also_be_shorter_and_different );
 	}
