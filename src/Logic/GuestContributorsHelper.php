@@ -122,9 +122,9 @@ class GuestContributorsHelper {
 	 * @param int   $post_id                 Post IDs.
 	 * @param array $contributor_ids         Contributor IDs.
 	 *
-	 * @return true|WP_Error True if successful, WP_Error if not.
+	 * @return bool|WP_Error True if successful, WP_Error if not.
 	 */
-	public static function assign_contributors_to_post( int $post_id, array $contributor_ids ): true|WP_Error {
+	public static function assign_contributors_to_post( int $post_id, array $contributor_ids ): bool|WP_Error {
 		if ( ! is_plugin_active( 'co-authors-plus/co-authors-plus.php' ) ) {
 			return new WP_Error( 'ERROR_COAUTHORS_PLUS', 'Co-Authors Plus plugin not found. Install and activate it before using this code.' );
 		}
