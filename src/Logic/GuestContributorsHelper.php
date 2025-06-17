@@ -35,7 +35,11 @@ class GuestContributorsHelper {
 		}
 
 		$data['role'] = Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME;
-		return UsersHelper::create_or_get_user( $data, $unique_identifier );
+		try {
+			return UsersHelper::create_or_get_user( $data, $unique_identifier );
+		} catch ( \InvalidArgumentException $e ) {
+			return new WP_Error( $e->getCode(), $e->getMessage() );
+		}
 	}
 
 	/**
