@@ -80,6 +80,7 @@ class UsersHelper {
 		// Check to see if raw $username is unused. Assumption is that all sanitation (if necessary under the context) has already been performed on $username.
 		// `get_user_by` is not used here because it does some sanitization (via `sanitize_user()`), as well as caching.
 		global $wpdb;
+		// phpcs:ignore WordPressVIPMinimum.Variables.RestrictedVariables.user_meta__wpdb__users -- We need raw uncached query results.
 		$prepared_sql = $wpdb->prepare( "SELECT ID FROM $wpdb->users WHERE user_login = %s", $username );
 
 		if ( $exclude_user_id ) {
