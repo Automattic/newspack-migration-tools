@@ -2,13 +2,12 @@
 
 namespace Newspack\MigrationTools\Tests\Logic;
 
+use Newspack\Guest_Contributor_Role;
 use Newspack\MigrationTools\Logic\GuestContributorsHelper;
 use WP_Error;
 use WP_UnitTestCase;
 
 class GuestContributorsHelperTest extends WP_UnitTestCase {
-
-	const NEWSPACK_CONTRIBUTOR_ROLE = 'contributor_no_edit';
 
 	/**
 	 * Test that the Newspack Plugin is installed and activated.
@@ -173,7 +172,7 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 		} else {
 			$this->assertInstanceOf( \WP_User::class, $result );
 			// Verify the user has the correct role
-			$this->assertContains( self::NEWSPACK_CONTRIBUTOR_ROLE, $result->roles );
+			$this->assertContains( Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME, $result->roles );
 		}
 	}
 
@@ -250,7 +249,7 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 		// Create user first time
 		$user1 = GuestContributorsHelper::create_or_get_contributor( $data, $unique_identifier );
 		$this->assertInstanceOf( \WP_User::class, $user1 );
-		$this->assertContains( self::NEWSPACK_CONTRIBUTOR_ROLE, $user1->roles );
+		$this->assertContains( Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME, $user1->roles );
 
 		// Call again with same unique identifier
 		$user2 = GuestContributorsHelper::create_or_get_contributor( $data, $unique_identifier );
@@ -298,7 +297,7 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 		$user = GuestContributorsHelper::create_or_get_contributor( $data, $unique_identifier );
 
 		$this->assertInstanceOf( \WP_User::class, $user );
-		$this->assertContains( self::NEWSPACK_CONTRIBUTOR_ROLE, $user->roles );
+		$this->assertContains( Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME, $user->roles );
 		$this->assertNotContains( 'subscriber', $user->roles );
 		$this->assertNotContains( 'author', $user->roles );
 		$this->assertNotContains( 'editor', $user->roles );
@@ -318,7 +317,7 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( \WP_User::class, $user );
 		$this->assertEquals( 'Minimal User', $user->display_name );
-		$this->assertContains( self::NEWSPACK_CONTRIBUTOR_ROLE, $user->roles );
+		$this->assertContains( Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME, $user->roles );
 		$this->assertNotEmpty( $user->user_email );
 		$this->assertNotEmpty( $user->user_login );
 		$this->assertNotEmpty( $user->user_nicename );
@@ -336,7 +335,7 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 
 		// Create user first time
 		$user1 = GuestContributorsHelper::create_or_get_contributor( $data, $unique_identifier );
-		$this->assertContains( self::NEWSPACK_CONTRIBUTOR_ROLE, $user1->roles );
+		$this->assertContains( Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME, $user1->roles );
 
 		// Add another role to the user
 		$user1->add_role( 'subscriber' );
@@ -346,7 +345,7 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 		$user2 = GuestContributorsHelper::create_or_get_contributor( $data, $unique_identifier );
 
 		// Should still have both roles
-		$this->assertContains( self::NEWSPACK_CONTRIBUTOR_ROLE, $user2->roles );
+		$this->assertContains( Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME, $user2->roles );
 		$this->assertContains( 'subscriber', $user2->roles );
 	}
 
@@ -364,7 +363,7 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( \WP_User::class, $user );
 		$this->assertEquals( 'José María O\'Connor-Smith', $user->display_name );
-		$this->assertContains( self::NEWSPACK_CONTRIBUTOR_ROLE, $user->roles );
+		$this->assertContains( Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME, $user->roles );
 	}
 
 	/**
@@ -382,7 +381,7 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 
 		$this->assertInstanceOf( \WP_User::class, $user );
 		$this->assertEquals( $long_name, $user->display_name );
-		$this->assertContains( self::NEWSPACK_CONTRIBUTOR_ROLE, $user->roles );
+		$this->assertContains( Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME, $user->roles );
 	}
 
 	/**
@@ -404,6 +403,6 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 		$this->assertEquals( 'Whitespace User', $user->display_name );
 		$this->assertEquals( 'John', $user->first_name );
 		$this->assertEquals( 'Smith', $user->last_name );
-		$this->assertContains( self::NEWSPACK_CONTRIBUTOR_ROLE, $user->roles );
+		$this->assertContains( Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME, $user->roles );
 	}
 }
