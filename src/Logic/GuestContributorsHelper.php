@@ -3,6 +3,8 @@
 namespace Newspack\MigrationTools\Logic;
 
 use Newspack\Guest_Contributor_Role;
+use Newspack\MigrationTools\Logic\UsersHelper;
+use WP_User;
 use WP_Error;
 use WP_Role;
 
@@ -18,6 +20,32 @@ class GuestContributorsHelper {
 	const ERROR_USER_NICENAME   = 'User nicename can not be blank.';
 
 	/**
+	 * Create or get a contributor user.
+	 *
+	 * This is a wrapper around UsersHelper::create_or_get_user that sets the role to the guest contributor role.
+	 *
+	 * @param array  $data              The data to create the user with. The array is the same as wp_insert_user accepts. https://developer.wordpress.org/reference/functions/wp_insert_user. Note that you *have* to provide one of the following fields: 'user_email', 'user_login', 'user_nicename', 'display_name'.
+	 * @param string $unique_identifier A unique identifier for the user.
+	 *
+	 * @return WP_User|WP_Error The user object if created or found, or a WP_Error if the user cannot be created.
+	 */
+	public static function create_or_get_contributor( array $data, string $unique_identifier ): WP_User|WP_Error {
+		if ( ! self::validate_newspack_plugin() ) {
+			return new WP_Error( 'ERROR_NEWSPACK_PLUGIN', self::ERROR_NEWSPACK_PLUGIN );
+		}
+
+		$data['role'] = Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME;
+		try {
+			return UsersHelper::create_or_get_user( $data, $unique_identifier );
+		} catch ( \Exception $e ) {
+			// WP_Error() requires the first argument "code" to be not empty (which also means not "0").
+			// Attempt to retrieve code from exception, else default the code to the exception type.
+			// Don't use the null coalescing operator "??", as it will allow the value of 0 to be accepted.
+			return new WP_Error( $e->getCode() ? $e->getCode() : get_class( $e ), $e->getMessage() );
+		}
+	}
+
+	/**
 	 * Create a Guest Contributor by Display Name.
 	 *
 	 * @param string $display_name The Display Name of the new user. Duplicates are allowed with $force = true.
@@ -29,7 +57,7 @@ class GuestContributorsHelper {
 	 * @return int|\WP_Error  Inserted user ID or WP_Error.
 	 */
 	public static function create_by_display_name( $display_name, $args = array(), $force = false ): int|\WP_Error {
-		
+
 		if ( ! self::validate_newspack_plugin() ) {
 			return new WP_Error( 'ERROR_NEWSPACK_PLUGIN', self::ERROR_NEWSPACK_PLUGIN );
 		}
@@ -40,7 +68,7 @@ class GuestContributorsHelper {
 		if ( empty( $display_name ) || mb_strlen( $display_name ) > 250 ) {
 			return new WP_Error( 'ERROR_DISPLAY_NAME', self::ERROR_DISPLAY_NAME );
 		}
-		
+
 		// If we're not forcing user creation, check for existing user(s) - could be multiple.
 		if ( ! $force ) {
 			$existing = self::get_by_display_name( $display_name );
@@ -96,13 +124,41 @@ class GuestContributorsHelper {
 	}
 
 	/**
+	 * Assigns Guest Contributors to the Post.
+	 *
+	 * @param int   $post_id                 Post IDs.
+	 * @param array $contributor_ids         Contributor IDs.
+	 *
+	 * @return bool|WP_Error True if successful, WP_Error if not.
+	 */
+	public static function assign_contributors_to_post( int $post_id, array $contributor_ids ): bool|WP_Error {
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		if ( ! is_plugin_active( 'co-authors-plus/co-authors-plus.php' ) ) {
+			return new WP_Error( 'ERROR_COAUTHORS_PLUS', 'Co-Authors Plus plugin not found. Install and activate it before using this code.' );
+		}
+
+		global $coauthors_plus;
+
+		// Assign ids to post.
+		$success = $coauthors_plus->add_coauthors( $post_id, $contributor_ids, false, 'id' );
+		if ( ! $success ) {
+			return new WP_Error( 'ERROR_ASSIGN_CONTRIBUTORS', 'Failed to set authors. The add_coauthors() function did not successfully add contributors to the post.' );
+		}
+
+		return true;
+	}
+
+	/**
 	 * Generate a unique dummy email address with a random suffix.
-	 * 
+	 *
 	 * @param string $display_name The user display name.
 	 * @return string|\WP_Error Example: ron-chambers-12345@example.com
 	 */
 	public static function generate_email( $display_name ): string|\WP_Error {
-		
+
 		if ( ! is_callable( 'Guest_Contributor_Role', 'get_dummy_email_domain' ) ) {
 			return new WP_Error( 'ERROR_EMAIL_DOMAIN', self::ERROR_EMAIL_DOMAIN );
 		}
@@ -114,7 +170,7 @@ class GuestContributorsHelper {
 		}
 
 		// hard code email column char length from db.
-		$db_max_chars = 100; 
+		$db_max_chars = 100;
 
 		// initial dummy email suffix.
 		$email_suffix = '@' . Guest_Contributor_Role::get_dummy_email_domain();
@@ -145,7 +201,7 @@ class GuestContributorsHelper {
 	 *
 	 * @param string $display_name The user display name.
 	 * @return string|\WP_Error Example: ron-chambers-12345
-	 */ 
+	 */
 	public static function generate_username( $display_name ): string|\WP_Error {
 
 		// sanitize in the same way wp_insert_user would.
@@ -155,7 +211,7 @@ class GuestContributorsHelper {
 		}
 
 		// hard code char length from db.
-		$db_max_chars = 60; 
+		$db_max_chars = 60;
 
 		// stop infinite loops.
 		$attempts = 0;
@@ -180,15 +236,15 @@ class GuestContributorsHelper {
 
 	/**
 	 * Gets Guest Contributor(s) by display name.
-	 * 
-	 * Display name string matching is exact (case senstive). 
+	 *
+	 * Display name string matching is exact (case senstive).
 	 * Multiple results may be returned.
 	 *
 	 * @param string $display_name Display name to find.
 	 * @return array|\WP_Error Array of user ID(s) or WP_Error.
 	 */
 	public static function get_by_display_name( $display_name ): array|\WP_Error {
-		
+
 		if ( ! self::validate_newspack_plugin() ) {
 			return new WP_Error( 'ERROR_NEWSPACK_PLUGIN', self::ERROR_NEWSPACK_PLUGIN );
 		}
@@ -199,17 +255,17 @@ class GuestContributorsHelper {
 		// To fix both these issues, exact match will be performed in foreach after this query.
 		$get_users = get_users(
 			array(
-				'search'         => $display_name, 
+				'search'         => $display_name,
 				'search_columns' => array( 'display_name' ),
 				'role'           => Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME,
 				'fields'         => array( 'ID', 'display_name' ),
 				'orderby'        => 'ID',
-			) 
+			)
 		);
-		
+
 		// Filter results on exact match of display name, return just the ID(s) of the remaining objects.
 		return array_map(
-			fn( $user ) => $user->ID, 
+			fn( $user ) => $user->ID,
 			array_filter( $get_users, fn( $user ) => $user->display_name === $display_name )
 		);
 	}

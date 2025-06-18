@@ -38,6 +38,10 @@ class SimpleLocalAvatars {
 	 * Constructor.
 	 */
 	public function __construct() {
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
 		if ( ! is_plugin_active( 'simple-local-avatars/simple-local-avatars.php' ) ) {
 			NMT::exit_with_message( 'The simple-local-avatars plugin is a dependency, and will have to be installed and activated before this helper class can be used.' );
 		}

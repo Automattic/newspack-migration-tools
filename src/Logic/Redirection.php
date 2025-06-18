@@ -8,6 +8,10 @@ use Red_Group;
 class Redirection {
 
 	public function __construct() {
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
 		if ( ! is_plugin_active( 'redirection/redirection.php' ) ) {
 			NMT::exit_with_message( 'The Redirection plugin ( redirection ) is a dependency, and will have to be installed and activated before this helper class can be used.' );
 		}

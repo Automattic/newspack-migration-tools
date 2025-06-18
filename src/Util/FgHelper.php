@@ -65,6 +65,10 @@ class FgHelper {
 			NMT::exit_with_message( 'NCCM_SOURCE_WEBSITE_URL is not defined in wp-config.php' );
 		}
 
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
 		if ( ! is_plugin_active( "fg-{$this->type}-to-wp-premium/fg-{$this->type}-to-wp-premium.php" ) ) {
 			NMT::exit_with_message( "FG {$this->type} to WP Premium plugin not found. Install and activate it before using this class." );
 		}
@@ -79,7 +83,7 @@ class FgHelper {
 		// Filter if option values already exist in db.
 		add_filter( "option_{$this->function_prefix}_options", [ $this, 'filter_options' ] );
 		// Filter if option values do not exist in db. (Needed otherwise WordPress won't filter the options).
-		add_filter( "default_option_{$this->function_prefix}_options", [ $this, 'filter_options' ] );       
+		add_filter( "default_option_{$this->function_prefix}_options", [ $this, 'filter_options' ] );
 	}
 
 	/**
@@ -102,14 +106,14 @@ class FgHelper {
 
 	/**
 	 * Filter the options for the FG plugin.
-	 * 
+	 *
 	 * For database environment variables put these variables in your .env file locally.
-	 * 
+	 *
 	 * @param  array|false $options The options array to filter or boolean false if database option doesn't exist.
 	 * @return array                The filtered options.
 	 */
 	public function filter_options( array|false $options ): array {
-		
+
 		// For when options don't exist yet in the db.
 		if ( false === $options ) {
 			$options = [];
@@ -126,7 +130,7 @@ class FgHelper {
 		$options['prefix'] = $this->get_import_tables_prefix();
 
 		$options['url'] = NCCM_SOURCE_WEBSITE_URL;
-		
+
 		return $options;
 	}
 
