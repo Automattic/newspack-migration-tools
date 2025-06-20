@@ -124,10 +124,14 @@ class UsersHelper {
 		$original_user_login = $desired_username;
 
 		if ( is_email( $desired_username ) ) {
-			$desired_username = substr( $desired_username, 0, strpos( $desired_username, '@' ) );
+			$desired_username = trim( mb_substr( $desired_username, 0, strpos( $desired_username, '@' ) ) );
 		}
 
 		$desired_username = sanitize_user( $desired_username );
+
+		if ( empty( $desired_username ) ) {
+			throw new InvalidArgumentException( 'Sanitation of desired username results in empty string, please choose another username.' );
+		}
 
 		if ( strlen( $desired_username ) >= self::MAX_USER_LOGIN_LENGTH ) {
 			$desired_username = trim( mb_substr( $desired_username, 0, self::MAX_USER_LOGIN_LENGTH ) );
