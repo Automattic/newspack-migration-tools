@@ -89,14 +89,15 @@ class UsersHelper {
 		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
-		$found_no_match = null === $wpdb->get_var( $prepared_sql );
+		$username_is_unused = null === $wpdb->get_var( $prepared_sql );
 
-		if ( $found_no_match && has_filter( 'nmt_additional_unused_username_check' ) ) {
+		if ( $username_is_unused ) {
 			// We've confirmed that the $username is unused, but certain plugins might want to add their own logic to check for additional conditions.
 			$found_no_match = apply_filters( 'nmt_additional_unused_username_check', $username, $exclude_user_id );
+			$username_is_unused = apply_filters( 'nmt_additional_unused_username_check', $username, $exclude_user_id );
 		}
 
-		return $found_no_match;
+		return $username_is_unused;
 	}
 
 	/**
