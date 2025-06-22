@@ -329,6 +329,65 @@ class GutenbergBlockGenerator {
 	}
 
 	/**
+	 * Generate an Image Block item from an external image URL.
+	 *
+	 * @param string  $image_url              Image URL.
+	 * @param ?string $image_caption          Image caption.
+	 * @param ?string $image_alt              Image alt text.
+	 * @param ?string $size                   Image size, full by default.
+	 * @param ?bool   $link_to_attachment_url Whether to link to the attachment URL or not. Defaults to true.
+	 * @param ?string $classname              Media HTML class.
+	 * @param ?string $align                  Image alignment (left, right).
+	 * @param ?string $custom_link            If provided, will set custom link. Overrides $link_to_attachment_url.
+	 *
+	 * @return array Image block with external image URL, to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 */
+	public function get_external_image( string $image_url, ?string $image_caption = null, ?string $image_alt = null, ?string $size = 'full', ?bool $link_to_attachment_url = true, ?string $classname = null, ?string $align = null, ?string $custom_link = null ): array {
+		// Validate size.
+		if ( ! in_array( $size, [ 'thumbnail', 'medium', 'large', 'full' ] ) ) {
+			$size = 'full';
+		}
+
+		// Add <a> link to attachment URL.
+		$a_opening_tag = '';
+		$a_closing_tag = '';
+		if ( $custom_link || $link_to_attachment_url ) {
+			if ( $custom_link ) {
+				$link = $custom_link;
+			} elseif ( $link_to_attachment_url ) {
+				$link = $image_url;
+			}
+
+			$a_opening_tag = sprintf( '<a href="%s">', $link );
+			$a_closing_tag = '</a>';
+		}
+
+		// HTML content.
+		$caption_tag  = ! empty( $image_caption ) ? '<figcaption class="wp-element-caption">' . $image_caption . '</figcaption>' : '';
+		$figure_class = 'wp-block-image size-' . $size . ( $classname ? " $classname" : '' ) . ( $align ? " align$align" : '' );
+		$content      = '<figure class="' . $figure_class . '">' . $a_opening_tag . '<img src="' . $image_url . '" alt="' . $image_alt . '"/>' . $a_closing_tag . $caption_tag . '</figure>';
+
+		// $attrs.
+		$attrs = [
+			'sizeSlug' => $size,
+		];
+		if ( $classname ) {
+			$attrs['className'] = $classname;
+		}
+		if ( $align ) {
+			$attrs['align'] = $align;
+		}
+
+		return [
+			'blockName'    => 'core/image',
+			'attrs'        => $attrs,
+			'innerBlocks'  => [],
+			'innerHTML'    => $content,
+			'innerContent' => [ $content ],
+		];
+	}
+
+	/**
 	 * Get a video block.
 	 *
 	 * @param \WP_Post $attachment_post The post object of the video.
