@@ -365,7 +365,7 @@ class GutenbergBlockGenerator {
 		// HTML content.
 		$caption_tag  = ! empty( $image_caption ) ? '<figcaption class="wp-element-caption">' . $image_caption . '</figcaption>' : '';
 		$figure_class = 'wp-block-image size-' . $size . ( $classname ? " $classname" : '' ) . ( $align ? " align$align" : '' );
-		$content      = '<figure class="' . $figure_class . '">' . $a_opening_tag . '<img src="' . $image_url . '" alt="' . $image_alt . '"/>' . $a_closing_tag . $caption_tag . '</figure>';
+		$content      = '<figure class="' . $figure_class . '">' . $a_opening_tag . '<img src="' . esc_url( $image_url ) . '" alt="' . esc_attr( $image_alt ) . '"/>' . $a_closing_tag . $caption_tag . '</figure>';
 
 		// $attrs.
 		$attrs = [
