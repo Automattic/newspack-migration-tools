@@ -45,6 +45,8 @@ class SimpleLocalAvatars {
 		if ( ! is_plugin_active( 'simple-local-avatars/simple-local-avatars.php' ) ) {
 			NMT::exit_with_message( 'The simple-local-avatars plugin is a dependency, and will have to be installed and activated before this helper class can be used.' );
 		}
+
+		$this->simple_local_avatars = new Simple_Local_Avatars();
 	}
 
 	/**
