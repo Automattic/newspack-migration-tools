@@ -109,6 +109,24 @@ class JsonIterator {
 	}
 
 	/**
+	 * Will read a JSON file and return an iterable of objects from the JSON, filtered by a key and value.
+	 *
+	 * @param string $json_file Path to the JSON file – can be a URL too.
+	 * @param string $key       The key to filter by.
+	 * @param string $value     The value to filter by.
+	 *
+	 * @return iterable
+	 */
+	public function filtered_items( string $json_file, string $key, string $value ): iterable {
+		$items = Items::fromFile( $json_file );
+		foreach ( $items as $item ) {
+			if ( isset( $item->$key ) && $item->$key === $value ) {
+				yield $item;
+			}
+		}
+	}
+
+	/**
 	 * Will count number of entries in a JSON file where the root is an array.
 	 *
 	 * Handy for getting a "total" number for progress bars and such.
@@ -123,7 +141,7 @@ class JsonIterator {
 		if ( file_exists( $json_file_path ) ) {
 			// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.system_calls_exec
 			exec( 'cat ' . escapeshellarg( $json_file_path ) . " | jq 'length'", $count );
-			if ( ! empty( $count[0] ) ) {
+			if ( isset( $count[0] ) ) {
 				return (int) $count[0];
 			}
 		}
