@@ -433,7 +433,7 @@ class PostsTest extends WP_UnitTestCase {
 	 * Test creating a post with a future date.
 	 */
 	public function test_create_post_with_future_date() {
-		$future_date       = date( 'Y-m-d H:i:s', strtotime( '+1 day' ) );
+		$future_date       = gmdate( 'Y-m-d H:i:s', strtotime( '+1 day' ) );
 		$post_data         = [
 			'post_title'   => 'Future Post',
 			'post_content' => 'Future content',
