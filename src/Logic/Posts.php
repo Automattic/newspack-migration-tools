@@ -3,11 +3,50 @@
 namespace Newspack\MigrationTools\Logic;
 
 use Newspack\MigrationTools\Util\Log\CliLog;
+use Newspack\MigrationTools\Util\Log\FileLog;
+use WP_Post;
+use WP_Error;
 
 /**
  * Posts logic class.
  */
 class Posts {
+	/**
+	 * Meta key for the unique identifier for posts.
+	 */
+	public const UNIQUE_POST_IDENTIFIER_META_KEY = '_nmt_post_uniqid';
+
+	/**
+	 * Create or get a post.
+	 *
+	 * @param array  $data              The data to create the post with. The array is the same as wp_insert_post accepts. https://developer.wordpress.org/reference/functions/wp_insert_post.
+	 * @param string $unique_identifier The unique identifier for the post.
+	 *
+	 * @return int|WP_Error The post ID if created or found, or a WP_Error if the post cannot be created.
+	 */
+	public static function create_or_get_post( array $data, string $unique_identifier ): int|WP_Error {
+		// Validate that the unique identifier is not empty.
+		if ( empty( $unique_identifier ) ) {
+			return new WP_Error( 'empty_unique_identifier', __( 'The unique identifier cannot be empty.', 'newspack-migration-tools' ) );
+		}
+		// First try with the uniqid for the post.
+		$wp_post_id = self::get_post_by_unique_identifier( $unique_identifier );
+		if ( $wp_post_id ) { // Great – we already have the post!
+			return $wp_post_id;
+		}
+
+		// If it doesn't exist, then create it.
+		$wp_post_id = wp_insert_post( $data );
+		if ( is_wp_error( $wp_post_id ) ) {
+			return $wp_post_id;
+		}
+
+		// Set the unique identifier for the post.
+		update_post_meta( $wp_post_id, self::UNIQUE_POST_IDENTIFIER_META_KEY, $unique_identifier );
+
+		return $wp_post_id;
+	}
+
 	/**
 	 * @param string|array $post_type   Post type(s).
 	 * @param array        $post_status Post statuses.
@@ -685,5 +724,40 @@ SQL;
 		wp_cache_flush();
 
 		return $updated;
+	}
+
+	/**
+	 * Get a post by its unique identifier.
+	 *
+	 * The identifier was set when the post was created (if it was created by this class), so you probably know what it is.
+	 * Make sure you read the docs linked to at the top of the class.
+	 *
+	 * @param string $unique_identifier The unique identifier to search for.
+	 *
+	 * @return int|false The post ID if found, false otherwise.
+	 */
+	public static function get_post_by_unique_identifier( string $unique_identifier ): int|false {
+		if ( empty( $unique_identifier ) ) {
+			FileLog::get_logger( __CLASS__ )->error(
+				'Value is empty. Refusing to find a post with empty values.',
+				[
+					'unique_identifier' => $unique_identifier,
+				]
+			);
+
+			return false;
+		}
+
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$post_id = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT post_id FROM $wpdb->postmeta WHERE meta_key = %s AND meta_value = %s LIMIT 1",
+				self::UNIQUE_POST_IDENTIFIER_META_KEY,
+				$unique_identifier
+			)
+		);
+
+		return empty( $post_id ) ? false : (int) $post_id;
 	}
 }
