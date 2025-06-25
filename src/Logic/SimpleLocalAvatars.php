@@ -46,6 +46,10 @@ class SimpleLocalAvatars {
 			NMT::exit_with_message( 'The simple-local-avatars plugin is a dependency, and will have to be installed and activated before this helper class can be used.' );
 		}
 
+		if ( ! class_exists( 'Simple_Local_Avatars' ) ) {
+			require_once ABSPATH . 'wp-content/plugins/simple-local-avatars/simple-local-avatars.php';
+		}
+
 		$this->simple_local_avatars = new Simple_Local_Avatars();
 	}
 
