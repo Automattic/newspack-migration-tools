@@ -25,6 +25,10 @@ class Posts {
 	 * @return int|WP_Error The post ID if created or found, or a WP_Error if the post cannot be created.
 	 */
 	public static function create_or_get_post( array $data, string $unique_identifier ): int|WP_Error {
+		// Validate that the unique identifier is not empty.
+		if ( empty( $unique_identifier ) ) {
+			return new WP_Error( 'empty_unique_identifier', __( 'The unique identifier cannot be empty.', 'newspack-migration-tools' ) );
+		}
 		// First try with the uniqid for the post.
 		$wp_post_id = self::get_post_by_unique_identifier( $unique_identifier );
 		if ( $wp_post_id ) { // Great – we already have the post!
