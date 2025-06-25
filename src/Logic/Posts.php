@@ -738,7 +738,7 @@ SQL;
 	 */
 	public static function get_post_by_unique_identifier( string $unique_identifier ): int|false {
 		if ( empty( $unique_identifier ) ) {
-			FileLog::get_logger( 'Posts' )->error(
+			FileLog::get_logger( __CLASS__ )->error(
 				'Value is empty. Refusing to find a post with empty values.',
 				[
 					'unique_identifier' => $unique_identifier,
