@@ -118,12 +118,25 @@ class JsonIterator {
 	 * @return iterable
 	 */
 	public function filtered_items( string $json_file, string $key, string $value ): iterable {
-		$items = Items::fromFile( $json_file );
-		foreach ( $items as $item ) {
-			if ( isset( $item->$key ) && $item->$key === $value ) {
-				yield $item;
-			}
+		$file_exists = str_starts_with( $json_file, 'http' ) ? $this->url_responds( $json_file ) : file_exists( $json_file );
+
+		if ( ! $file_exists ) {
+			NMT::exit_with_message( sprintf( 'File does not exist: %s', $json_file ), [ $this->file_logger ] );
+			return new \EmptyIterator();
 		}
+
+		try {
+			$items = Items::fromFile( $json_file );
+			foreach ( $items as $item ) {
+				if ( isset( $item->$key ) && $item->$key === $value ) {
+					yield $item;
+				}
+			}
+		} catch ( Exception $o_0 ) {
+			NMT::exit_with_message( sprintf( 'Could not read the JSON from: %s', $json_file ), [ $this->file_logger ] );
+		}
+
+		return new \EmptyIterator();
 	}
 
 	/**
