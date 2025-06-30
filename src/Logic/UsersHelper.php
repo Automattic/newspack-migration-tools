@@ -350,7 +350,7 @@ class UsersHelper {
 	 *
 	 * @return string A 10 char SHA1 hash.
 	 */
-	private static function get_short_sha_from_array( array $data ): string {
+	public static function get_short_sha_from_array( array $data ): string {
 		return substr( sha1( wp_json_encode( $data ) ), 0, 10 );
 	}
 }
