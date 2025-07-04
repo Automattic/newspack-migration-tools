@@ -117,7 +117,7 @@ class JsonIterator {
 	 *
 	 * @return iterable
 	 */
-	public function filtered_items( string $json_file, string $key, string $value ): iterable {
+	public function filtered_items( string $json_file, string $key, ?string $value = null ): iterable {
 		$file_exists = str_starts_with( $json_file, 'http' ) ? $this->url_responds( $json_file ) : file_exists( $json_file );
 
 		if ( ! $file_exists ) {
@@ -128,7 +128,13 @@ class JsonIterator {
 		try {
 			$items = Items::fromFile( $json_file );
 			foreach ( $items as $item ) {
-				if ( isset( $item->$key ) && $item->$key === $value ) {
+				// If value is null, only check if the key exists.
+				if ( null === $value ) {
+					if ( isset( $item->$key ) ) {
+						yield $item;
+					}
+				} elseif ( isset( $item->$key ) && $item->$key === $value ) {
+					// If value is set, check both key existence and value equality
 					yield $item;
 				}
 			}
