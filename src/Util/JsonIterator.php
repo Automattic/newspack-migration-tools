@@ -101,8 +101,8 @@ class JsonIterator {
 
 		try {
 			return Items::fromFile( $json_file, $options );
-		} catch ( Exception $o_0 ) {
-			NMT::exit_with_message( sprintf( 'Could not read the JSON from: %s', $json_file ), [ $this->file_logger ] );
+		} catch ( Exception $e ) {
+			NMT::exit_with_message( sprintf( 'Could not read the JSON from "%s": %s', $json_file, $e->getMessage() ), [ $this->file_logger ] );
 		}
 
 		return new \EmptyIterator();
@@ -132,8 +132,8 @@ class JsonIterator {
 					yield $item;
 				}
 			}
-		} catch ( Exception $o_0 ) {
-			NMT::exit_with_message( sprintf( 'Could not read the JSON from: %s', $json_file ), [ $this->file_logger ] );
+		} catch ( Exception $e ) {
+			NMT::exit_with_message( sprintf( 'Could not read the JSON from "%s": %s', $json_file, $e->getMessage() ), [ $this->file_logger ] );
 		}
 
 		return new \EmptyIterator();
