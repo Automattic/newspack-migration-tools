@@ -32,6 +32,7 @@ class CustomRedirectGenerator {
 
 		// Convert redirects to the required format
 		foreach ( $this->redirects as $redirect ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_var_export
 			$redirects[] = '    ' . var_export( $redirect['from'], true ) . ' => ' . var_export( $redirect['to'], true );
 		}
 
