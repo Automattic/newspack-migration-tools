@@ -32,7 +32,7 @@ class CustomRedirectGenerator {
 
 		// Convert redirects to the required format
 		foreach ( $this->redirects as $redirect ) {
-			$redirects[] = "    '" . addslashes( $redirect['from'] ) . "' => '" . addslashes( $redirect['to'] ) . "'";
+			$redirects[] = '    ' . var_export( $redirect['from'], true ) . ' => ' . var_export( $redirect['to'], true );
 		}
 
 		$redirects_string = implode( ",\n", $redirects );
