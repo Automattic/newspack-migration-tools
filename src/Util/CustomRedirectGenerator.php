@@ -32,7 +32,8 @@ class CustomRedirectGenerator {
 
 		// Convert redirects to the required format
 		foreach ( $this->redirects as $redirect ) {
-			$redirects[] = "    '" . addslashes( $redirect['from'] ) . "' => '" . addslashes( $redirect['to'] ) . "'";
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_var_export
+			$redirects[] = '    ' . var_export( $redirect['from'], true ) . ' => ' . var_export( $redirect['to'], true );
 		}
 
 		$redirects_string = implode( ",\n", $redirects );
@@ -57,8 +58,8 @@ if ( false !== \$query_position ) {
 // Do redirect.
 if ( array_key_exists( \$current_url, \$redirects_from_to ) ) {
     // Send all the headers.
-    header('HTTP/1.1 302 Moved Permanently');
-    header('cache-control: max-age=300, must-revalidate');
+    header('HTTP/1.1 302 Found');
+    header('Cache-Control: max-age=300, must-revalidate');
     header('Location: ' . \$redirects_from_to[ \$current_url ] );
     exit;
 }";
