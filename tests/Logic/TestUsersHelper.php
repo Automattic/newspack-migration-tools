@@ -157,4 +157,58 @@ class TestUsersHelper extends WP_UnitTestCase {
 		$should_also_be_shorter_and_different = UsersHelper::get_unused_nicename( $long_nicename );
 		$this->assertTrue( strlen( $should_also_be_shorter_and_different ) <= $max_length );
 	}
+
+	/**
+	 * Test that ensures that create_or_get_user only looks for users by their unique identifier, not by email, login, or nicename.
+	 */
+	public function test_create_or_get_user_only_looks_by_unique_identifier() {
+		// Create a user with a specific unique identifier
+		$user_data = [
+			'user_email'   => 'test@example.com',
+			'user_login'   => 'testuser',
+			'display_name' => 'Test User',
+		];
+		$unique_id = 'unique-123';
+
+		$user1 = UsersHelper::create_or_get_user( $user_data, $unique_id );
+		$this->assertInstanceOf( 'WP_User', $user1 );
+		$this->assertEquals( 'test@example.com', $user1->user_email );
+		$this->assertEquals( 'testuser', $user1->user_login );
+
+		// Test 1: Try to get the same user with the same unique identifier (should succeed)
+		$user2 = UsersHelper::create_or_get_user( $user_data, $unique_id );
+		$this->assertEquals( $user1->ID, $user2->ID );
+		$this->assertEquals( $user1->user_email, $user2->user_email );
+
+		// Test 2: Try to get a user with the same email but different unique identifier (should create new user)
+		$different_unique_id = 'unique-456';
+		$user3               = UsersHelper::create_or_get_user( $user_data, $different_unique_id );
+		$this->assertNotEquals( $user1->ID, $user3->ID );
+		$this->assertNotEquals( $user1->user_email, $user3->user_email ); // Should have different email due to conflict resolution
+
+		// Test 3: Try to get a user with the same login but different unique identifier (should create new user)
+		$user_data_same_login = [
+			'user_login'   => 'testuser',
+			'display_name' => 'Another Test User',
+		];
+		$another_unique_id    = 'unique-789';
+		$user4                = UsersHelper::create_or_get_user( $user_data_same_login, $another_unique_id );
+		$this->assertNotEquals( $user1->ID, $user4->ID );
+		$this->assertNotEquals( $user1->user_login, $user4->user_login ); // Should have different login due to conflict resolution
+
+		// Test 4: Verify that all users have their respective unique identifiers
+		$this->assertEquals( $unique_id, get_user_meta( $user1->ID, UsersHelper::UNIQUE_IDENTIFIER_META_KEY, true ) );
+		$this->assertEquals( $different_unique_id, get_user_meta( $user3->ID, UsersHelper::UNIQUE_IDENTIFIER_META_KEY, true ) );
+		$this->assertEquals( $another_unique_id, get_user_meta( $user4->ID, UsersHelper::UNIQUE_IDENTIFIER_META_KEY, true ) );
+
+		// Test 5: Try to get a user with completely different data but same unique identifier (should return existing user)
+		$different_data = [
+			'user_email'   => 'different@example.com',
+			'user_login'   => 'differentuser',
+			'display_name' => 'Different User',
+		];
+		$user5          = UsersHelper::create_or_get_user( $different_data, $unique_id );
+		$this->assertEquals( $user1->ID, $user5->ID );
+		$this->assertEquals( $user1->user_email, $user5->user_email ); // Should return original user, not create new one
+	}
 }
