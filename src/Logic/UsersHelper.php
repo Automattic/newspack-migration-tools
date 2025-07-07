@@ -232,10 +232,6 @@ class UsersHelper {
 
 		// First try with the uniqid for the user.
 		$wp_user = self::get_user_by_unique_identifier( $unique_identifier );
-		if ( ! $wp_user ) {
-			// OK, no unique identifier found, let's try to find the user by the data.
-			$wp_user = self::get_user( $data );
-		}
 		if ( $wp_user ) { // Great – we already have the user!
 			if ( ! empty( $data['role'] ) ) {
 				// If the role was passed in the data array – add it before returning.

@@ -159,95 +159,59 @@ class TestUsersHelper extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Comprehensive test for get_unused_fake_email method.
+	 * Test that create_or_get_user no longer falls back to looking for users by other fields
+	 * when the unique identifier is not found.
 	 *
-	 * Tests various scenarios including the bug fix where long emails were not properly handled
-	 * when generating unique emails with prepended numbers.
+	 * This ensures that users are only found by their unique identifier, not by email, login, or nicename.
 	 */
-	public function test_get_unused_fake_email_comprehensive() {
-		// Test 1: Basic functionality - email that doesn't exist
-		$test_email = 'test@example.com';
-		$result     = UsersHelper::get_unused_fake_email( $test_email );
-		$this->assertEquals( $test_email, $result );
-		$this->assertNotFalse( is_email( $result ) );
+	public function test_create_or_get_user_only_looks_by_unique_identifier() {
+		// Create a user with a specific unique identifier
+		$user_data = [
+			'user_email'   => 'test@example.com',
+			'user_login'   => 'testuser',
+			'display_name' => 'Test User',
+		];
+		$unique_id = 'unique-123';
 
-		// Test 2: Email that already exists - should prepend a number
-		$existing_user = $this->factory()->user->create(
-			[
-				'user_email' => 'existing@example.com',
-			]
-		);
-		$result        = UsersHelper::get_unused_fake_email( 'existing@example.com' );
-		$this->assertNotEquals( 'existing@example.com', $result );
-		$this->assertStringStartsWith( '1', $result );
-		$this->assertStringEndsWith( 'existing@example.com', $result );
-		$this->assertNotFalse( is_email( $result ) );
+		$user1 = UsersHelper::create_or_get_user( $user_data, $unique_id );
+		$this->assertInstanceOf( 'WP_User', $user1 );
+		$this->assertEquals( 'test@example.com', $user1->user_email );
+		$this->assertEquals( 'testuser', $user1->user_login );
 
-		// Test 3: Multiple existing emails - should increment the prepended number
-		$existing_user2 = $this->factory()->user->create(
-			[
-				'user_email' => '1existing@example.com',
-			]
-		);
-		$result         = UsersHelper::get_unused_fake_email( 'existing@example.com' );
-		$this->assertStringStartsWith( '2', $result );
-		$this->assertStringEndsWith( 'existing@example.com', $result );
-		$this->assertNotFalse( is_email( $result ) );
+		// Test 1: Try to get the same user with the same unique identifier (should succeed)
+		$user2 = UsersHelper::create_or_get_user( $user_data, $unique_id );
+		$this->assertEquals( $user1->ID, $user2->ID );
+		$this->assertEquals( $user1->user_email, $user2->user_email );
 
-		// Test 4: Email that is too long (>100 characters) - should be shortened
-		$long_email = str_repeat( 'a', 88 ) . '@example.com'; // 100 characters total (88 + 1 + 11)
-		$result     = UsersHelper::get_unused_fake_email( $long_email );
-		$this->assertEquals( 100, strlen( $result ) );
-		$this->assertNotFalse( is_email( $result ) );
-		$this->assertStringEndsWith( '@example.com', $result );
+		// Test 2: Try to get a user with the same email but different unique identifier (should create new user)
+		$different_unique_id = 'unique-456';
+		$user3               = UsersHelper::create_or_get_user( $user_data, $different_unique_id );
+		$this->assertNotEquals( $user1->ID, $user3->ID );
+		$this->assertNotEquals( $user1->user_email, $user3->user_email ); // Should have different email due to conflict resolution
 
-		// Test 5: The bug fix - long email that needs to be shortened AND has conflicts
-		// This tests the critical bug where $original_email was used instead of $desired_email
-		$very_long_email           = str_repeat( 'b', 89 ) . '@example.com'; // 101 characters (89 + 1 + 11)
-		$very_long_email_shortened = str_repeat( 'b', 84 ) . '@example.com'; // 100 characters (84 + 1 + 11). peeled off 4 characters.
-		$existing_user3            = $this->factory()->user->create(
-			[
-				'user_email' => $very_long_email_shortened, // The shortened version
-			]
-		);
-		$result                    = UsersHelper::get_unused_fake_email( $very_long_email );
-		$this->assertLessThanOrEqual( 100, strlen( $result ) );
-		$this->assertStringStartsWith( '1', $result );
-		$this->assertStringEndsWith( '@example.com', $result );
-		$this->assertNotFalse( is_email( $result ) );
+		// Test 3: Try to get a user with the same login but different unique identifier (should create new user)
+		$user_data_same_login = [
+			'user_login'   => 'testuser',
+			'display_name' => 'Another Test User',
+		];
+		$another_unique_id    = 'unique-789';
+		$user4                = UsersHelper::create_or_get_user( $user_data_same_login, $another_unique_id );
+		$this->assertNotEquals( $user1->ID, $user4->ID );
+		$this->assertNotEquals( $user1->user_login, $user4->user_login ); // Should have different login due to conflict resolution
 
-		// Test 6: Multiple conflicts with long email
-		$existing_user4 = $this->factory()->user->create(
-			[
-				'user_email' => '1' . $very_long_email_shortened,
-			]
-		);
-		$result         = UsersHelper::get_unused_fake_email( $very_long_email );
-		$this->assertLessThanOrEqual( 100, strlen( $result ) );
-		$this->assertStringStartsWith( '2', $result );
-		$this->assertStringEndsWith( '@example.com', $result );
-		$this->assertNotFalse( is_email( $result ) );
+		// Test 4: Verify that all users have their respective unique identifiers
+		$this->assertEquals( $unique_id, get_user_meta( $user1->ID, UsersHelper::UNIQUE_IDENTIFIER_META_KEY, true ) );
+		$this->assertEquals( $different_unique_id, get_user_meta( $user3->ID, UsersHelper::UNIQUE_IDENTIFIER_META_KEY, true ) );
+		$this->assertEquals( $another_unique_id, get_user_meta( $user4->ID, UsersHelper::UNIQUE_IDENTIFIER_META_KEY, true ) );
 
-		// Test 7: Edge case - extremely long email
-		$extremely_long_email = str_repeat( 'c', 200 ) . '@example.com';
-		$result               = UsersHelper::get_unused_fake_email( $extremely_long_email );
-		$this->assertLessThanOrEqual( 100, strlen( $result ) );
-		$this->assertNotFalse( is_email( $result ) );
-
-		// Test 8: Empty string (edge case)
-		$result = UsersHelper::get_unused_fake_email( '' );
-		$this->assertFalse( is_email( $result ) );
-
-		// Test 9: Email with special characters
-		$special_email = 'test+tag@example.com';
-		$result        = UsersHelper::get_unused_fake_email( $special_email );
-		$this->assertEquals( $special_email, $result );
-		$this->assertNotFalse( is_email( $result ) );
-
-		// Test 10: Email that is exactly 100 characters
-		$exact_length_email = str_repeat( 'd', 88 ) . '@example.com'; // 100 characters (88 + 1 + 11)
-		$result             = UsersHelper::get_unused_fake_email( $exact_length_email );
-		$this->assertEquals( $exact_length_email, $result );
-		$this->assertNotFalse( is_email( $result ) );
+		// Test 5: Try to get a user with completely different data but same unique identifier (should return existing user)
+		$different_data = [
+			'user_email'   => 'different@example.com',
+			'user_login'   => 'differentuser',
+			'display_name' => 'Different User',
+		];
+		$user5          = UsersHelper::create_or_get_user( $different_data, $unique_id );
+		$this->assertEquals( $user1->ID, $user5->ID );
+		$this->assertEquals( $user1->user_email, $user5->user_email ); // Should return original user, not create new one
 	}
 }
