@@ -150,20 +150,23 @@ class UsersHelper {
 	public static function get_unused_fake_email( string $desired_email ): string {
 		$original_email = $desired_email;
 		if ( strlen( $desired_email ) > 100 ) {
-			// If the email is too long, we'll peel off a couple of characters from the beginning.
-			$desired_email = substr( $desired_email, 4 );
+			// If the email is too long, we'll peel off characters till we get 96 characters.
+			$email_parts   = explode( '@', $desired_email );
+			$desired_email = substr( $email_parts[0], 0, ( 96 - strlen( $email_parts[1] ) - 1 ) ) . '@' . $email_parts[1];
 			FileLog::get_logger( 'UsersHelper' )->warning( sprintf( 'Shortened email to under 100 chars from "%s" to "%s".', $original_email, $desired_email ) );
 		}
 
+		$generated_email = $desired_email;
+
 		$i = 0;
-		while ( false !== get_user_by( 'email', $desired_email ) ) {
-			$desired_email = ( ++$i ) . $desired_email; // Prepend.
+		while ( false !== get_user_by( 'email', $generated_email ) ) {
+			$generated_email = ( ++$i ) . $desired_email; // Prepend.
 		}
 		if ( $i > 0 ) {
-			CliLog::get_logger( 'UsersHelper' )->debug( sprintf( 'Generated fake email: %s.', $desired_email ) );
+			CliLog::get_logger( 'UsersHelper' )->debug( sprintf( 'Generated fake email: %s.', $generated_email ) );
 		}
 
-		return $desired_email;
+		return $generated_email;
 	}
 
 	/**
