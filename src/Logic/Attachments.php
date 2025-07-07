@@ -9,6 +9,10 @@ use WP_Error;
  * Attachments logic.
  */
 class Attachments {
+	/**
+	 * Meta key for the unique identifier for posts.
+	 */
+	public const UNIQUE_ATTACHMENT_IDENTIFIER_META_KEY = '_nmt_attachment_uniqid';
 
 	/**
 	 * Wrapper for import_external_file() with fewer args and enforced post_id.
@@ -53,7 +57,7 @@ class Attachments {
 	 *
 	 * @return int|WP_Error Attachment ID.
 	 */
-	public static function import_external_file( $path, $title = null, $caption = null, $description = null, $alt = null, $post_id = 0, $args = [], $desired_filename = '', $try_existing = true ) {
+	public static function import_external_file( $path, $title = null, $caption = null, $description = null, $alt = null, $post_id = 0, $args = [], $desired_filename = '', $try_existing = true, $unique_identifier = null ) {
 		// Fetch remote or local file.
 		$is_http = 'http' == substr( $path, 0, 4 );
 		if ( $is_http ) {
@@ -98,7 +102,7 @@ class Attachments {
 			}
 		}
 
-		$maybe_exising_attachment_id = ( $try_existing ) ? self::maybe_get_existing_attachment_id( $file_array['tmp_name'], $file_array['name'] ) : null;
+		$maybe_exising_attachment_id = ( $try_existing ) ? self::maybe_get_existing_attachment_id( $file_array['tmp_name'], $file_array['name'], $unique_identifier ) : null;
 		if ( null !== $maybe_exising_attachment_id ) {
 			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			@unlink( $file_array['tmp_name'] );
@@ -127,6 +131,10 @@ class Attachments {
 			update_post_meta( $att_id, '_wp_attachment_image_alt', $alt );
 		}
 
+		if ( $unique_identifier ) {
+			update_post_meta( $att_id, self::UNIQUE_ATTACHMENT_IDENTIFIER_META_KEY, $unique_identifier );
+		}
+
 		return $att_id;
 	}
 
@@ -138,7 +146,7 @@ class Attachments {
 	 *
 	 * @return int|null Attachment ID if found, null otherwise.
 	 */
-	public static function maybe_get_existing_attachment_id( string $filepath, string $filename = '' ) {
+	public static function maybe_get_existing_attachment_id( string $filepath, string $filename = '', $unique_identifier = null ) {
 		if ( ! file_exists( $filepath ) ) {
 			return null;
 		}
@@ -148,6 +156,14 @@ class Attachments {
 		}
 
 		global $wpdb;
+
+		// If the unique identifier is set, we'll use it to check for existing attachments.
+		if ( ! empty( $unique_identifier ) ) {
+			$attachment_id = self::get_attachment_by_unique_identifier( $unique_identifier );
+			if ( $attachment_id ) {
+				return $attachment_id;
+			}
+		}
 
 		// Check if the file with same name exists in the DB.
 		$like = '%' . $wpdb->esc_like( sanitize_file_name( $filename ) );
@@ -439,5 +455,29 @@ class Attachments {
 		// phpcs:enable
 
 		return $attachment_id ?? 0;
+	}
+
+	/**
+	 * Get a post by its unique identifier.
+	 *
+	 * The identifier was set when the post was created (if it was created by this class), so you probably know what it is.
+	 * Make sure you read the docs linked to at the top of the class.
+	 *
+	 * @param string $unique_identifier The unique identifier to search for.
+	 *
+	 * @return int|false The post ID if found, false otherwise.
+	 */
+	public static function get_attachment_by_unique_identifier( string $unique_identifier ): int|false {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$post_id = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT post_id FROM $wpdb->postmeta WHERE meta_key = %s AND meta_value = %s LIMIT 1",
+				self::UNIQUE_ATTACHMENT_IDENTIFIER_META_KEY,
+				$unique_identifier
+			)
+		);
+
+		return empty( $post_id ) ? false : (int) $post_id;
 	}
 }
