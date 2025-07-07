@@ -58,7 +58,7 @@ if ( false !== \$query_position ) {
 if ( array_key_exists( \$current_url, \$redirects_from_to ) ) {
     // Send all the headers.
     header('HTTP/1.1 302 Found');
-    header('cache-control: max-age=300, must-revalidate');
+    header('Cache-Control: max-age=300, must-revalidate');
     header('Location: ' . \$redirects_from_to[ \$current_url ] );
     exit;
 }";
