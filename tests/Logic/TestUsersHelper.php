@@ -159,10 +159,7 @@ class TestUsersHelper extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that create_or_get_user no longer falls back to looking for users by other fields
-	 * when the unique identifier is not found.
-	 *
-	 * This ensures that users are only found by their unique identifier, not by email, login, or nicename.
+	 * Test that ensures that create_or_get_user only looks for users by their unique identifier, not by email, login, or nicename.
 	 */
 	public function test_create_or_get_user_only_looks_by_unique_identifier() {
 		// Create a user with a specific unique identifier
