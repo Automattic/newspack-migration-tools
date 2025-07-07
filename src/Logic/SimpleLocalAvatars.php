@@ -47,7 +47,8 @@ class SimpleLocalAvatars {
 		}
 
 		if ( ! class_exists( 'Simple_Local_Avatars' ) ) {
-			require_once ABSPATH . 'wp-content/plugins/simple-local-avatars/simple-local-avatars.php';
+			$plugin_path = defined( 'WP_PLUGIN_DIR' ) ? WP_PLUGIN_DIR : ABSPATH . 'wp-content/plugins';
+			require_once $plugin_path . '/simple-local-avatars/simple-local-avatars.php';
 		}
 
 		$this->simple_local_avatars = new Simple_Local_Avatars();
