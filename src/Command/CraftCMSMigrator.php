@@ -499,7 +499,7 @@ class CraftCMSMigrator implements WpCliCommandInterface {
 				$this->set_post_comments( $post_id, $entry, $users_data, $site_id, $timezone, $hostname_assets, $craft_db );
 
 				// Set post featured image.
-				$this->set_post_featured_image( $post_id, $entry, $craft_db );
+				$this->set_post_featured_image( $post_id, $entry, $hostname_assets, $site_id, $timezone, $craft_db );
 
 				// Save custom post metas.
 				$postmetas = [
@@ -1082,7 +1082,7 @@ class CraftCMSMigrator implements WpCliCommandInterface {
 		 */
 		$post_content = $post_excerpt;
 		if ( ! empty( $entry['matrixMainContent'] ) ) {
-			$post_content_blocks = $this->convert_craft_content_blocks_to_gutenberg_blocks( $entry['id'], $entry['matrixMainContent'], $post_id, $hostname, $hostname_s3, $hostname_assets, $site_id, $craft_db );
+			$post_content_blocks = $this->convert_craft_content_blocks_to_gutenberg_blocks( $entry['id'], $entry['matrixMainContent'], $post_id, $hostname, $hostname_s3, $hostname_assets, $site_id, $timezone, $craft_db );
 			// In Craft, the excerpt i.e. "Lede" is dynamically prepended to entity content, so it gets prepended to the post content.
 			foreach ( $post_content_blocks as $key_block => $block ) {
 				// serialize_blocks() will glue block strings without line breaks. Let's add a double line break after each block.
@@ -1142,7 +1142,7 @@ class CraftCMSMigrator implements WpCliCommandInterface {
 		/**
 		 * Get post coauthors from entry bylines or entry author.
 		 */
-		$bylines = $this->get_entry_bylines( $entry, $users_data, $hostname_assets, $craft_db );
+		$bylines = $this->get_entry_bylines( $entry, $users_data, $hostname_assets, $site_id, $craft_db );
 		if ( ! empty( $bylines ) ) {
 
 			// If bylines are set, use those for post (co)authors.
@@ -1381,10 +1381,14 @@ class CraftCMSMigrator implements WpCliCommandInterface {
 	 * 
 	 * @param int   $post_id The post ID.
 	 * @param array $entry   The entry data.
+	 * @param string $hostname_assets The hostname of the assets.
+	 * @param int   $site_id The site ID.
+	 * @param string $timezone The timezone of the site.
 	 * @param wpdb  $craft_db The production database connection.
+	 * 
 	 * @return int|null The featured image ID, or null if there was an error.
 	 */
-	public function set_post_featured_image( int $post_id, array $entry, wpdb $craft_db ): ?int {
+	public function set_post_featured_image( int $post_id, array $entry, string $hostname_assets, int $site_id, string $timezone, wpdb $craft_db ): ?int {
 		// Get featured image data.
 		$asset_json_data = $this->get_matrixLede_first_block_image_data( $entry );
 		if ( is_null( $asset_json_data ) ) {
@@ -1395,7 +1399,7 @@ class CraftCMSMigrator implements WpCliCommandInterface {
 		$caption = $asset_json_data['itemContent'];
 
 		// Import image.
-		$featured_image_id = $this->import_image_from_asset( $asset_json_data['id'], $post_id, $entry['id'], $craft_db, $caption );
+		$featured_image_id = $this->import_image_from_asset( $asset_json_data['id'], $post_id, $entry['id'], $hostname_assets, $site_id, $timezone, $craft_db, $caption );
 		if ( is_wp_error( $featured_image_id ) ) {
 			$this->logger->error( sprintf( 'ERROR inserting featured image entry ID %d, asset ID %d : %s', $entry['id'], $asset_json_data['id'], $featured_image_id->get_error_message() ) );
 			return null;
