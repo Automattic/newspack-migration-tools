@@ -42,7 +42,7 @@ class Logger {
 		try {
 			$log_level = Level::fromName( $level );
 		} catch ( UnhandledMatchError $e ) {
-			$log_level = Level::fromName( Level::Info );
+			$log_level = Level::fromName( LogLevel::INFO );
 		}
 
 		if ( $exit_on_error ) {
