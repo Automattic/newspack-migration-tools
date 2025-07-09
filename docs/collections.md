@@ -221,6 +221,116 @@ $collection_post_id = $collections_helper
 
 ---
 
+`assign_post_to_collections_posts( int $post_id, int|array $collection_posts_ids ): void`
+
+Associates a Post with a Collection/s.
+
+This method takes care of associating the Post with the Collection Taxonomy, as well.
+
+**Parameters:**
+
+* `$post_id` _(int)_ — The Post ID to be associated.
+* `$collection_posts_ids` _(int|array)_ — The Collection Post ID, or an array of Collection Post IDs.
+
+**Return**
+
+Void.
+
+**Example:**
+
+```php
+$collections_helper = new CollectionsHelper();
+
+$post_id = 123;
+$collection_post_id = 456;
+
+$collections_helper->assign_post_to_collections_posts( $post_id, $collection_post_id );
+// or $collections_helper->assign_post_to_collections_posts( $post_id, [ $collection_post_id ] );
+```
+
+---
+
+`assign_post_to_collections_terms( int $post_id, int|array $collection_terms_ids ): void`
+
+Associates a Post with a Collection/s Taxonomy.
+
+**Parameters:**
+
+* `$post_id` _(int)_ — The Post ID to be associated.
+* `$collection_terms_ids` _(int|array)_ — The Collection Term ID, or an array of Collection Term IDs.
+
+**Return**
+
+Void.
+
+**Example:**
+
+```php
+$collections_helper = new CollectionsHelper();
+
+$post_id = 123;
+$collection_term_id = 789;
+
+$collections_helper->assign_post_to_collections_terms( $post_id, $collection_term_id );
+// or $collections_helper->assign_post_to_collections_terms( $post_id, [ $collection_term_id ] );
+```
+
+---
+
+`assign_post_to_collections_sections( int $post_id, int|array $collection_sections_terms_ids ): void`
+
+Associates a Post with a Collection Section/s.
+
+**Parameters:**
+
+* `$post_id` _(int)_ — The Post ID to be associated.
+* `$collection_sections_terms_ids` _(int|array)_ — The Collection Section ID, or an array of Collection Sections IDs.
+
+**Return**
+
+Void.
+
+**Example:**
+
+```php
+$collections_helper = new CollectionsHelper();
+
+$post_id = 123;
+$collection_section_id = 789;
+
+$collections_helper->assign_post_to_collections_sections( $post_id, $collection_section_id );
+// or $collections_helper->assign_post_to_collections_sections( $post_id, [ $collection_section_id ] );
+```
+
+---
+
+`assign_post_to_collections_categories( int $post_id, int|array $collection_categories_terms_ids ): void`
+
+Associates a Post with a Collection Category/ies.
+
+**Parameters:**
+
+* `$post_id` _(int)_ — The Post ID to be associated.
+* `$collection_categories_terms_ids` _(int|array)_ — The Collection Category ID, or an array of Collection Categories IDs.
+
+**Return**
+
+Void.
+
+**Example:**
+
+```php
+$collections_helper = new CollectionsHelper();
+
+$post_id = 123;
+$collection_category_id = 789;
+
+$collections_helper->assign_post_to_collections_categories( $post_id, $collection_category_id );
+// or $collections_helper->assign_post_to_collections_categories( $post_id, [ $collection_category_id ] );
+```
+
+---
+
 `get_collection_linked_term_id( int $post_id ): int`
 
 Get the linked Collection Post ID for Collection Term.
