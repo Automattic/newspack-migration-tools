@@ -37,3 +37,61 @@ Searches for a Collection Post by its `$unique_identifier`. Otherwise, tries to 
 **Return:**
 
 Returns the `WP_Post` `ID` when the Collection Post is created or fetched, or `WP_Error` on error.
+
+**Example:**
+
+```php
+$collections_helper = new CollectionsHelper();
+
+$collection_post_id = $collections_helper
+    ->get_or_create_collection(
+        [
+            'post_title'   => 'January 1970',
+            'post_content' => 'Lorem Ipsum Dolor Sit Amet',
+        ],
+        'a1s2d3f4g5h6'
+    );
+```
+
+---
+
+`update_collection_metadata( int $collection_id, array $data ): void`
+
+Updates the post meta related to Collections.
+
+**Parameters:**
+
+* `$collection_id` *(int)* — The Collection Post ID.
+* `$data` *(array)* — An array of metadata to update for the Collection. The `CollectionsHelper::COLLECTION_META_MAP` constant contains a reference of all available meta keys.
+
+**Return:**
+
+Void.
+
+**Example:**
+
+```php
+$collections_helper = new CollectionsHelper();
+
+$collection_id = 123;
+
+$collection_post_id = $collections_helper
+    ->update_collection_metadata(
+        $collection_id,
+        [
+            'thumbnail'      => 1234,                            // Attachment ID
+            'volume'         => 1,                               // Collection Volume
+            'number'         => 1,                               // Collection Number
+            'period'         => 'January 1970',                  // Collection Period
+            'subscribe_link' => 'https://example.com/subscribe', // Subscribe URL
+            'order_link'     => 'https://example.com/order',     // Order URL
+            'ctas'           => [
+                [
+                    'type'  => 'attachment',
+                    'label' => 'View Digital Edition (PDF)',
+                    'id'    => 12345,
+                ]
+            ]
+        ],
+    );
+```
