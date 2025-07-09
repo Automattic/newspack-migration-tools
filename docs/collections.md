@@ -218,3 +218,131 @@ $collection_post_id = $collections_helper
         ],
     );
 ```
+
+---
+
+`get_collection_linked_term_id( int $post_id ): int`
+
+Get the linked Collection Post ID for Collection Term.
+
+**Parameters:**
+
+* `$post_id` _(int)_ — The Collection Post ID.
+
+**Return:**
+
+* `$collection_term_id` _(int)_ — The Collection Term ID.
+
+**Example:**
+
+```php
+$collections_helper = new CollectionsHelper();
+
+$collection_post_id = 123;
+
+echo $collections_helper->get_collection_linked_term_id( $collection_post_id ); // 456
+```
+
+---
+
+`get_collection_linked_post_id( int $term_id ): int`
+
+Get the linked Collection Term ID for Collection Post.
+
+**Parameters:**
+
+* `$term_id` _(int)_ — The Collection Term ID.
+
+**Return:**
+
+* `$collection_post_id` _(int)_ — The Collection Post ID.
+
+**Example:**
+
+```php
+$collections_helper = new CollectionsHelper();
+
+$collection_term_id = 123;
+
+echo $collections_helper->get_collection_linked_post_id( $collection_term_id ); // 456
+```
+
+---
+
+`get_collection_post_type(): string`
+
+Get the post type for Collections.
+
+**Return:**
+
+The Collections post type.
+
+**Example:**
+
+```php
+$collections_helper = new CollectionsHelper();
+
+$collection_post_type = $collections_helper->get_collection_post_type();
+
+echo $collection_post_type; // newspack_collection
+```
+
+---
+
+`get_collection_taxonomy(): string`
+
+Get the taxonomy name for Collections.
+
+**Return:**
+
+The Collections taxonomy name.
+
+**Example:**
+
+```php
+$collections_helper = new CollectionsHelper();
+
+$collection_taxonomy = $collections_helper->get_collection_taxonomy();
+
+echo $collection_taxonomy; // newspack_collection
+```
+
+---
+
+`get_collection_section_taxonomy(): string`
+
+Get the taxonomy name for Collection Sections.
+
+**Return:**
+
+The Collection Section taxonomy name.
+
+**Example:**
+
+```php
+$collections_helper = new CollectionsHelper();
+
+$collection_section_taxonomy = $collections_helper->get_collection_section_taxonomy();
+
+echo $collection_section_taxonomy; // newspack_collection_section
+```
+
+---
+
+`get_collection_category_taxonomy(): string`
+
+Get the taxonomy name for Collection Categories.
+
+**Return:**
+
+The Collection Category taxonomy name.
+
+**Example:**
+
+```php
+$collections_helper = new CollectionsHelper();
+
+$collection_category_taxonomy = $collections_helper->get_collection_category_taxonomy();
+
+echo $collection_category_taxonomy; // newspack_collection_category
+```
