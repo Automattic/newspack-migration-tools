@@ -92,14 +92,20 @@ class UsersHelper {
 		$username_is_unused = null === $wpdb->get_var( $prepared_sql );
 
 		if ( $username_is_unused ) {
-			/*
+			/**
 			 * We've confirmed that the `$username` is unused (in the `wp_users` table), but certain plugins might want
 			 * to add their own logic to check for additional conditions. Specifically, if the co-authors-plus
 			 * plugin is installed/activated, there should be additional checks for `$username` uniqueness
 			 * on `wp_terms`.`name` and (`wp_postmeta`.`meta_key`, `wp_postmeta`.`meta_value`) =
 			 * ( 'cap-user_login', $username ) for example.
+			 *
+			 * @param bool   $username_is_unused Default: True. Implementer should determine if this needs to be updated.
+			 * @param string $username The username (`wp_users`.`user_login`) to check.
+			 * @param int    $exclude_user_id User ID to exclude from the check.
+			 *
+			 * @since 0.1.3
 			 */
-			$username_is_unused = apply_filters( 'nmt_additional_unused_username_check', $username, $exclude_user_id );
+			$username_is_unused = apply_filters( 'nmt_additional_unused_username_check', $username_is_unused, $username, $exclude_user_id );
 		}
 
 		return $username_is_unused;
