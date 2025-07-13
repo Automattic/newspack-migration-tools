@@ -341,6 +341,9 @@ class UsersHelper {
 			}
 		}
 
+		// Sanitize the user login in the same way that wp_insert_user() does it (@see \wp_insert_user()).
+		$user_login = sanitize_user( $user_login, true );
+
 		if ( empty( $data['user_pass'] ) ) {
 			$data['user_pass'] = wp_generate_password( 42 );
 		}
