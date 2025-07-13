@@ -489,7 +489,7 @@ class CraftCMSMigrator implements WpCliCommandInterface {
 				}
 				$this->logger->info( sprintf( "Inserted post '%s' with ID '%s', entry ID %d", $post_data['post_title'], $post_id, $entry['id'] ) );
 
-				// Set remaining post data: content, excerpt, modified date.
+				// Set all remaining post data: content, excerpt, modified date.
 				$this->set_remaining_post_data( $post_id, $entry, $hostname, $hostname_s3, $hostname_assets, $site_id, $timezone, $craft_db );
 
 				// Set post coauthors.
@@ -580,7 +580,7 @@ class CraftCMSMigrator implements WpCliCommandInterface {
 	}
 
 	/**
-	 * Get post data.
+	 * Get some post data (title, slug, categories, tags -- but not content, featured images, authors) which is initially set during post creation.
 	 * 
 	 * @param array  $entry         The entry data.
 	 * @param array  $sections_data The sections data.
@@ -877,9 +877,8 @@ class CraftCMSMigrator implements WpCliCommandInterface {
 					// Get image classes.
 					$image_classes = $this->get_craft_image_block_classes( $craft_block );
 
-					// Import image.
-					// Credit is contained in DB asset data.
-					$image_id = ! $this->dry_run ? $this->import_image_from_asset( $asset_id, $post_id, $entry_id, $hostname_assets, $site_id, $timezone, $craft_db, $caption ) : -1;
+					// Import image (dry run handled by import_image_from_asset internally).
+					$image_id = $this->import_image_from_asset( $asset_id, $post_id, $entry_id, $hostname_assets, $site_id, $timezone, $craft_db, $caption );
 					if ( is_wp_error( $image_id ) ) {
 						$asset_db_data = $this->get_asset_image_data( $asset_id, $hostname_assets, $site_id, $timezone, $craft_db );
 						$this->logger->error( sprintf( "ERROR downloading image for entry ID %d -- matrixMainContent blockImage itemAsset ID '%d' URL '%s' : '%s'.", $entry_id, $asset_id, $asset_db_data['url'] ?? '?? n/a', $image_id->get_error_message() ) );
@@ -931,6 +930,7 @@ class CraftCMSMigrator implements WpCliCommandInterface {
 						}
 
 						// Download and import image.
+						$this->logger->info( sprintf( 'INFO downloading external image URL %s (entry_id %d, post_id %d)', $image_url, $entry_id, $post_id ) );
 						$image_id = ! $this->dry_run ? $this->attachments->import_external_file(
 							$image_url,
 							null,
@@ -1219,6 +1219,7 @@ class CraftCMSMigrator implements WpCliCommandInterface {
 				$url = $author['avatar_image_url'];
 
 				// Import image.
+				$this->logger->info( sprintf( 'INFO downloading author avatar image URL %s (entry_id %d, post_id %d)', $url, $entry['id'], $post_id ) );
 				$avatar_attachment_id = ! $this->dry_run ? $this->attachments->import_external_file( $url ) : -1;
 				if ( is_wp_error( $avatar_attachment_id ) ) {
 					$this->logger->error( sprintf( "ERROR inserting avatar image URL '%s' : %s", $url, $avatar_attachment_id->get_error_message() ) );
@@ -1379,12 +1380,12 @@ class CraftCMSMigrator implements WpCliCommandInterface {
 	 *    => this info is retrieved by `get_matrixLede_itemAsset_data`:
 	 *      lede "Photo Caption"        => Attachment "Caption"
 	 * 
-	 * @param int   $post_id The post ID.
-	 * @param array $entry   The entry data.
+	 * @param int    $post_id The post ID.
+	 * @param array  $entry   The entry data.
 	 * @param string $hostname_assets The hostname of the assets.
-	 * @param int   $site_id The site ID.
+	 * @param int    $site_id The site ID.
 	 * @param string $timezone The timezone of the site.
-	 * @param wpdb  $craft_db The production database connection.
+	 * @param wpdb   $craft_db The production database connection.
 	 * 
 	 * @return int|null The featured image ID, or null if there was an error.
 	 */
@@ -1398,7 +1399,7 @@ class CraftCMSMigrator implements WpCliCommandInterface {
 
 		$caption = $asset_json_data['itemContent'];
 
-		// Import image.
+		// Import image (dry run handled by import_image_from_asset internally).
 		$featured_image_id = $this->import_image_from_asset( $asset_json_data['id'], $post_id, $entry['id'], $hostname_assets, $site_id, $timezone, $craft_db, $caption );
 		if ( is_wp_error( $featured_image_id ) ) {
 			$this->logger->error( sprintf( 'ERROR inserting featured image entry ID %d, asset ID %d : %s', $entry['id'], $asset_json_data['id'], $featured_image_id->get_error_message() ) );
@@ -1788,7 +1789,7 @@ class CraftCMSMigrator implements WpCliCommandInterface {
 			return null;
 		}
 		$folder_id = $asset->folderId; // phpcs:ignore -- Snake case matching production DB column names. WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase.
-		$filename  = $asset->filename; // phpcs:ignore -- Snake case matching production DB column names. WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase.
+		$filename  = $asset->filename;
 		$volume_id = $asset->volumeId; // phpcs:ignore -- Snake case matching production DB column names. WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase.
 
 		// Get the folder path from volumefolders for the asset's folderId.
@@ -1819,6 +1820,16 @@ class CraftCMSMigrator implements WpCliCommandInterface {
 				'https://%s/%s/%s/%s',
 				$hostname_assets,
 				$prefix,
+				rtrim( $folder_path, '/' ),
+				$filename
+			);
+		} elseif ( substr( $volume_name, -15 ) === 'Archived Images' ) {
+			// If volume name ends with 'Archived Images', use first word of volume name as site code. E.g. $volume_name = 'NHI Archived Images' and $site_code = 'NHI' ; or $volume_name = 'VI Archived Images' and $site_code = 'VI'.
+			$site_code = strtok( $volume_name, ' ' );
+			$url       = sprintf(
+				'https://%s/%s/Old/BaseImages/%s/%s',
+				$hostname_assets,
+				$site_code,
 				rtrim( $folder_path, '/' ),
 				$filename
 			);
@@ -2148,6 +2159,7 @@ class CraftCMSMigrator implements WpCliCommandInterface {
 
 	/**
 	 * Import image from asset.
+	 * Handles --dry-run internally, will not download if $this->dry_run is true, and will only output debugging info.
 	 * 
 	 * @param int     $asset_id The asset ID.
 	 * @param int     $post_id  The post ID.
@@ -2182,6 +2194,7 @@ class CraftCMSMigrator implements WpCliCommandInterface {
 		$uploader    = isset( $asset_db_data['uploader'] ) && ! empty( $asset_db_data['uploader'] ) ? $asset_db_data['uploader'] : null;
 
 		// Import image.
+		$this->logger->info( sprintf( 'INFO importing image asset_id %d, URL %s (entry_id %d, post_id %d)', $asset_id, $url, $entry_id, $post_id ) );
 		$attachment_id = ! $this->dry_run ? $this->attachments->import_external_file(
 			$url,
 			$title,
