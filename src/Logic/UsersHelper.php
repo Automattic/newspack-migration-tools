@@ -133,7 +133,8 @@ class UsersHelper {
 			$desired_username = trim( mb_substr( $desired_username, 0, strpos( $desired_username, '@' ) ) );
 		}
 
-		$desired_username = sanitize_user( $desired_username );
+		// Sanitize the username the same way that wp_insert_user() sanitizes it (with $strict = true).
+		$desired_username = sanitize_user( $desired_username, true );
 
 		if ( empty( $desired_username ) ) {
 			throw new InvalidArgumentException( 'Sanitation of desired username results in empty string, please choose another username.' );
@@ -341,8 +342,7 @@ class UsersHelper {
 			}
 		}
 
-		// Sanitize the user login in the same way that wp_insert_user() does it (@see \wp_insert_user()).
-		$user_login = sanitize_user( $user_login, true );
+		// Note that the $user_login will be further sanitized in get_unused_username call below.
 
 		if ( empty( $data['user_pass'] ) ) {
 			$data['user_pass'] = wp_generate_password( 42 );
