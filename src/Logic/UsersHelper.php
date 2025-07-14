@@ -16,6 +16,8 @@ use WP_User;
  */
 class UsersHelper {
 
+	const MAX_USER_LOGIN_LENGTH = 60;
+
 	/**
 	 * Meta key for the unique identifier for users.
 	 */
@@ -67,36 +69,95 @@ class UsersHelper {
 	}
 
 	/**
-	 * Get a username that is not in use from a desired username.
+	 * Confirms that the given username (`wp_users`.`user_login`) is unused.
+	 *
+	 * @param string $username The username (`wp_users`.`user_login`) to check.
+	 * @param int    $exclude_user_id A user ID to exclude from the check.
+	 *
+	 * @return bool
+	 */
+	public static function is_username_unused( string $username, int $exclude_user_id = 0 ): bool {
+		// Check to see if raw $username is unused. Assumption is that all sanitation (if necessary under the context) has already been performed on $username.
+		// `get_user_by` is not used here because it does some sanitization (via `sanitize_user()`), as well as caching.
+		global $wpdb;
+		// phpcs:ignore WordPressVIPMinimum.Variables.RestrictedVariables.user_meta__wpdb__users -- We need raw uncached query results.
+		$prepared_sql = $wpdb->prepare( "SELECT ID FROM $wpdb->users WHERE user_login = %s", $username );
+
+		if ( $exclude_user_id ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Reason: $sql_prepared is a prepared statement.
+			$prepared_sql = $wpdb->prepare( "$prepared_sql AND ID <> %d", $exclude_user_id );
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		$username_is_unused = null === $wpdb->get_var( $prepared_sql );
+
+		if ( $username_is_unused ) {
+			/**
+			 * We've confirmed that the `$username` is unused (in the `wp_users` table), but certain plugins might want
+			 * to add their own logic to check for additional conditions. Specifically, if the co-authors-plus
+			 * plugin is installed/activated, there should be additional checks for `$username` uniqueness
+			 * on `wp_terms`.`name` and (`wp_postmeta`.`meta_key`, `wp_postmeta`.`meta_value`) =
+			 * ( 'cap-user_login', $username ) for example.
+			 *
+			 * @param bool   $username_is_unused Default: True. Implementer should determine if this needs to be updated.
+			 * @param string $username The username (`wp_users`.`user_login`) to check.
+			 * @param int    $exclude_user_id User ID to exclude from the check.
+			 *
+			 * @since 0.1.3
+			 */
+			$username_is_unused = apply_filters( 'nmt_additional_unused_username_check', $username_is_unused, $username, $exclude_user_id );
+		}
+
+		return $username_is_unused;
+	}
+
+	/**
+	 * Get a username (`wp_users`.`user_login`) that is not in use, starting with a desired username.
 	 *
 	 * If the desired username is in use, a counter will be appended to it until an unused username is found.
 	 *
-	 * @param string $desired_username Desired username.
+	 * @param string $desired_username Desired username (`wp_users`.`user_login`).
 	 *
 	 * @return string An unused username.
+	 *
+	 * @throws InvalidArgumentException If the desired username is empty.
 	 */
 	public static function get_unused_username( string $desired_username ): string {
-		$original_username = $desired_username;
-		$desired_username  = trim( $desired_username );
-		$max_length        = 60;
-		if ( strlen( $desired_username ) >= $max_length ) {
-			$desired_username = trim( mb_substr( $desired_username, 0, $max_length ) );
+		if ( empty( $desired_username ) ) {
+			throw new InvalidArgumentException( 'Desired username (`wp_users`.`user_login`) cannot be empty.' );
+		}
+
+		$original_user_login = $desired_username;
+
+		if ( is_email( $desired_username ) ) {
+			$desired_username = trim( mb_substr( $desired_username, 0, strpos( $desired_username, '@' ) ) );
+		}
+
+		// Sanitize the username the same way that wp_insert_user() sanitizes it (with $strict = true).
+		$desired_username = sanitize_user( $desired_username, true );
+
+		if ( empty( $desired_username ) ) {
+			throw new InvalidArgumentException( 'Sanitation of desired username results in empty string, please choose another username.' );
+		}
+
+		if ( strlen( $desired_username ) >= self::MAX_USER_LOGIN_LENGTH ) {
+			$desired_username = trim( mb_substr( $desired_username, 0, self::MAX_USER_LOGIN_LENGTH ) );
 			FileLog::get_logger( 'UsersHelper' )->warning(
 				sprintf(
-					'Shortened username to under %d chars from "%s" to "%s".',
-					$max_length,
-					$original_username,
+					'Shortened user login to under %d chars from "%s" to "%s".',
+					self::MAX_USER_LOGIN_LENGTH,
+					$original_user_login,
 					$desired_username
 				)
 			);
 		}
 
 		$i = 0;
-		while ( username_exists( $desired_username ) ) {
-			$desired_username = self::append_number_and_ensure_length( $desired_username, ++$i, $max_length );
+		while ( ! self::is_username_unused( $desired_username ) ) {
+			$desired_username = self::append_number_and_ensure_length( $desired_username, ++$i, self::MAX_USER_LOGIN_LENGTH );
 		}
 		if ( $i > 0 ) {
-			CliLog::get_logger( 'UsersHelper' )->debug( sprintf( 'Generated username: %s', $desired_username ) );
+			CliLog::get_logger( 'UsersHelper' )->debug( sprintf( 'Generated user login: %s', $desired_username ) );
 		}
 
 		return $desired_username;
@@ -279,6 +340,8 @@ class UsersHelper {
 				$user_login = self::get_short_sha_from_array( $data );
 			}
 		}
+
+		// Note that the $user_login will be further sanitized in get_unused_username call below.
 
 		if ( empty( $data['user_pass'] ) ) {
 			$data['user_pass'] = wp_generate_password( 42 );
