@@ -22,7 +22,7 @@ class CollectionsHelper {
 	 * Collection metadata map.
 	 */
 	const COLLECTION_META_MAP = [
-		'thumbnail'      => '_thumbnail_id',
+		'thumbnail_id'   => '_thumbnail_id',
 		'volume'         => 'newspack_collection_volume',
 		'number'         => 'newspack_collection_number',
 		'period'         => 'newspack_collection_period',
