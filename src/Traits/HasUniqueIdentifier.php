@@ -5,7 +5,7 @@ namespace Newspack\MigrationTools\Traits;
 use InvalidArgumentException;
 use WP_Term;
 
-trait Has_Unique_Identifier {
+trait HasUniqueIdentifier {
 
 	/**
 	 * Get a Post ID by its unique identifier.

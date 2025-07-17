@@ -3,7 +3,7 @@
 namespace Newspack\MigrationTools\Logic;
 
 use Exception;
-use Newspack\MigrationTools\Traits\Has_Unique_Identifier;
+use Newspack\MigrationTools\Traits\HasUniqueIdentifier;
 use Newspack\Optional_Modules\Collections;
 use WP_Error;
 use WP_Term;
@@ -12,7 +12,7 @@ use WP_Term;
  * Collections Helper class.
  */
 class CollectionsHelper {
-	use Has_Unique_Identifier;
+	use HasUniqueIdentifier;
 
 	public const UNIQUE_COLLECTION_IDENTIFIER_META_KEY          = '_nmt_collection_uniqid';
 	public const UNIQUE_COLLECTION_SECTION_IDENTIFIER_META_KEY  = '_nmt_collection_section_uniqid';
