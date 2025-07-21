@@ -246,11 +246,17 @@ class Taxonomy {
 		$cat_description = $data['category_description'] ?? '';
 		$cat_nicename    = $data['category_nicename'] ?? '';
 
-		// Get term_id if it exists.
-		$existing_term_id = $unique_identifier
-			? $this->get_term_id_by_unique_identifier( self::UNIQUE_CATEGORY_IDENTIFIER_META_KEY, $unique_identifier )
-			: $this->get_term_id_by_taxonmy_name_and_parent( 'category', $cat_name, $cat_parent_id );
+		// Get term_id if it exists by $unique_identifier.
+		$existing_term_id = null;
+		if ( ! is_null( $unique_identifier ) ) {
+			$existing_term_id = $this->get_term_id_by_unique_identifier( self::UNIQUE_CATEGORY_IDENTIFIER_META_KEY, $unique_identifier );
+		}
+		// Get term_id if it exists by other data: $cat_name and $cat_parent_id.
+		if ( is_null( $existing_term_id ) ) {
+			$existing_term_id = $this->get_term_id_by_taxonmy_name_and_parent( 'category', $cat_name, $cat_parent_id );
+		}
 
+		// Return it if it exists.
 		if ( ! is_null( $existing_term_id ) ) {
 			return (int) $existing_term_id;
 		}
