@@ -372,7 +372,7 @@ class UsersHelper {
 		// Sanitize the username the same way that wp_insert_user() sanitizes it.
 		$user_login = self::sanitize_username( $user_login );
 		if ( is_wp_error( $user_login ) ) {
-			throw new InvalidArgumentException( esc_html( $user_login->get_error_message() ) );
+			throw new InvalidArgumentException( sprintf( 'Could not sanitize username: %s. Context user_login: %s', esc_html( $user_login->get_error_message() ), json_encode( $user_login ) ) );
 		}
 
 		if ( empty( $data['user_pass'] ) ) {
@@ -392,7 +392,7 @@ class UsersHelper {
 		$user_id = wp_insert_user( $data );
 		if ( is_wp_error( $user_id ) ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
-			throw new Exception( sprintf( 'Could not create user: %s', $user_id->get_error_message() ) );
+			throw new Exception( sprintf( 'Could not create user: %s. Context data: %s', $user_id->get_error_message(), json_encode( $data ) ) );
 		}
 		$wp_user = get_user_by( 'ID', $user_id );
 
