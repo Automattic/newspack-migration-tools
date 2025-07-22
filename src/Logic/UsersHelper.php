@@ -7,6 +7,7 @@ use InvalidArgumentException;
 use Newspack\MigrationTools\Util\Log\CliLog;
 use Newspack\MigrationTools\Util\Log\FileLog;
 use Newspack\MigrationTools\Util\UserMeta;
+use WP_Error;
 use WP_User;
 
 /**
@@ -264,10 +265,9 @@ class UsersHelper {
 	 * @param array  $data              The data to create the user with. If the 'role' key is present, the user will be assigned that role.
 	 * @param string $unique_identifier A unique identifier for your user – can be any string, but should be unique.
 	 *
-	 * @throws Exception If the user could not be created.
 	 * @throws InvalidArgumentException If the data array is empty or if the 'role' key is in the array and does not contain a valid role. .
 	 */
-	public static function create_or_get_user( array $data, string $unique_identifier ): WP_User {
+	public static function create_or_get_user( array $data, string $unique_identifier ): WP_User|WP_Error {
 		if ( empty( trim( $unique_identifier ) ) ) {
 			throw new InvalidArgumentException( 'Refusing to create user without a unique identifier.' );
 		}
@@ -359,8 +359,7 @@ class UsersHelper {
 
 		$user_id = wp_insert_user( $data );
 		if ( is_wp_error( $user_id ) ) {
-			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
-			throw new Exception( sprintf( 'Could not create user: %s', $user_id->get_error_message() ) );
+			return $user_id;
 		}
 		$wp_user = get_user_by( 'ID', $user_id );
 
