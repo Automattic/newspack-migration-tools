@@ -113,7 +113,7 @@ class UsersHelper {
 	}
 
 	/**
-	 * Get a username (`wp_users`.`user_login`) that is not in use, starting with a desired username.
+	 * Get a username/user_login (`wp_users`.`user_login`) that is not in use, starting with a desired username.
 	 *
 	 * If the desired username is in use, a counter will be appended to it until an unused username is found.
 	 *
@@ -140,7 +140,7 @@ class UsersHelper {
 		$desired_username_before_sanitation = $desired_username;
 		$desired_username                   = self::sanitize_username( $desired_username );
 		if ( is_wp_error( $desired_username ) ) {
-			throw new InvalidArgumentException( esc_html( $desired_username->get_error_message() ) );
+			throw new InvalidArgumentException( sprintf( "ERROR, could not sanitize username '%s', error: %s", esc_html( $original_user_login ), esc_html( $desired_username->get_error_message() ), wp_json_encode( $desired_username ) ) );
 		}
 		if ( strlen( $desired_username_before_sanitation ) < strlen( $desired_username ) ) {
 			FileLog::get_logger( 'UsersHelper' )->warning(
@@ -372,7 +372,7 @@ class UsersHelper {
 		// Sanitize the username the same way that wp_insert_user() sanitizes it.
 		$user_login = self::sanitize_username( $user_login );
 		if ( is_wp_error( $user_login ) ) {
-			throw new InvalidArgumentException( sprintf( 'Could not sanitize username: %s. Context user_login: %s', esc_html( $user_login->get_error_message() ), json_encode( $user_login ) ) );
+			throw new InvalidArgumentException( sprintf( 'Could not sanitize username: %s. Context user_login: %s', esc_html( $user_login->get_error_message() ), wp_json_encode( $user_login ) ) );
 		}
 
 		if ( empty( $data['user_pass'] ) ) {
@@ -392,7 +392,7 @@ class UsersHelper {
 		$user_id = wp_insert_user( $data );
 		if ( is_wp_error( $user_id ) ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
-			throw new Exception( sprintf( 'Could not create user: %s. Context data: %s', $user_id->get_error_message(), json_encode( $data ) ) );
+			throw new Exception( sprintf( 'Could not create user: %s. Context data: %s', $user_id->get_error_message(), wp_json_encode( $data ) ) );
 		}
 		$wp_user = get_user_by( 'ID', $user_id );
 
