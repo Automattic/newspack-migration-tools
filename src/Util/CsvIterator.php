@@ -39,6 +39,27 @@ class CsvIterator {
 	}
 
 	/**
+	 * @param string $csv_path  Path to CSV file.
+	 * @param string $separator Separator for CSV file.
+	 *
+	 * @return iterable
+	 */
+	public function items_without_headers( string $csv_path, string $separator ): iterable {
+		if ( ! is_readable( $csv_path ) ) {
+			NMT::exit_with_message( "Could not read CSV file: $csv_path" );
+
+			return [];
+		}
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- We're reading a CSV file outside WP.
+		$csv_file = fopen( $csv_path, 'r' );
+		while ( false !== ( $line = fgetcsv( $csv_file, null, $separator ) ) ) {
+			yield array_map( 'trim', $line );
+		}
+		fclose( $csv_file );
+	}
+
+	/**
 	 * @param string $csv_file  Path to CSV file.
 	 * @param string $separator Separator for CSV file.
 	 * @param int    $start     Start number (inclusive) line in the file.
