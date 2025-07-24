@@ -79,7 +79,7 @@ $collection_post_id = $collections_helper
     ->update_collection_metadata(
         $collection_id,
         [
-            'thumbnail'      => 1234,                            // Attachment ID
+            'thumbnail_id'   => 1234,                            // Attachment ID
             'volume'         => 1,                               // Collection Volume
             'number'         => 1,                               // Collection Number
             'period'         => 'January 1970',                  // Collection Period
