@@ -140,9 +140,11 @@ class CollectionsHelper {
 			]
 		);
 
-		if ( ! is_wp_error( $collection_section ) ) {
-			update_term_meta( $collection_section['term_id'], self::UNIQUE_COLLECTION_SECTION_IDENTIFIER_META_KEY, $unique_identifier );
+		if ( is_wp_error( $collection_section ) ) {
+			return $collection_section;
 		}
+
+		update_term_meta( $collection_section['term_id'], self::UNIQUE_COLLECTION_SECTION_IDENTIFIER_META_KEY, $unique_identifier );
 
 		return get_term_by( 'term_id', $collection_section['term_id'], $this->get_collection_section_taxonomy() );
 	}
@@ -193,9 +195,11 @@ class CollectionsHelper {
 			]
 		);
 
-		if ( ! is_wp_error( $collection_category ) ) {
-			update_term_meta( $collection_category['term_id'], self::UNIQUE_COLLECTION_CATEGORY_IDENTIFIER_META_KEY, $unique_identifier );
+		if ( is_wp_error( $collection_category ) ) {
+			return $collection_category;
 		}
+
+		update_term_meta( $collection_category['term_id'], self::UNIQUE_COLLECTION_CATEGORY_IDENTIFIER_META_KEY, $unique_identifier );
 
 		return get_term_by( 'term_id', $collection_category['term_id'], $this->get_collection_category_taxonomy() );
 	}
@@ -231,7 +235,7 @@ class CollectionsHelper {
 			function ( $collection_post_id ) {
 				return $this->get_collection_linked_term_id( $collection_post_id );
 			},
-			$collection_posts_ids 
+			$collection_posts_ids
 		);
 
 		$this->assign_post_to_collections_terms( $post_id, $collection_terms_ids );
@@ -295,7 +299,7 @@ class CollectionsHelper {
 	 * @return int
 	 */
 	public function get_collection_linked_term_id( int $post_id ): int {
-		return get_post_meta( $post_id, \Newspack\Collections\Sync::LINKED_TERM_META_KEY, true );
+		return (int) get_post_meta( $post_id, \Newspack\Collections\Sync::LINKED_TERM_META_KEY, true );
 	} 
 
 	/**
@@ -305,7 +309,7 @@ class CollectionsHelper {
 	 * @return int
 	 */
 	public function get_collection_linked_post_id( int $term_id ): int {
-		return get_term_meta( $term_id, \Newspack\Collections\Sync::LINKED_POST_META_KEY, true );
+		return (int) get_term_meta( $term_id, \Newspack\Collections\Sync::LINKED_POST_META_KEY, true );
 	} 
 
 	/**
