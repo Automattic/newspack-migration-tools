@@ -277,7 +277,7 @@ class GutenbergBlockGenerator {
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_image( $attachment_post, $size = 'full', $link_to_attachment_url = true, $classname = null, $align = null, $custom_link = null, $hide_caption = false ) {
+	public function get_image( $attachment_post, $size = 'full', $link_to_attachment_url = true, $classname = null, $align = null, $custom_link = null, $hide_caption = false, $crop_coords = null ) {
 		// Validate size.
 		if ( ! in_array( $size, [ 'thumbnail', 'medium', 'large', 'full' ] ) ) {
 			$size = 'full';
@@ -287,6 +287,19 @@ class GutenbergBlockGenerator {
 		$image_alt     = get_post_meta( $attachment_post->ID, '_wp_attachment_image_alt', true );
 		$image_url     = Attachments::get_attachment_image_src( $attachment_post->ID, $size )[0];
 		$attachment_id = $attachment_post->ID;
+
+		if ( $crop_coords ) {
+			$cropped_image = wp_crop_image( $attachment_post->ID, $crop_coords['x'], $crop_coords['y'], $crop_coords['width'], $crop_coords['height'], $crop_coords['width'], $crop_coords['height'] );
+			if ( ! is_wp_error( $cropped_image ) && $cropped_image ) {
+				$custom_link = $image_url; // Keep the original link to the attachment URL.
+				$upload_dir = wp_upload_dir();
+				$relative_path = str_replace( $upload_dir['basedir'], '', $cropped_image );
+				$cropped_url   = $upload_dir['baseurl'] . $relative_path;
+
+				$image_url = $cropped_url;
+				$link_to_attachment_url = false; // Don't link to the attachment URL.
+			}
+		}
 
 		$attrs = [
 			'id'       => $attachment_id,
