@@ -9,13 +9,25 @@ class MemoryCleanupHook {
 	 * @static
 	 * @access public
 	 * 
-	 * @param int $sleep_time
+	 * @param int $sleep_time     Number of seconds to sleep between each flush.
+	 * @param int $current_step   Current counter/step. If provided $current_step and $flush_interval, will only flush every $flush_interval steps.
+	 * @param int $flush_interval Number of steps to wait before flushing again.
 	 */
-	public static function cleanup( int $sleep_time = 3 ): void {
-		self::reset_local_object_cache();
-		self::reset_db_query_log();
+	public static function cleanup( int $sleep_time = 0, int $current_step = null, int $flush_interval = null ): void {
 
-		sleep( $sleep_time );
+		// Determine if we should perform cleanup based on whether interval and step are provided.
+		$should_cleanup = ( is_null( $current_step ) || is_null( $flush_interval ) )
+			? true
+			: ( 0 === ( $current_step % $flush_interval ) );
+
+		if ( $should_cleanup ) {
+			self::reset_local_object_cache();
+			self::reset_db_query_log();
+
+			if ( $sleep_time > 0 ) {
+				sleep( $sleep_time );
+			}
+		}
 	}
 
 	/**
@@ -42,9 +54,15 @@ class MemoryCleanupHook {
 
 		foreach ( $properties as $property ) {
 			if ( property_exists( $wp_object_cache, $property ) ) {
-				$wp_object_cache->$property = [];
+				// Only set if the property is actually declared (not a magic property).
+				$reflection = new \ReflectionObject( $wp_object_cache );
+				if ( $reflection->hasProperty( $property ) ) {
+					$wp_object_cache->$property = [];
+				}
 			}
 		}
+
+		gc_collect_cycles();
 
 		if ( method_exists( $wp_object_cache, '__remoteset' ) ) {
 			$wp_object_cache->__remoteset(); // important
@@ -61,6 +79,10 @@ class MemoryCleanupHook {
 	 */
 	public static function reset_db_query_log(): void {
 		global $wpdb;
+
+		unset( $wpdb->queries );
+
+		gc_collect_cycles();
 
 		$wpdb->queries = [];
 	}
