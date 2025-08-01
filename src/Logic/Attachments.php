@@ -57,7 +57,215 @@ class Attachments {
 	 *
 	 * @return int|WP_Error Attachment ID.
 	 */
-	public static function import_external_file( $path, $title = null, $caption = null, $description = null, $alt = null, $post_id = 0, $args = [], $desired_filename = '', $try_existing = true, $unique_identifier = null ) {
+	public static function import_external_file( $path, $title = null, $caption = null, $description = null, $alt = null, $post_id = 0, $args = [], $desired_filename = '', $try_existing = true, $unique_identifier = null, $cropped_url = null ) {
+		$file_array         = self::download_file( $path );
+		$cropped_file_array = $cropped_url ? self::download_file( $cropped_url ) : null;
+
+		$maybe_exising_attachment_id = ( $try_existing ) ? self::maybe_get_existing_attachment_id( $file_array['tmp_name'], $file_array['name'], $unique_identifier ) : null;
+		if ( null !== $maybe_exising_attachment_id ) {
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			@unlink( $file_array['tmp_name'] );
+			return $maybe_exising_attachment_id;
+		}
+
+		if ( $title ) {
+			$args['post_title'] = $title;
+		}
+		if ( $caption ) {
+			$args['post_excerpt'] = $caption;
+		}
+		if ( $description ) {
+			$args['post_content'] = $description;
+		}
+		$att_id = media_handle_sideload( $file_array, $post_id, $title, $args );
+
+		// If this was a download and there was an error then clean up the temp file.
+		if ( is_wp_error( $att_id ) ) {
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			@unlink( $file_array['tmp_name'] );
+			return new WP_Error( sprintf( 'File %s was not sideloaded: %s', $file_array['name'], $att_id->get_error_message() ) );
+		}
+
+		if ( $cropped_file_array ) {
+			// This code is copied from wp_save_image() function.
+			require_once ABSPATH . 'wp-admin/includes/image-edit.php';
+
+			$attachment = get_post( $att_id );
+			$img = new \WP_Image_Editor_GD($cropped_file_array['tmp_name']);
+			$img->load();
+
+			$meta         = wp_get_attachment_metadata( $att_id );
+			$backup_sizes = get_post_meta( $att_id, '_wp_attachment_backup_sizes', true );
+
+			if ( ! is_array( $meta ) ) {
+				// If there is any error with the cropped image, we return the original attachment ID.
+				return $att_id;
+			}
+
+			if ( ! is_array( $backup_sizes ) ) {
+				$backup_sizes = array();
+			}
+
+			// Generate new filename.
+			$path = get_attached_file( $att_id );
+
+			$basename = pathinfo( $path, PATHINFO_BASENAME );
+			$dirname  = pathinfo( $path, PATHINFO_DIRNAME );
+			$ext      = pathinfo( $path, PATHINFO_EXTENSION );
+			$filename = pathinfo( $path, PATHINFO_FILENAME );
+			$suffix   = time() . \rand( 100, 999 );
+
+			if ( defined( 'IMAGE_EDIT_OVERWRITE' ) && IMAGE_EDIT_OVERWRITE
+				&& isset( $backup_sizes['full-orig'] ) && $backup_sizes['full-orig']['file'] !== $basename
+			) {
+				$new_path = $path;
+			} else {
+				while ( true ) {
+					$filename     = preg_replace( '/-e([0-9]+)$/', '', $filename );
+					$filename    .= "-e{$suffix}";
+					$new_filename = "{$filename}.{$ext}";
+					$new_path     = "{$dirname}/$new_filename";
+
+					if ( file_exists( $new_path ) ) {
+						++$suffix;
+					} else {
+						break;
+					}
+				}
+			}
+
+			$saved_image = wp_save_image_file( $new_path, $img, $attachment->post_mime_type, $att_id );
+			// Save the full-size file, also needed to create sub-sizes.
+			if ( ! $saved_image ) {
+				// If there is any error with the cropped image, we return the original attachment ID.
+				return $att_id;
+			}
+
+			$tag = false;
+			$delete = false;
+
+			if ( isset( $backup_sizes['full-orig'] ) ) {
+				if ( ( ! defined( 'IMAGE_EDIT_OVERWRITE' ) || ! IMAGE_EDIT_OVERWRITE )
+					&& $backup_sizes['full-orig']['file'] !== $basename
+				) {
+					$tag = "full-$suffix";
+				}
+			} else {
+				// TODO: This is a hack to avoid the issue of the full-orig size not being set.
+				$tag = 'full-orig';
+			}
+
+			if ( $tag ) {
+				$backup_sizes[ $tag ] = array(
+					'width'    => $meta['width'],
+					'height'   => $meta['height'],
+					'filesize' => $meta['filesize'],
+					'file'     => $basename,
+				);
+			}
+
+			$success = ( $path === $new_path ) || update_attached_file( $att_id, $new_path );
+
+			$meta['file'] = \_wp_relative_upload_path( $new_path );
+
+			$size             = $img->get_size();
+			$meta['width']    = $size['width'];
+			$meta['height']   = $size['height'];
+			$meta['filesize'] = $saved_image['filesize'];
+
+			$sizes = get_intermediate_image_sizes();
+
+			/*
+			* We need to remove any existing resized image files because
+			* a new crop or rotate could generate different sizes (and hence, filenames),
+			* keeping the new resized images from overwriting the existing image files.
+			* https://core.trac.wordpress.org/ticket/32171
+			*/
+			if ( defined( 'IMAGE_EDIT_OVERWRITE' ) && IMAGE_EDIT_OVERWRITE && ! empty( $meta['sizes'] ) ) {
+				foreach ( $meta['sizes'] as $size ) {
+					if ( ! empty( $size['file'] ) && preg_match( '/-e[0-9]{13}-/', $size['file'] ) ) {
+						$delete_file = path_join( $dirname, $size['file'] );
+						wp_delete_file( $delete_file );
+					}
+				}
+			}
+
+			if ( isset( $sizes ) ) {
+				$_sizes = array();
+
+				foreach ( $sizes as $size ) {
+					$tag = false;
+
+					if ( isset( $meta['sizes'][ $size ] ) ) {
+						if ( isset( $backup_sizes[ "$size-orig" ] ) ) {
+							if ( ( ! defined( 'IMAGE_EDIT_OVERWRITE' ) || ! IMAGE_EDIT_OVERWRITE )
+								&& $backup_sizes[ "$size-orig" ]['file'] !== $meta['sizes'][ $size ]['file']
+							) {
+								$tag = "$size-$suffix";
+							}
+						} else {
+							$tag = "$size-orig";
+						}
+
+						if ( $tag ) {
+							$backup_sizes[ $tag ] = $meta['sizes'][ $size ];
+						}
+					}
+
+					$nocrop = false;
+					if ( isset( $_wp_additional_image_sizes[ $size ] ) ) {
+						$width  = (int) $_wp_additional_image_sizes[ $size ]['width'];
+						$height = (int) $_wp_additional_image_sizes[ $size ]['height'];
+						$crop   = ( $nocrop ) ? false : $_wp_additional_image_sizes[ $size ]['crop'];
+					} else {
+						$height = get_option( "{$size}_size_h" );
+						$width  = get_option( "{$size}_size_w" );
+						$crop   = ( $nocrop ) ? false : get_option( "{$size}_crop" );
+					}
+
+					$_sizes[ $size ] = array(
+						'width'  => $width,
+						'height' => $height,
+						'crop'   => $crop,
+					);
+				}
+
+				$meta['sizes'] = array_merge( $meta['sizes'], $img->multi_resize( $_sizes ) );
+			}
+
+			unset( $img );
+
+			if ( $success ) {
+				wp_update_attachment_metadata( $att_id, $meta );
+				update_post_meta( $att_id, '_wp_attachment_backup_sizes', $backup_sizes );
+			} else {
+				$delete = true;
+			}
+
+			if ( $delete ) {
+				wp_delete_file( $new_path );
+			}
+		}
+
+		if ( $alt ) {
+			update_post_meta( $att_id, '_wp_attachment_image_alt', $alt );
+		}
+
+		if ( $unique_identifier ) {
+			update_post_meta( $att_id, self::UNIQUE_ATTACHMENT_IDENTIFIER_META_KEY, $unique_identifier );
+		}
+
+		return $att_id;
+	}
+
+	/**
+	 * Download a file from a URL or a local path.
+	 *
+	 * @param string $path The path to the file.
+	 *
+	 * @return array|WP_Error The file array.
+	 */
+	public static function download_file( $path ) {
 		// Fetch remote or local file.
 		$is_http = 'http' == substr( $path, 0, 4 );
 		if ( $is_http ) {
@@ -102,40 +310,7 @@ class Attachments {
 			}
 		}
 
-		$maybe_exising_attachment_id = ( $try_existing ) ? self::maybe_get_existing_attachment_id( $file_array['tmp_name'], $file_array['name'], $unique_identifier ) : null;
-		if ( null !== $maybe_exising_attachment_id ) {
-			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-			@unlink( $file_array['tmp_name'] );
-			return $maybe_exising_attachment_id;
-		}
-
-		if ( $title ) {
-			$args['post_title'] = $title;
-		}
-		if ( $caption ) {
-			$args['post_excerpt'] = $caption;
-		}
-		if ( $description ) {
-			$args['post_content'] = $description;
-		}
-		$att_id = media_handle_sideload( $file_array, $post_id, $title, $args );
-
-		// If this was a download and there was an error then clean up the temp file.
-		if ( is_wp_error( $att_id ) ) {
-			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-			@unlink( $file_array['tmp_name'] );
-			return new WP_Error( sprintf( 'File %s was not sideloaded: %s', $file_array['name'], $att_id->get_error_message() ) );
-		}
-
-		if ( $alt ) {
-			update_post_meta( $att_id, '_wp_attachment_image_alt', $alt );
-		}
-
-		if ( $unique_identifier ) {
-			update_post_meta( $att_id, self::UNIQUE_ATTACHMENT_IDENTIFIER_META_KEY, $unique_identifier );
-		}
-
-		return $att_id;
+		return $file_array;
 	}
 
 	/**
