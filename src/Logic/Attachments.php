@@ -61,6 +61,10 @@ class Attachments {
 		$file_array         = self::download_file( $path );
 		$cropped_file_array = $cropped_url ? self::download_file( $cropped_url ) : null;
 
+		if ( is_wp_error( $file_array ) ) {
+			return $file_array;
+		}
+
 		$maybe_exising_attachment_id = ( $try_existing ) ? self::maybe_get_existing_attachment_id( $file_array['tmp_name'], $file_array['name'], $unique_identifier ) : null;
 		if ( null !== $maybe_exising_attachment_id ) {
 			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
@@ -86,12 +90,12 @@ class Attachments {
 			return new WP_Error( sprintf( 'File %s was not sideloaded: %s', $file_array['name'], $att_id->get_error_message() ) );
 		}
 
-		if ( $cropped_file_array ) {
+		if ( $cropped_url && ! is_wp_error( $cropped_file_array ) ) {
 			// This code is copied from wp_save_image() function.
 			require_once ABSPATH . 'wp-admin/includes/image-edit.php';
 
 			$attachment = get_post( $att_id );
-			$img = new \WP_Image_Editor_GD($cropped_file_array['tmp_name']);
+			$img        = new \WP_Image_Editor_GD( $cropped_file_array['tmp_name'] );
 			$img->load();
 
 			$meta         = wp_get_attachment_metadata( $att_id );
@@ -141,7 +145,7 @@ class Attachments {
 				return $att_id;
 			}
 
-			$tag = false;
+			$tag    = false;
 			$delete = false;
 
 			if ( isset( $backup_sizes['full-orig'] ) ) {
