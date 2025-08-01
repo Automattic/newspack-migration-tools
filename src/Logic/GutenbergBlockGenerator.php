@@ -567,27 +567,16 @@ AUDIO;
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
 	public function get_quote( $quote_content, $cite_content = '' ) {
-		$content = '<p>' . $quote_content . '</p>';
-		$cite    = ! empty( $cite_content ) ? "<cite>$cite_content</cite>" : '';
+		$cite = ! empty( $cite_content ) ? "<cite>$cite_content</cite>" : '';
+
+		$inner_html = '<figure class="wp-block-pullquote"><blockquote><p>' . $quote_content . '</p>' . $cite . '</blockquote></figure>';
 
 		return [
-			'blockName'    => 'core/quote',
+			'blockName'    => 'core/pullquote',
 			'attrs'        => [],
-			'innerBlocks'  => [
-				[
-					'blockName'    => 'core/paragraph',
-					'attrs'        => [],
-					'innerBlocks'  => [],
-					'innerHTML'    => $content,
-					'innerContent' => [ $content ],
-				],
-			],
-			'innerHTML'    => '<blockquote class="wp-block-quote">' . $cite . '</blockquote>',
-			'innerContent' => [
-				'<blockquote class="wp-block-quote">',
-				null,
-				$cite . '</blockquote>',
-			],
+			'innerBlocks'  => [],
+			'innerHTML'    => $inner_html,
+			'innerContent' => [ $inner_html ],
 		];
 	}
 
