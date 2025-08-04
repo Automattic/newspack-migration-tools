@@ -93,6 +93,8 @@ class Attachments {
 		if ( $cropped_url && ! is_wp_error( $cropped_file_array ) ) {
 			// This code is copied from wp_save_image() function.
 			require_once ABSPATH . 'wp-admin/includes/image-edit.php';
+			require_once ABSPATH . 'wp-includes/class-wp-image-editor.php';
+			require_once ABSPATH . 'wp-includes/class-wp-image-editor-gd.php';
 
 			$attachment = get_post( $att_id );
 			$img        = new \WP_Image_Editor_GD( $cropped_file_array['tmp_name'] );
@@ -138,7 +140,12 @@ class Attachments {
 				}
 			}
 
-			$saved_image = wp_save_image_file( $new_path, $img, $attachment->post_mime_type, $att_id );
+			try{
+				$saved_image = wp_save_image_file( $new_path, $img, $attachment->post_mime_type, $att_id );
+			} catch ( \Throwable $e ) {
+				return $att_id;
+			}
+
 			// Save the full-size file, also needed to create sub-sizes.
 			if ( ! $saved_image ) {
 				// If there is any error with the cropped image, we return the original attachment ID.
