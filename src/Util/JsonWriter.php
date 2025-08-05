@@ -27,7 +27,7 @@ class JsonWriter {
 	/**
 	 * Constructor.
 	 * 
-	 * @param string $filename The name of the CSV file to write to.
+	 * @param string $filename The name of the JSON file to write to.
 	 * @throws Exception If the file cannot be opened.
 	 */
 	public function __construct(
