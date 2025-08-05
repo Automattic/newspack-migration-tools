@@ -728,13 +728,14 @@ AUDIO;
 		}
 
 		if ( ! empty( $style ) ) {
-			$attrs['className'] = isset( $attrs['className'] ) ? $attrs['className'] . ' ' . $style : $style;
-			$classnames[]       = $style;
+			$classnames[]               = $style;
 		}
+
+		$attrs['className'] = implode( ' ', $classnames );
 
 		// Inner content.
 		$inner_content = array_fill( 1, count( $columns ), null );
-		array_unshift( $inner_content, '<div class="wp-block-columns">' );
+		array_unshift( $inner_content, '<div class="' . join( ' ', $classnames ) . '">' );
 		array_push( $inner_content, '</div>' );
 
 		return [
