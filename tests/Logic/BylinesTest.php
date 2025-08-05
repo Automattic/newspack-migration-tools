@@ -295,6 +295,30 @@ class BylinesTest extends WP_UnitTestCase {
 				// Expected.
 				[ 'John Doe', 'Jane Doe' ],
 			],
+			[
+				// Byline.
+				'John Doe/Daily News',
+				// Separators.
+				[],
+				// Remove prefixes, case-insensitive.
+				[],
+				// Remove suffixes.
+				[ '/Daily News' ],
+				// Expected.
+				[ 'John Doe' ],
+			],
+			[
+				// Byline.
+				'John Doe/Daily News, Jane Doe, Daily News',
+				// Separators.
+				[ ',' ],
+				// Remove prefixes, case-insensitive.
+				[],
+				// Remove suffixes.
+				[ '/Daily News', ', Daily News' ],
+				// Expected.
+				[ 'John Doe', 'Jane Doe' ],
+			],
 		];
 	}
 
