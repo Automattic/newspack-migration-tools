@@ -78,6 +78,16 @@ class BylinesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test parse_byline() should not return empty author name after exploding.
+	 * 
+	 * @dataProvider data_byline_should_not_return_empty_author_name_after_exploding
+	 */
+	public function test_byline_should_not_return_empty_author_name_after_exploding( string $byline, array $separators, array $expected ) {
+		$result = $this->bylines->parse_byline( $byline, $separators );
+		$this->assertEquals( $expected, $result );
+	}
+
+	/**
 	 * Data provider for test_byline_no_separators.
 	 */
 	public function data_byline_no_separators() {
@@ -256,6 +266,30 @@ class BylinesTest extends WP_UnitTestCase {
 				[ '| copyright' ],
 				// Expected.
 				[ 'John Doe' ],
+			],
+		];
+	}
+
+	/**
+	 * Data provider for test_byline_should_not_return_empty_author_name_after_exploding.
+	 */
+	public function data_byline_should_not_return_empty_author_name_after_exploding() {
+		return [
+			[
+				// Byline.
+				'John Doe,',
+				// Separators.
+				[ ',' ],
+				// Expected.
+				[ 'John Doe' ],
+			],
+			[
+				// Byline.
+				'John Doe, Jane Doe,',
+				// Separators.
+				[ ',' ],
+				// Expected.
+				[ 'John Doe', 'Jane Doe' ],
 			],
 		];
 	}
