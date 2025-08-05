@@ -52,16 +52,16 @@ class JsonWriter {
 	 */
 	public function put( array $item ): void {
 		if ( $this->is_first_item ) {
-            // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fwrite
+			// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fwrite
 			fwrite( $this->file_pointer, "[\n" );
 		} else {
-            // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fwrite
+			// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fwrite
 			fwrite( $this->file_pointer, ",\n" );
 		}
 
 		$json = wp_json_encode( $item, $this->flags );
 
-        // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fwrite
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fwrite
 		fwrite( $this->file_pointer, "$json" );
 
 		$this->is_first_item = false;
@@ -74,7 +74,7 @@ class JsonWriter {
 	 * @throws Exception If the file cannot be closed.
 	 */
 	public function close(): void {
-        // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fwrite
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fwrite
 		fwrite( $this->file_pointer, "\n]\n" );
 
 		if ( false === fclose( $this->file_pointer ) ) {
