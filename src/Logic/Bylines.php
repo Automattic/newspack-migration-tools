@@ -8,12 +8,12 @@ namespace Newspack\MigrationTools\Logic;
 class Bylines {
 
 	/**
-	 * Parses byline string into author names,
-	 * - explodes by multiple separators,
-	 * - trims each individual exploded part/author name,
-	 * - optionally cleans unsupported characters,
-	 * - can remove various prefixes and suffixes,
-	 * - works with manually provided exceptions.
+	 * Parses byline string into author names:
+	 *   - can explode by multiple separators,
+	 *   - trims each individual exploded part/author name,
+	 *   - can optionally clean unsupported characters,
+	 *   - can remove various prefixes and suffixes,
+	 *   - can work with manually provided exceptions which override parsing.
 	 *
 	 * @param string $byline            Byline with one or multiple authors names.
 	 * @param array  $separators        Separators by which to explode. Typical separators could be:
