@@ -83,8 +83,22 @@ class BylinesTest extends WP_UnitTestCase {
 	public function data_byline_no_separators() {
 		return [
 			// No separators provided, nothing changes.
-			[ 'John Doe', [], [ 'John Doe' ] ],
-			[ 'John Doe, Jane Doe', [], [ 'John Doe, Jane Doe' ] ],
+			[
+				// Byline.
+				'John Doe',
+				// Separators.
+				[],
+				// Expected.
+				[ 'John Doe' ],
+			],
+			[
+				// Byline.
+				'John Doe, Jane Doe',
+				// Separators.
+				[],
+				// Expected.
+				[ 'John Doe, Jane Doe' ],
+			],
 		];
 	}
 
@@ -94,15 +108,64 @@ class BylinesTest extends WP_UnitTestCase {
 	public function data_byline_single_separator() {
 		return [
 			// Single separator provided but not used.
-			[ 'John Doe', [ ',' ], [ 'John Doe' ] ],
-			[ 'John Doe', [ ' and ' ], [ 'John Doe' ] ],
-			[ 'John Doe', [ '&' ], [ 'John Doe' ] ],
+			[
+				// Byline.
+				'John Doe',
+				// Separators.
+				[ ',' ],
+				// Expected.
+				[ 'John Doe' ],
+			],
+			[
+				// Byline.
+				'John Doe',
+				// Separators.
+				[ ' and ' ],
+				// Expected.
+				[ 'John Doe' ],
+			],
+			[
+				// Byline.
+				'John Doe',
+				// Separators.
+				[ '&' ],
+				// Expected.
+				[ 'John Doe' ],
+			],
 			// Different single separators.
-			[ 'John Doe, Jane Doe', [ ',' ], [ 'John Doe', 'Jane Doe' ] ],
-			[ 'John Doe and Jane Doe', [ ' and ' ], [ 'John Doe', 'Jane Doe' ] ],
-			[ 'John Doe & Jane Doe', [ '&' ], [ 'John Doe', 'Jane Doe' ] ],
-			// Wrong separator doesn't explode.
-			[ 'John Doe & Jane Doe', [ ' and ' ], [ 'John Doe & Jane Doe' ] ],
+			[
+				// Byline.
+				'John Doe, Jane Doe',
+				// Separators.
+				[ ',' ],
+				// Expected.
+				[ 'John Doe', 'Jane Doe' ],
+			],
+			[
+				// Byline.
+				'John Doe and Jane Doe',
+				// Separators.
+				[ ' and ' ],
+				// Expected.
+				[ 'John Doe', 'Jane Doe' ],
+			],
+			[
+				// Byline.
+				'John Doe & Jane Doe',
+				// Separators.
+				[ '&' ],
+				// Expected.
+				[ 'John Doe', 'Jane Doe' ],
+			],
+			// Irrelevant separator will not explode anything.
+			[
+				// Byline.
+				'John Doe & Jane Doe',
+				// Separators.
+				[ ' and ' ],
+				// Expected.
+				[ 'John Doe & Jane Doe' ],
+			],
 		];
 	}
 
@@ -112,13 +175,19 @@ class BylinesTest extends WP_UnitTestCase {
 	public function data_byline_order_of_exploding_multiple_separators() {
 		return [
 			[
+				// Byline.
 				'John Doe, Jane Doe, and Jim Doe',
+				// Separators.
 				[ ', and ', ',' ],
+				// Expected.
 				[ 'John Doe', 'Jane Doe', 'Jim Doe' ],
 			],
 			[
+				// Byline.
 				'John Doe, Jane Doe, and Jim Doe',
+				// Separators.
 				[ ',', ', and ' ],
+				// Expected.
 				[ 'John Doe', 'Jane Doe', 'and Jim Doe' ],
 			],
 		];
@@ -130,25 +199,33 @@ class BylinesTest extends WP_UnitTestCase {
 	public function data_byline_manual_substitutions() {
 		return [
 			[
+				// Byline.
 				'School of Journalism and Mass Communication',
+				// Separators.
 				[ ' and ' ],
+				// Manual substitutions.
 				[
 					'School of Journalism and Mass Communication' => [
 						'School of Journalism and Mass Communication',
 					],
 				],
+				// Expected.
 				[ 'School of Journalism and Mass Communication' ],
 			],
 			// Manual substitution is applied before exploding, this prevents returning [ 'John Doe', 'School of Journalism', 'Mass Communication' ] which would be wrong.
 			[
+				// Byline.
 				'John Doe and School of Journalism and Mass Communication',
+				// Separators.
 				[ ' and ' ],
+				// Manual substitutions.
 				[
 					'John Doe and School of Journalism and Mass Communication' => [
 						'John Doe',
 						'School of Journalism and Mass Communication',
 					],
 				],
+				// Expected.
 				[ 'John Doe', 'School of Journalism and Mass Communication' ],
 			],
 			
@@ -164,7 +241,17 @@ class BylinesTest extends WP_UnitTestCase {
 				// Byline.
 				'By John Doe | copyright',
 				// Remove prefixes, case-insensitive.
-				[ 'by ' ],
+				[ 'by ', 'Author:' ],
+				// Remove suffixes.
+				[ '| copyright' ],
+				// Expected.
+				[ 'John Doe' ],
+			],
+			[
+				// Byline.
+				'Author: John Doe',
+				// Remove prefixes, case-insensitive.
+				[ 'by ', 'author:' ],
 				// Remove suffixes.
 				[ '| copyright' ],
 				// Expected.
