@@ -68,6 +68,16 @@ class BylinesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test parse_byline() removing prefixes and suffixes.
+	 * 
+	 * @dataProvider data_byline_remove_prefixes_and_suffixes
+	 */
+	public function test_byline_remove_prefixes_and_suffixes( string $byline, array $remove_prefixes, array $remove_suffixes, array $expected ) {
+		$result = $this->bylines->parse_byline( $byline, [], [], $remove_prefixes, $remove_suffixes );
+		$this->assertEquals( $expected, $result );
+	}
+
+	/**
 	 * Data provider for test_byline_no_separators.
 	 */
 	public function data_byline_no_separators() {
@@ -142,6 +152,24 @@ class BylinesTest extends WP_UnitTestCase {
 				[ 'John Doe', 'School of Journalism and Mass Communication' ],
 			],
 			
+		];
+	}
+
+	/**
+	 * Data provider for test_byline_remove_prefixes_and_suffixes.
+	 */
+	public function data_byline_remove_prefixes_and_suffixes() {
+		return [
+			[
+				// Byline.
+				'By John Doe | copyright',
+				// Remove prefixes, case-insensitive.
+				[ 'by ' ],
+				// Remove suffixes.
+				[ '| copyright' ],
+				// Expected.
+				[ 'John Doe' ],
+			],
 		];
 	}
 }
