@@ -17,9 +17,13 @@ class Bylines {
 	 *     but you wish to preserve 'Arthur Author, Ph.D.' as a single author name, or even remove the 'Ph.D.' suffix.   * 
 	 *
 	 * @param string $byline               Byline with one or multiple authors.
-	 * @param array  $separators           Separators to explode by. E.g. ' and ', '&', ','. Be mindful of spaces needed, depending on the separator.
-	 * @param array  $manual_substitutions Will skip parsing these bylines and just return them. Keys are bylines and values are resulting author names.
-	 *                                     E.g. [ 'Arthur Author, Ph.D.' => [ 'Arthur Author' ] ].
+	 * @param array  $separators           Separators to explode. Typical separators could be: [ '&', ', and ', ',', ' and ', ' y ' ].
+	 *                                     ⚠️ Important:
+	 *                                       - the order of separators matters. One separator is a substring of another separator (e.g. ',' and ', and'), make sure to explode by the longer separator first to avoid incorrect splitting.
+	 *                                       - be mindful of spaces used to surround separators (e.g. ' and ' vs 'and').
+	 * @param array  $manual_substitutions Keys are bylines and values are resulting author names.
+	 *                                     If there are some bylines that require special handling, you can include the entire byline as a key, and the final author names as value.
+	 *                                     This will skip parsing these bylines and just return them, e.g. [ 'Arthur Author, Ph.D.' => [ 'Arthur Author' ] ].
 	 * @param array  $remove_chars         Characters to remove. Unsupported polluting characters found in byline metas.
 	 * @param array  $remove_prefixes      Prefixes to remove from beginning of byline, case-insensitive. E.g. 'By ' or 'Byline: '.
 	 * @param array  $remove_suffixes      Suffixes to remove from end of byline, case-insensitive. E.g. 'Ph.D.'.

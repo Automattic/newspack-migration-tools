@@ -40,9 +40,19 @@ class BylinesTest extends WP_UnitTestCase {
 	/**
 	 * Test parse_byline() using a single separator.
 	 * 
-	 * @dataProvider data_byline_explode_by_single_separator
+	 * @dataProvider data_byline_single_separator
 	 */
-	public function test_byline_explode_by_single_separator( string $byline, array $separators, array $expected ) {
+	public function test_byline_single_separator( string $byline, array $separators, array $expected ) {
+		$result = $this->bylines->parse_byline( $byline, $separators );
+		$this->assertEquals( $expected, $result );
+	}
+
+	/**
+	 * Test parse_byline() correct order of exploding multiple separators.
+	 * 
+	 * @dataProvider data_byline_order_of_exploding_multiple_separators
+	 */
+	public function test_byline_order_of_exploding_multiple_separators( string $byline, array $separators, array $expected ) {
 		$result = $this->bylines->parse_byline( $byline, $separators );
 		$this->assertEquals( $expected, $result );
 	}
@@ -58,7 +68,7 @@ class BylinesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Data provider for test_byline_explode_by_single_separator.
+	 * Data provider for test_byline_no_separators.
 	 */
 	public function data_byline_no_separators() {
 		return [
@@ -69,9 +79,9 @@ class BylinesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Data provider for test_byline_explode_by_single_separator.
+	 * Data provider for test_byline_single_separator.
 	 */
-	public function data_byline_explode_by_single_separator() {
+	public function data_byline_single_separator() {
 		return [
 			// Single separator provided but not used.
 			[ 'John Doe', [ ',' ], [ 'John Doe' ] ],
@@ -83,6 +93,24 @@ class BylinesTest extends WP_UnitTestCase {
 			[ 'John Doe & Jane Doe', [ '&' ], [ 'John Doe', 'Jane Doe' ] ],
 			// Wrong separator doesn't explode.
 			[ 'John Doe & Jane Doe', [ ' and ' ], [ 'John Doe & Jane Doe' ] ],
+		];
+	}
+
+	/**
+	 * Data provider for test_byline_order_of_exploding_multiple_separators.
+	 */
+	public function data_byline_order_of_exploding_multiple_separators() {
+		return [
+			[
+				'John Doe, Jane Doe, and Jim Doe',
+				[ ', and ', ',' ],
+				[ 'John Doe', 'Jane Doe', 'Jim Doe' ],
+			],
+			[
+				'John Doe, Jane Doe, and Jim Doe',
+				[ ',', ', and ' ],
+				[ 'John Doe', 'Jane Doe', 'and Jim Doe' ],
+			],
 		];
 	}
 
