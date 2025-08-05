@@ -11,40 +11,40 @@ class Bylines {
 	 * Parses byline string into author names,
 	 * - explodes by multiple separators,
 	 * - trims each individual exploded part/author name,
-	 * - filters out unsupported characters,
-	 * - applies manual substitutions,
-	 *     e.g. when you wish to preserve certain unexploded bylines. Let's say you have a separator ',',
-	 *     but you wish to preserve 'Arthur Author, Ph.D.' as a single author name, or even remove the
-	 *     'Ph.D.' suffix.   * 
+	 * - optionally cleans unsupported characters,
+	 * - can remove various prefixes and suffixes,
+	 * - works with manually provided exceptions.
 	 *
-	 * @param string $byline          Byline with one or multiple authors.
-	 * @param array  $separators      Separators to explode. Typical separators could be:
+	 * @param string $byline            Byline with one or multiple authors names.
+	 * @param array  $separators        Separators by which to explode. Typical separators could be:
 	 *                                  [ '&', ', and ', ',', ' and ', ' y ' ].
-	 *                                ⚠️ Important:
-	 *                                  - the order of separators matters. One separator is a substring of
-	 *                                    another separator (e.g. ',' and ', and'), make sure to explode by
-	 *                                    the longer separator first to avoid incorrect splitting.
-	 *                                  - be mindful of spaces used to surround separators (e.g. ' and '
-	 *                                    vs 'and').
-	 * @param array  $manual_bylines  Keys are bylines and values are resulting author names.
-	 *                                If there are some bylines that require special handling, you can
-	 *                                specify the entire byline as a key, and the final author names as
-	 *                                subarray with one or more values.
-	 *                                This will skip parsing these bylines and just return them,
-	 *                                e.g. [ 'Arthur Author, Ph.D.' => [ 'Arthur Author' ] ].
-	 * @param array  $remove_prefixes Prefixes to remove from beginning of byline's author names,
-	 *                                case-insensitive. E.g. 'By ' or 'Byline: '.
-	 * @param array  $remove_suffixes Suffixes to remove from end of byline's author names,
-	 *                                case-insensitive. E.g. ', Daily News', or '| Daily News', etc.
-	 * @param array  $remove_chars    Characters to remove. Unsupported polluting characters found in
-	 *                                byline metas.
+	 *                                  ⚠️ Important:
+	 *                                  - the order of separators matters. If one separator is a substring of
+	 *                                    another separator (e.g. ',' and ', and') make sure to provide and
+	 *                                    explode by the longer separator first (first ', and', then ',').
+	 *                                  - be mindful of spaces used to surround separators, e.g. use ' and '
+	 *                                    not 'and'.
+	 * @param array  $manual_exceptions If there are some bylines that require special handling, you can
+	 *                                  specify the entire byline and resulting authors. These bylines will
+	 *                                  be skipped from parsing and just returned as is. Keys are bylines and
+	 *                                  values are subarrays with resulting author names. E.g. two exceptions:
+	 *                                  [
+	 *                                    'John Doe, Jr., Jane Doe' => [ 'John Doe Jr.', 'Jane Doe' ],
+	 *                                    'John Doe Jane Doe' => [ 'John Doe', 'Jane Doe' ]
+	 *                                  ].
+	 * @param array  $remove_prefixes   Prefixes to remove from beginning of byline's author names,
+	 *                                  case-insensitive. E.g. 'By ' or 'Byline: '.
+	 * @param array  $remove_suffixes   Suffixes to remove from end of byline's author names,
+	 *                                  case-insensitive. E.g. ', Daily News', or '| Daily News', etc.
+	 * @param array  $remove_chars      Characters to remove. Unsupported polluting characters found in
+	 *                                  byline metas.
 	 * 
-	 * @return string[]               Exploded author names from byline.
+	 * @return string[]                 Exploded author names from byline.
 	 */
 	public function parse_byline(
 		string $byline,
 		array $separators,
-		array $manual_bylines = [],
+		array $manual_exceptions = [],
 		array $remove_prefixes = [],
 		array $remove_suffixes = [],
 		array $remove_chars = [],
@@ -59,9 +59,9 @@ class Bylines {
 		// Trim.
 		$byline = trim( $byline );
 		
-		// Check for manual substitutions before processing.
-		if ( isset( $manual_bylines[ $byline ] ) ) {
-			return $manual_bylines[ $byline ];
+		// Check for manual exceptions before processing.
+		if ( isset( $manual_exceptions[ $byline ] ) ) {
+			return $manual_exceptions[ $byline ];
 		}
 
 		// Remove prefixes and suffixes case-insensitively.
@@ -89,7 +89,7 @@ class Bylines {
 			foreach ( $byline_exploded_parts as $part ) {
 				$result = array_merge(
 					$result,
-					$this->parse_byline( $part, $separators, $manual_bylines, $remove_chars, $remove_prefixes, $remove_suffixes )
+					$this->parse_byline( $part, $separators, $manual_exceptions, $remove_chars, $remove_prefixes, $remove_suffixes )
 				);
 			}
 			

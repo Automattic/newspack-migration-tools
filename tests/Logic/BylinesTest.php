@@ -58,12 +58,12 @@ class BylinesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test parse_byline() using manual substitutions.
+	 * Test parse_byline() using manual exceptions.
 	 * 
-	 * @dataProvider data_byline_manual_substitutions
+	 * @dataProvider data_byline_manual_exceptions
 	 */
-	public function test_byline_manual_substitutions( string $byline, array $separators, array $manual_substitutions, array $expected ) {
-		$result = $this->bylines->parse_byline( $byline, $separators, $manual_substitutions );
+	public function test_byline_manual_exceptions( string $byline, array $separators, array $manual_exceptions, array $expected ) {
+		$result = $this->bylines->parse_byline( $byline, $separators, $manual_exceptions );
 		$this->assertEquals( $expected, $result );
 	}
 
@@ -204,16 +204,16 @@ class BylinesTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Data provider for test_byline_manual_substitutions.
+	 * Data provider for test_byline_manual_exceptions.
 	 */
-	public function data_byline_manual_substitutions() {
+	public function data_byline_manual_exceptions() {
 		return [
 			[
 				// Byline.
 				'School of Journalism and Mass Communication',
 				// Separators.
 				[ ' and ' ],
-				// Manual substitutions.
+				// Manual exceptions.
 				[
 					'School of Journalism and Mass Communication' => [
 						'School of Journalism and Mass Communication',
@@ -222,13 +222,14 @@ class BylinesTest extends WP_UnitTestCase {
 				// Expected.
 				[ 'School of Journalism and Mass Communication' ],
 			],
-			// Manual substitution is applied before exploding, this prevents returning [ 'John Doe', 'School of Journalism', 'Mass Communication' ] which would be wrong.
+			// Manual exception should be applied before exploding,
+			// to prevent wrongly returning [ 'John Doe', 'School of Journalism', 'Mass Communication' ].
 			[
 				// Byline.
 				'John Doe and School of Journalism and Mass Communication',
 				// Separators.
 				[ ' and ' ],
-				// Manual substitutions.
+				// Manual exceptions.
 				[
 					'John Doe and School of Journalism and Mass Communication' => [
 						'John Doe',
