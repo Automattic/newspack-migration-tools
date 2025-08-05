@@ -21,9 +21,10 @@ class JsonWriterTest extends TestCase {
 		$writer->put( $item );
 		$writer->close();
 
+        // phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
 		$content = file_get_contents( $this->test_file );
 		$this->assertJsonStringEqualsJsonString(
-			json_encode( [ $item ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ),
+			wp_json_encode( [ $item ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ),
 			$content
 		);
 	}
@@ -36,9 +37,10 @@ class JsonWriterTest extends TestCase {
 		$writer->put( $item2 );
 		$writer->close();
 
+        // phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
 		$content = file_get_contents( $this->test_file );
 		$this->assertJsonStringEqualsJsonString(
-			json_encode( [ $item1, $item2 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ),
+			wp_json_encode( [ $item1, $item2 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ),
 			$content
 		);
 	}
@@ -47,15 +49,17 @@ class JsonWriterTest extends TestCase {
 		$item     = [ 'x' => 'y' ];
 		$filename = $this->test_file;
 		// Use a closure to force __destruct
-		$createAndWrite = function() use ( $filename, $item ) {
+		$create_and_write = function() use ( $filename, $item ) {
 			$writer = new JsonWriter( $filename );
 			$writer->put( $item );
 			// No explicit close
 		};
-		$createAndWrite();
+		$create_and_write();
+
+        // phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
 		$content = file_get_contents( $filename );
 		$this->assertJsonStringEqualsJsonString(
-			json_encode( [ $item ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ),
+			wp_json_encode( [ $item ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ),
 			$content
 		);
 	}
