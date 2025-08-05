@@ -72,8 +72,8 @@ class BylinesTest extends WP_UnitTestCase {
 	 * 
 	 * @dataProvider data_byline_remove_prefixes_and_suffixes
 	 */
-	public function test_byline_remove_prefixes_and_suffixes( string $byline, array $remove_prefixes, array $remove_suffixes, array $expected ) {
-		$result = $this->bylines->parse_byline( $byline, [], [], $remove_prefixes, $remove_suffixes );
+	public function test_byline_remove_prefixes_and_suffixes( string $byline, array $separators, array $remove_prefixes, array $remove_suffixes, array $expected ) {
+		$result = $this->bylines->parse_byline( $byline, $separators, [], $remove_prefixes, $remove_suffixes );
 		$this->assertEquals( $expected, $result );
 	}
 
@@ -250,6 +250,8 @@ class BylinesTest extends WP_UnitTestCase {
 			[
 				// Byline.
 				'By John Doe | copyright',
+				// Separators.
+				[],
 				// Remove prefixes, case-insensitive.
 				[ 'by ', 'Author:' ],
 				// Remove suffixes.
@@ -260,12 +262,38 @@ class BylinesTest extends WP_UnitTestCase {
 			[
 				// Byline.
 				'Author: John Doe',
+				// Separators.
+				[],
 				// Remove prefixes, case-insensitive.
 				[ 'by ', 'author:' ],
 				// Remove suffixes.
 				[ '| copyright' ],
 				// Expected.
 				[ 'John Doe' ],
+			],
+			[
+				// Byline.
+				'John Doe / Daily News, Jane Doe / Daily News',
+				// Separators.
+				[ ',' ],
+				// Remove prefixes, case-insensitive.
+				[],
+				// Remove suffixes.
+				[ '/ Daily News' ],
+				// Expected.
+				[ 'John Doe', 'Jane Doe' ],
+			],
+			[
+				// Byline.
+				'John Doe / Daily News, Jane Doe | Daily News',
+				// Separators.
+				[ ',' ],
+				// Remove prefixes, case-insensitive.
+				[],
+				// Remove suffixes.
+				[ '/ Daily News', '| Daily News' ],
+				// Expected.
+				[ 'John Doe', 'Jane Doe' ],
 			],
 		];
 	}

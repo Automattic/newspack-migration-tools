@@ -24,8 +24,8 @@ class Bylines {
 	 * @param array  $manual_bylines  Keys are bylines and values are resulting author names.
 	 *                                If there are some bylines that require special handling, you can specify the entire byline as a key, and the final author names as subarray with one or more values.
 	 *                                This will skip parsing these bylines and just return them, e.g. [ 'Arthur Author, Ph.D.' => [ 'Arthur Author' ] ].
-	 * @param array  $remove_prefixes Prefixes to remove from beginning of byline, case-insensitive. E.g. 'By ' or 'Byline: '.
-	 * @param array  $remove_suffixes Suffixes to remove from end of byline, case-insensitive. E.g. 'Ph.D.'.
+	 * @param array  $remove_prefixes Prefixes to remove from beginning of byline's author names, case-insensitive. E.g. 'By ' or 'Byline: '.
+	 * @param array  $remove_suffixes Suffixes to remove from end of byline's author names, case-insensitive. E.g. 'Ph.D.'.
 	 * @param array  $remove_chars    Characters to remove. Unsupported polluting characters found in byline metas.
 	 * 
 	 * @return string[]               Exploded author names from byline.
