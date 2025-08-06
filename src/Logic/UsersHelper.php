@@ -355,6 +355,12 @@ class UsersHelper {
 		// Add the unique identifier to the user's meta so we can find them later.
 		$data['meta_input'][ self::UNIQUE_IDENTIFIER_META_KEY ] = $unique_identifier;
 
+		// If the user website URL is longer than 100 characters, truncate it.
+		$data['user_url'] = apply_filters( 'pre_user_url', $data['user_url'] );
+		if ( isset( $data['user_url'] ) && strlen( $data['user_url'] ) > 100 ) {
+			$data['user_url'] = substr( $data['user_url'], 0, 100 );
+		}
+
 		$data = apply_filters( 'nmt_user_user_pre_insert', $data, $unique_identifier );
 
 		$user_id = wp_insert_user( $data );
