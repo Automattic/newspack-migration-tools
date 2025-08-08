@@ -278,9 +278,9 @@ class GuestContributorsHelperTest extends WP_UnitTestCase {
 		$user2 = GuestContributorsHelper::create_or_get_contributor( $data, 'unique-id-2' );
 		$this->assertInstanceOf( \WP_User::class, $user2 );
 
-		// Should be the same user because we still search by user data.
-		$this->assertEquals( $user1->ID, $user2->ID );
-		$this->assertEquals( $user1->user_email, $user2->user_email ); // Email should be different due to uniqueness
+		// Should be the different user.
+		$this->assertNotEquals( $user1->ID, $user2->ID );
+		$this->assertNotEquals( $user1->user_email, $user2->user_email ); // Email should be different due to uniqueness
 		$this->assertEquals( $user1->display_name, $user2->display_name );
 	}
 
