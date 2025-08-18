@@ -176,6 +176,7 @@ class CollectionsHelper {
 
 		$term_name        = $data['name'];
 		$term_description = $data['description'] ?? '';
+		$term_parent      = $data['parent'] ?? 0;
 
 		$wp_term = $this->get_taxonomy_term_by_unique_identifier(
 			$unique_identifier,
@@ -192,6 +193,7 @@ class CollectionsHelper {
 			$this->get_collection_category_taxonomy(),
 			[
 				'description' => $term_description,
+				'parent'      => $term_parent,
 			]
 		);
 
