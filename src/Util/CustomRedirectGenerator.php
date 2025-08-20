@@ -47,6 +47,10 @@ class CustomRedirectGenerator {
 {$redirects_string}
 ];
 
+if ( ! isset( \$_SERVER['REQUEST_URI'] ) ) {
+    return;
+}
+
 // Clean up \$current_url.
 \$current_url    = \$_SERVER['REQUEST_URI'];
 \$query_position = strpos( \$current_url, '?' );
