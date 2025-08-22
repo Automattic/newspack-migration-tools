@@ -305,7 +305,10 @@ class Attachments {
 
 		if ( ! empty( $desired_filename ) ) {
 			$file_array['name'] = $desired_filename;
-		} elseif ( ! pathinfo( $path, PATHINFO_EXTENSION ) ) {
+		} elseif (
+			! pathinfo( $path, PATHINFO_EXTENSION )
+			|| ( false === array_search( pathinfo( $path, PATHINFO_EXTENSION ), wp_get_mime_types() ) )
+		) {
 			// If the path does not have a file extension, let's try to find one for it.
 			// Without the extension, the upload will fail because WP will not allow that "file type".
 			$mimetype           = mime_content_type( $tmpfname );
