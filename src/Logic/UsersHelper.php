@@ -6,6 +6,7 @@ use Exception;
 use InvalidArgumentException;
 use Newspack\MigrationTools\Util\Log\CliLog;
 use Newspack\MigrationTools\Util\Log\FileLog;
+use Newspack\MigrationTools\Util\Log\MultiLog;
 use Newspack\MigrationTools\Util\UserMeta;
 use WP_Error;
 use WP_User;
@@ -78,6 +79,11 @@ class UsersHelper {
 	 * @return bool
 	 */
 	public static function is_username_unused( string $username, int $exclude_user_id = 0 ): bool {
+		// Empty username should return false.
+		if ( empty( $username ) ) {
+			return false;
+		}
+
 		// Check to see if raw $username is unused. Assumption is that all sanitation (if necessary under the context) has already been performed on $username.
 		// `get_user_by` is not used here because it does some sanitization (via `sanitize_user()`), as well as caching.
 		global $wpdb;
@@ -138,7 +144,8 @@ class UsersHelper {
 		$desired_username = sanitize_user( $desired_username, true );
 
 		if ( empty( $desired_username ) ) {
-			throw new InvalidArgumentException( 'Sanitation of desired username results in empty string, please choose another username.' );
+			MultiLog::get_cli_and_file_logger( 'UsersHelper' )
+				->warning( sprintf( 'Desired username "%s" is empty after sanitization', $original_user_login ) );
 		}
 
 		if ( strlen( $desired_username ) >= self::MAX_USER_LOGIN_LENGTH ) {
@@ -330,18 +337,23 @@ class UsersHelper {
 		}
 
 		// If we don't hava a user_login, we'll try to create one from the nicename, display_name or hash of the data array.
-		if ( empty( $user_login ) ) {
-			if ( ! empty( $user_nicename ) ) {
-				$user_login = $user_nicename;
-			} elseif ( ! empty( $data['display_name'] ) ) {
-				$user_login = $data['display_name'];
-			} else {
-				// Hash the whole array to get an ugly, but unique username.
-				$user_login = self::get_short_sha_from_array( $data );
+		$user_login_options = [
+			$user_login,
+			$user_nicename,
+			$data['display_name'],
+
+			// Hash the whole array to get an ugly, but unique username.
+			self::get_short_sha_from_array( $data ),
+		];
+
+		foreach ( $user_login_options as $user_login_option ) {
+			$sanitized_user_login_option = sanitize_user( $user_login_option, true );
+
+			if ( ! empty( $sanitized_user_login_option ) ) {
+				$user_login = $sanitized_user_login_option;
+				break;
 			}
 		}
-
-		// Note that the $user_login will be further sanitized in get_unused_username call below.
 
 		if ( empty( $data['user_pass'] ) ) {
 			$data['user_pass'] = wp_generate_password( 42 );
