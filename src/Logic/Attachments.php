@@ -355,7 +355,7 @@ class Attachments {
 		}
 
 		// Check if the file with same name exists in the DB.
-		$like = '%' . $wpdb->esc_like( sanitize_file_name( $filename ) );
+		$like = '%/' . $wpdb->esc_like( sanitize_file_name( $filename ) );
 
 		/*
 		 * Check if files with numeric suffix like `filename-1.jpg` exist in DB.
