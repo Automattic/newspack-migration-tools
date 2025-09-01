@@ -89,7 +89,7 @@ class Bylines {
 			foreach ( $byline_exploded_parts as $part ) {
 				$result = array_merge(
 					$result,
-					$this->parse_byline( $part, $separators, $manual_exceptions, $remove_chars, $remove_prefixes, $remove_suffixes )
+					$this->parse_byline( $part, $separators, $manual_exceptions, $remove_prefixes, $remove_suffixes, $remove_chars )
 				);
 			}
 			
