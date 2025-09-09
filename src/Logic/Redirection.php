@@ -16,8 +16,8 @@ class Redirection {
 			NMT::exit_with_message( 'The Redirection plugin ( redirection ) is a dependency, and will have to be installed and activated before this helper class can be used.' );
 		}
 
-		// Make sure the Redirections plugin is "setup" (ie: it's database tables were installed).
-		// Setup can be performed in wp-admin or with cli command: wp redirection database install
+		// Make sure the Redirections plugin is setup (ie: it's database tables were installed).
+		// Setup can be performed in wp-admin > tools > redirection or with cli command: wp redirection database install
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'redirection_items';
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
