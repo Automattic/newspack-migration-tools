@@ -20,6 +20,7 @@ class Redirection {
 		// Setup can be performed in wp-admin or with cli command: wp redirection database install
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'redirection_items';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name ) ) !== $table_name ) {
 			NMT::exit_with_message( "The Redirection plugin setup is required: DB table {$table_name} not found." );
 		}
