@@ -15,6 +15,15 @@ class Redirection {
 		if ( ! is_plugin_active( 'redirection/redirection.php' ) ) {
 			NMT::exit_with_message( 'The Redirection plugin ( redirection ) is a dependency, and will have to be installed and activated before this helper class can be used.' );
 		}
+
+		// Make sure the Redirections plugin is "setup" (ie: it's database tables were installed).
+		// Setup can be performed in wp-admin or with cli command: wp redirection database install
+		global $wpdb;
+		$table_name = $wpdb->prefix . "redirection_items";
+		if( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table_name ) ) !== $table_name ) {
+            NMT::exit_with_message( "The Redirection plugin setup is required: DB table {$table_name} not found."	 );
+        }
+
 	}
 
 	/**
