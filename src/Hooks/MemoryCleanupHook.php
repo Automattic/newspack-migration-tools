@@ -9,7 +9,7 @@ class MemoryCleanupHook {
 	 * @static
 	 * @access public
 	 * 
-	 * @param int $sleep_time      Number of seconds to sleep between each flush.
+	 * @param int  $sleep_time     Number of seconds to sleep between each flush.
 	 * @param ?int $current_step   Current counter/step. If provided $current_step and $flush_interval, will only flush every $flush_interval steps.
 	 * @param ?int $flush_interval Number of steps to wait before flushing again.
 	 */
