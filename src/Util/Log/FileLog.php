@@ -29,7 +29,7 @@ class FileLog {
 	 *
 	 * @return Logger
 	 */
-	public static function get_logger( string $name, string $log_file_name = '', FormatterInterface $formatter = null ): LoggerInterface {
+	public static function get_logger( string $name, string $log_file_name = '', ?FormatterInterface $formatter = null ): LoggerInterface {
 		if ( empty( $log_file_name ) ) {
 			// Just stick ".log" to the end of the name and sanitize it.
 			$log_file_name = sanitize_file_name( $name . '.log' );
