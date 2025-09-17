@@ -54,6 +54,9 @@ class Attachments {
 	 * @return int|WP_Error Attachment ID.
 	 */
 	public static function import_external_file( $path, $title = null, $caption = null, $description = null, $alt = null, $post_id = 0, $args = [], $desired_filename = '', $try_existing = true ) {
+		// Prevent creation of additional images.
+		add_filter( 'intermediate_image_sizes_advanced', '__return_null' );
+
 		// Fetch remote or local file.
 		$is_http = 'http' == substr( $path, 0, 4 );
 		if ( $is_http ) {
