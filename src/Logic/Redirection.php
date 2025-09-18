@@ -36,7 +36,7 @@ class Redirection {
 		$url_to,
 		$match_data_source_flag_regex = false,
 		$match_data_source_flag_trailing = true,
-		$match_data_source_flag_query = 'exact',
+		$match_data_source_flag_query = 'pass',
 		$match_data_source_flag_case = false,
 		$group_id = 1
 	) {
@@ -111,7 +111,7 @@ class Redirection {
 			$url_to,
 			false,
 			true,
-			'exact',
+			'pass',
 			false,
 			$this->get_or_create_group_id( $group_name )
 		);
