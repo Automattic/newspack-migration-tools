@@ -26,7 +26,7 @@ use WP_Error;
 use wpdb;
 
 /**
- * Custom migration scripts for Envira Gallery Lite.
+ * Custom migration scripts for Craft CMS.
  */
 class CraftCMSMigrator implements WpCliCommandInterface {
 
