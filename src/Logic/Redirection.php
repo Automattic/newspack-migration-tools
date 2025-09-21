@@ -8,7 +8,7 @@ use Red_Group;
 /**
  * Redirection (plugin) helper.
  * 
- ***
+ * **
  * 
  * After plugin activation, make sure to run the Setup so the neccessary DB tables are created.
  * 
@@ -16,7 +16,7 @@ use Red_Group;
  * or 
  * Via Browser: wp-admin > Tools > Redirection
  * 
- ***
+ * **
  * 
  * It's recommended to set the global Redirection "query matching" option (flag_query) to "pass".
  * The default option of "exact" query matching will fail if querystrings are present on a url. "Pass" is
@@ -27,9 +27,7 @@ use Red_Group;
  * or
  * Via Browser: wp-admin > Tools > Redirection > Options (tab)
  *   - option name: "Default query matching" (flag_query)
- *
  */
-
 class Redirection {
 
 	public function __construct() {
