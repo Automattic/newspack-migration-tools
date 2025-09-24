@@ -98,13 +98,6 @@ class Attachments {
 			}
 		}
 
-		$maybe_exising_attachment_id = ( $try_existing ) ? self::maybe_get_existing_attachment_id( $file_array['tmp_name'], $file_array['name'] ) : null;
-		if ( null !== $maybe_exising_attachment_id ) {
-			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-			@unlink( $file_array['tmp_name'] );
-			return $maybe_exising_attachment_id;
-		}
-
 		if ( $title ) {
 			$args['post_title'] = $title;
 		}
@@ -114,6 +107,14 @@ class Attachments {
 		if ( $description ) {
 			$args['post_content'] = $description;
 		}
+
+    $maybe_exising_attachment_id = ( $try_existing ) ? self::maybe_get_existing_attachment_id( $file_array['tmp_name'], $file_array['name'], array_merge( $args, [ 'alt' => $alt ] ) ) : null;
+		if ( null !== $maybe_exising_attachment_id ) {
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			@unlink( $file_array['tmp_name'] );
+			return $maybe_exising_attachment_id;
+		}
+
 		$att_id = media_handle_sideload( $file_array, $post_id, $title, $args );
 
 		// If this was a download and there was an error then clean up the temp file.
@@ -138,7 +139,7 @@ class Attachments {
 	 *
 	 * @return int|null Attachment ID if found, null otherwise.
 	 */
-	public static function maybe_get_existing_attachment_id( string $filepath, string $filename = '' ) {
+	public static function maybe_get_existing_attachment_id( string $filepath, string $filename = '', ?array $args = [] ) {
 		if ( ! file_exists( $filepath ) ) {
 			return null;
 		}
@@ -213,8 +214,21 @@ class Attachments {
 				continue;
 			}
 
+			// Only proceed if the binary content matches and meta data too.
 			if ( md5_file( $candidate_path ) === md5_file( $filepath ) ) {
-				return intval( $attachment_id );
+
+				// Check if alt text and caption match if they were provided
+				$existing_alt = get_post_meta( $attachment_id, '_wp_attachment_image_alt', true );
+				$existing_post = get_post( $attachment_id );
+				$existing_caption = $existing_post ? $existing_post->post_excerpt : '';
+
+				$alt_matches = empty( $args['alt'] ) || $existing_alt === $args['alt'];
+				$caption_matches = empty( $args['caption'] ) || $existing_caption === $args['caption'];
+
+				// Only consider it a match if both content AND metadata match
+				if ( $alt_matches && $caption_matches ) {
+					return intval( $attachment_id );
+				}
 			}
 		}
 
