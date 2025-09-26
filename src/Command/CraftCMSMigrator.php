@@ -249,7 +249,7 @@ class CraftCMSMigrator implements WpCliCommandInterface {
 							'optional'    => false,
 						],
 						[
-							'description' => 'Craft CMS backend > Entries > All Entries > Export > select Expanded data and JSON format. This is the folder where these exported JSON files are located.',
+							'description' => 'See src/Command/CraftCMS/download_paged_entities.js for the script that is used to download the entities. Craft CMS backend > Entries > All Entries > Export > select Expanded data and JSON format. This is the folder where these exported JSON files are located.',
 							'type'        => 'assoc',
 							'name'        => 'json-expanded-entries-folder',
 							'optional'    => false,
