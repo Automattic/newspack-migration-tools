@@ -7,6 +7,7 @@ use InvalidArgumentException;
 use Newspack\MigrationTools\Util\Log\CliLog;
 use Newspack\MigrationTools\Util\Log\FileLog;
 use Newspack\MigrationTools\Util\UserMeta;
+use WP_Error;
 use WP_User;
 
 /**
@@ -112,7 +113,7 @@ class UsersHelper {
 	}
 
 	/**
-	 * Get a username (`wp_users`.`user_login`) that is not in use, starting with a desired username.
+	 * Get a username/user_login (`wp_users`.`user_login`) that is not in use, starting with a desired username.
 	 *
 	 * If the desired username is in use, a counter will be appended to it until an unused username is found.
 	 *
@@ -133,15 +134,15 @@ class UsersHelper {
 			$desired_username = trim( mb_substr( $desired_username, 0, strpos( $desired_username, '@' ) ) );
 		}
 
-		// Sanitize the username the same way that wp_insert_user() sanitizes it (with $strict = true).
-		$desired_username = sanitize_user( $desired_username, true );
-
-		if ( empty( $desired_username ) ) {
-			throw new InvalidArgumentException( 'Sanitation of desired username results in empty string, please choose another username.' );
+		/**
+		 * Sanitize the username the same way that wp_insert_user() sanitizes it.
+		 */
+		$desired_username_before_sanitation = $desired_username;
+		$desired_username                   = self::sanitize_username( $desired_username );
+		if ( is_wp_error( $desired_username ) ) {
+			throw new InvalidArgumentException( sprintf( "ERROR, could not sanitize username '%s', error: %s", esc_html( $original_user_login ), esc_html( $desired_username->get_error_message() ), wp_json_encode( $desired_username ) ) );
 		}
-
-		if ( strlen( $desired_username ) >= self::MAX_USER_LOGIN_LENGTH ) {
-			$desired_username = trim( mb_substr( $desired_username, 0, self::MAX_USER_LOGIN_LENGTH ) );
+		if ( strlen( $desired_username_before_sanitation ) < strlen( $desired_username ) ) {
 			FileLog::get_logger( 'UsersHelper' )->warning(
 				sprintf(
 					'Shortened user login to under %d chars from "%s" to "%s".',
@@ -161,6 +162,32 @@ class UsersHelper {
 		}
 
 		return $desired_username;
+	}
+
+	/**
+	 * Sanitize the username/user_login the same way that wp_insert_user() sanitizes it.
+	 *
+	 * @param string $user_login The username to sanitize.
+	 *
+	 * @return string|WP_Error The sanitized username, or WP_Error if the sanitized username is empty.
+	 */
+	public static function sanitize_username( string $user_login ): string|WP_Error {
+		
+		// Trim the username.
+		$sanitized_user_login = trim( $user_login );
+		
+		// Sanitize the username.
+		$sanitized_user_login = sanitize_user( $sanitized_user_login, true );
+		if ( empty( $sanitized_user_login ) ) {
+			return new WP_Error( 'empty_username', sprintf( "Sanitation of desired username '%s' results in empty string, please choose another username.", $user_login ) );
+		}
+		
+		// Ensure the username is not longer than the maximum length.
+		if ( strlen( $sanitized_user_login ) >= self::MAX_USER_LOGIN_LENGTH ) {
+			$sanitized_user_login = trim( mb_substr( $sanitized_user_login, 0, self::MAX_USER_LOGIN_LENGTH ) );
+		}
+
+		return $sanitized_user_login;
 	}
 
 	/**
@@ -341,7 +368,11 @@ class UsersHelper {
 			}
 		}
 
-		// Note that the $user_login will be further sanitized in get_unused_username call below.
+		// Sanitize the username the same way that wp_insert_user() sanitizes it.
+		$user_login = self::sanitize_username( $user_login );
+		if ( is_wp_error( $user_login ) ) {
+			throw new InvalidArgumentException( sprintf( 'Could not sanitize username: %s. Context user_login: %s', esc_html( $user_login->get_error_message() ), wp_json_encode( $user_login ) ) );
+		}
 
 		if ( empty( $data['user_pass'] ) ) {
 			$data['user_pass'] = wp_generate_password( 42 );
@@ -360,7 +391,7 @@ class UsersHelper {
 		$user_id = wp_insert_user( $data );
 		if ( is_wp_error( $user_id ) ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
-			throw new Exception( sprintf( 'Could not create user: %s', $user_id->get_error_message() ) );
+			throw new Exception( sprintf( 'Could not create user: %s. Context data: %s', $user_id->get_error_message(), wp_json_encode( $data ) ) );
 		}
 		$wp_user = get_user_by( 'ID', $user_id );
 
@@ -393,14 +424,14 @@ class UsersHelper {
 	 *
 	 * @return string A maybe truncated string with the number appended.
 	 */
-	private static function append_number_and_ensure_length( string $string_to_append_to, int $number, int $max_length ): string {
-		$string_to_append_to .= $number;
-
-		// If the string is too long, we'll peel off a couple of characters from the beginning
-		$length = strlen( $string_to_append_to );
-		if ( $length >= $max_length ) {
-			$string_to_append_to = mb_substr( $string_to_append_to, ( $length - $max_length ), $length );
+	public static function append_number_and_ensure_length( string $string_to_append_to, int $number, int $max_length ): string {
+		// Truncate the base string if needed so that after the number is appended, it is not longer than $max_length.
+		$number_str      = (string) $number;
+		$base_max_length = $max_length - strlen( $number_str );
+		if ( strlen( $string_to_append_to ) > $base_max_length ) {
+			$string_to_append_to = mb_substr( $string_to_append_to, 0, $base_max_length );
 		}
+		$string_to_append_to .= $number_str;
 
 		return $string_to_append_to;
 	}
