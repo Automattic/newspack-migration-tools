@@ -9,14 +9,18 @@ The repository contains a set of WP commands to migrate different data to WordPr
 * Minimum PHP version required is 8.1.
 * If you use the JsonIterator class, you must have `jq` installed on your system. See [download instructions](https://jqlang.github.io/jq/download/).
 
-## Documentation for logic and utility classes
+## Documentation
+
+* [Coding Conventions and Standards](./docs/coding-conventions-and-standards.md)
+
+### Logic (helpers) and Utility classes
 * [Logging](./docs/logging.md)
 * [GuestContributors](./docs/guest-contributors.md)
 * [UsersHelper](./docs/users-helper.md)
 * [UserMeta](./docs/user-meta.md)
 * [FG Helper](./docs/fg-helper.md)
 
-## Documentation for Individual Migrators
+### Individual Migrators
 * Attachments (todo)
 * [GhostCMS](./docs/GhostCMS.md)
 * [Newspaper Theme](./docs/newspaper-theme.md)
