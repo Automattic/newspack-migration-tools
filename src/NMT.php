@@ -28,13 +28,13 @@ class NMT {
 	 * Private on purpose
 	 */
 	private function __construct() {
-		$this->log_level = Level::fromName( LogLevel::INFO );
+		$this->log_level = Level::fromName( LogLevel::DEBUG );
 
 		if ( defined( 'NMT_LOG_LEVEL' ) ) {
 			try {
 				$this->log_level = Level::fromName( NMT_LOG_LEVEL );
 			} catch ( UnhandledMatchError $e ) {
-				$this->log_level = Level::fromName( Level::Info );
+				$this->log_level = Level::Debug;
 			}
 		}
 	}
