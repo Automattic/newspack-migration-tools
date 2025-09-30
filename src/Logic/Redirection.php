@@ -5,6 +5,29 @@ namespace Newspack\MigrationTools\Logic;
 use Newspack\MigrationTools\NMT;
 use Red_Group;
 
+/**
+ * Redirection (plugin) helper.
+ * 
+ * **
+ * 
+ * After plugin activation, make sure to run the Setup so the neccessary DB tables are created.
+ * 
+ * Via CLI: wp redirection database install
+ * or 
+ * Via Browser: wp-admin > Tools > Redirection
+ * 
+ * **
+ * 
+ * It's recommended to set the global Redirection "query matching" option (flag_query) to "pass".
+ * The default option of "exact" query matching will fail if querystrings are present on a url. "Pass" is
+ * the best option as this will not fail if a query string exists, but will just pass the querystring to
+ * the new url.  See NP Engineering P2: /?s=redirection-plugin-query-string-parameters-matching-options
+ * 
+ * Via CLI: wp redirection setting flag_query --set=pass
+ * or
+ * Via Browser: wp-admin > Tools > Redirection > Options (tab)
+ *   - option name: "Default query matching" (flag_query)
+ */
 class Redirection {
 
 	public function __construct() {
@@ -36,7 +59,7 @@ class Redirection {
 	 * @param string $url_to                          To URL.
 	 * @param false  $match_data_source_flag_regex    Whether to match the from-url as a regex.
 	 * @param bool   $match_data_source_flag_trailing Whether to match the from-url with trailing slashes.
-	 * @param string $match_data_source_flag_query    Whether to match the from-url with query strings.
+	 * @param string $match_data_source_flag_query    Whether to match the from-url with query strings. (See class docblock above for "pass" reasoning).
 	 * @param false  $match_data_source_flag_case     Whether to match the from-url with case sensitivity.
 	 */
 	public function create_redirection_rule(
@@ -45,7 +68,7 @@ class Redirection {
 		$url_to,
 		$match_data_source_flag_regex = false,
 		$match_data_source_flag_trailing = true,
-		$match_data_source_flag_query = 'exact',
+		$match_data_source_flag_query = 'pass',
 		$match_data_source_flag_case = false,
 		$group_id = 1
 	) {
@@ -120,7 +143,7 @@ class Redirection {
 			$url_to,
 			false,
 			true,
-			'exact',
+			'pass',
 			false,
 			$this->get_or_create_group_id( $group_name )
 		);
