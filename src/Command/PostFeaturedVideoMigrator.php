@@ -143,7 +143,7 @@ class PostFeaturedVideoMigrator implements WpCliCommandInterface {
 			WP_CLI::line( sprintf( '(%d/%d) post ID %d', $key_post_id + 1, count( $post_ids ), $post_id ) );
 			
 			// Skip if migration has already been done.
-			if ( get_post_meta( $post_id, self::META_KEY_MIGRATION_DONE ) ) {
+			if ( get_post_meta( $post_id, self::META_KEY_MIGRATION_DONE, true ) ) {
 				WP_CLI::line( sprintf( 'Skipping post ID %d since migration was already done.', $post_id ) );
 				continue;
 			}

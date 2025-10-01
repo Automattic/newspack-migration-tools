@@ -23,12 +23,12 @@ class CliLog {
 	 *
 	 * It also logs to /dev/null if the script is not running in CLI mode.
 	 *
-	 * @param string             $name      The name of the logger (used in the output).
-	 * @param FormatterInterface $formatter Optional formatter to use. Defaults to Bramus\Monolog\Formatter\ColoredLineFormatter.
+	 * @param string                  $name      The name of the logger (used in the output).
+	 * @param FormatterInterface|null $formatter Optional formatter to use. Defaults to Bramus\Monolog\Formatter\ColoredLineFormatter.
 	 *
 	 * @return Logger Logger instance.
 	 */
-	public static function get_logger( string $name, FormatterInterface $formatter = null ): LoggerInterface {
+	public static function get_logger( string $name, ?FormatterInterface $formatter = null ): LoggerInterface {
 		$logger = self::get_existing_logger( $name );
 		if ( $logger ) {
 			return $logger;
