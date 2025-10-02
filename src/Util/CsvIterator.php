@@ -30,10 +30,42 @@ class CsvIterator {
 		while ( false !== ( $line = fgetcsv( $csv_file, null, $separator ) ) ) {
 			++$line_number;
 			if ( 1 === $line_number ) {
-				$csv_headers = array_map( 'trim', $line );
+				$csv_headers = array_map( fn( $value ) => trim( $value ?? '' ), $line );
 				continue;
 			}
-			yield array_combine( $csv_headers, array_map( 'trim', $line ) );
+
+			$trimmed_line = array_map( fn( $value ) => trim( $value ?? '' ), $line );
+
+			// Skip empty rows (rows where all fields are empty)
+			if ( ! empty( array_filter( $trimmed_line ) ) ) {
+				yield array_combine( $csv_headers, $trimmed_line );
+			}
+		}
+		fclose( $csv_file );
+	}
+
+	/**
+	 * @param string $csv_path  Path to CSV file.
+	 * @param string $separator Separator for CSV file.
+	 *
+	 * @return iterable
+	 */
+	public function items_without_headers( string $csv_path, string $separator ): iterable {
+		if ( ! is_readable( $csv_path ) ) {
+			NMT::exit_with_message( "Could not read CSV file: $csv_path" );
+
+			return [];
+		}
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- We're reading a CSV file outside WP.
+		$csv_file = fopen( $csv_path, 'r' );
+		while ( false !== ( $line = fgetcsv( $csv_file, null, $separator ) ) ) {
+			$trimmed_line = array_map( fn( $value ) => trim( $value ?? '' ), $line );
+
+			// Skip empty rows (rows where all fields are empty)
+			if ( ! empty( array_filter( $trimmed_line ) ) ) {
+				yield $trimmed_line;
+			}
 		}
 		fclose( $csv_file );
 	}

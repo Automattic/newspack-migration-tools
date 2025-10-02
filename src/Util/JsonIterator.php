@@ -111,13 +111,13 @@ class JsonIterator {
 	/**
 	 * Will read a JSON file and return an iterable of objects from the JSON, filtered by a key and value.
 	 *
-	 * @param string $json_file Path to the JSON file – can be a URL too.
-	 * @param string $key       The key to filter by.
-	 * @param string $value     The value to filter by.
+	 * @param string            $json_file Path to the JSON file – can be a URL too.
+	 * @param string            $key       The key to filter by.
+	 * @param string|array|null $value The value to filter by.
 	 *
 	 * @return iterable
 	 */
-	public function filtered_items( string $json_file, string $key, ?string $value = null ): iterable {
+	public function filtered_items( string $json_file, string $key, string|array|null $value = null ): iterable {
 		$file_exists = str_starts_with( $json_file, 'http' ) ? $this->url_responds( $json_file ) : file_exists( $json_file );
 
 		if ( ! $file_exists ) {
@@ -131,6 +131,10 @@ class JsonIterator {
 				// If value is null, only check if the key exists.
 				if ( null === $value ) {
 					if ( isset( $item->$key ) ) {
+						yield $item;
+					}
+				} elseif ( is_array( $value ) ) {
+					if ( isset( $item->$key ) && in_array( $item->$key, $value ) ) {
 						yield $item;
 					}
 				} elseif ( isset( $item->$key ) && $item->$key === $value ) {

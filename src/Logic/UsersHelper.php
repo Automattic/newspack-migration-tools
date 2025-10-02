@@ -6,6 +6,7 @@ use Exception;
 use InvalidArgumentException;
 use Newspack\MigrationTools\Util\Log\CliLog;
 use Newspack\MigrationTools\Util\Log\FileLog;
+use Newspack\MigrationTools\Util\Log\MultiLog;
 use Newspack\MigrationTools\Util\UserMeta;
 use WP_Error;
 use WP_User;
@@ -78,6 +79,11 @@ class UsersHelper {
 	 * @return bool
 	 */
 	public static function is_username_unused( string $username, int $exclude_user_id = 0 ): bool {
+		// Empty username should return false.
+		if ( empty( $username ) ) {
+			return false;
+		}
+
 		// Check to see if raw $username is unused. Assumption is that all sanitation (if necessary under the context) has already been performed on $username.
 		// `get_user_by` is not used here because it does some sanitization (via `sanitize_user()`), as well as caching.
 		global $wpdb;
@@ -172,16 +178,16 @@ class UsersHelper {
 	 * @return string|WP_Error The sanitized username, or WP_Error if the sanitized username is empty.
 	 */
 	public static function sanitize_username( string $user_login ): string|WP_Error {
-		
+
 		// Trim the username.
 		$sanitized_user_login = trim( $user_login );
-		
+
 		// Sanitize the username.
 		$sanitized_user_login = sanitize_user( $sanitized_user_login, true );
 		if ( empty( $sanitized_user_login ) ) {
 			return new WP_Error( 'empty_username', sprintf( "Sanitation of desired username '%s' results in empty string, please choose another username.", $user_login ) );
 		}
-		
+
 		// Ensure the username is not longer than the maximum length.
 		if ( strlen( $sanitized_user_login ) >= self::MAX_USER_LOGIN_LENGTH ) {
 			$sanitized_user_login = trim( mb_substr( $sanitized_user_login, 0, self::MAX_USER_LOGIN_LENGTH ) );
@@ -291,10 +297,10 @@ class UsersHelper {
 	 * @param array  $data              The data to create the user with. If the 'role' key is present, the user will be assigned that role.
 	 * @param string $unique_identifier A unique identifier for your user – can be any string, but should be unique.
 	 *
-	 * @throws Exception If the user could not be created.
-	 * @throws InvalidArgumentException If the data array is empty or if the 'role' key is in the array and does not contain a valid role. .
+	 * @throws InvalidArgumentException If the data array is empty or if the 'role' key is in the array and does not contain a valid role.
+	 * @throws Exception If user creation fails.
 	 */
-	public static function create_or_get_user( array $data, string $unique_identifier ): WP_User {
+	public static function create_or_get_user( array $data, string $unique_identifier ): WP_User|WP_Error {
 		if ( empty( trim( $unique_identifier ) ) ) {
 			throw new InvalidArgumentException( 'Refusing to create user without a unique identifier.' );
 		}
@@ -357,14 +363,21 @@ class UsersHelper {
 		}
 
 		// If we don't hava a user_login, we'll try to create one from the nicename, display_name or hash of the data array.
-		if ( empty( $user_login ) ) {
-			if ( ! empty( $user_nicename ) ) {
-				$user_login = $user_nicename;
-			} elseif ( ! empty( $data['display_name'] ) ) {
-				$user_login = $data['display_name'];
-			} else {
-				// Hash the whole array to get an ugly, but unique username.
-				$user_login = self::get_short_sha_from_array( $data );
+		$user_login_options = [
+			$user_login,
+			$user_nicename,
+			$data['display_name'] ?? '',
+
+			// Hash the whole array to get an ugly, but unique username.
+			self::get_short_sha_from_array( $data ),
+		];
+
+		foreach ( $user_login_options as $user_login_option ) {
+			$sanitized_user_login_option = sanitize_user( $user_login_option, true );
+
+			if ( ! empty( $sanitized_user_login_option ) ) {
+				$user_login = $sanitized_user_login_option;
+				break;
 			}
 		}
 
@@ -385,6 +398,14 @@ class UsersHelper {
 
 		// Add the unique identifier to the user's meta so we can find them later.
 		$data['meta_input'][ self::UNIQUE_IDENTIFIER_META_KEY ] = $unique_identifier;
+
+		// If the user website URL is longer than 100 characters, truncate it.
+		if ( isset( $data['user_url'] ) ) {
+			$data['user_url'] = apply_filters( 'pre_user_url', $data['user_url'] );
+			if ( strlen( $data['user_url'] ) > 100 ) {
+				$data['user_url'] = substr( $data['user_url'], 0, 100 );
+			}
+		}
 
 		$data = apply_filters( 'nmt_user_user_pre_insert', $data, $unique_identifier );
 

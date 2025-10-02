@@ -29,3 +29,5 @@ codecov/
 coverage/
 .phpunit.result.cache
 build/
+
+UsersHelper.log
