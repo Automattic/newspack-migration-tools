@@ -178,16 +178,16 @@ class UsersHelper {
 	 * @return string|WP_Error The sanitized username, or WP_Error if the sanitized username is empty.
 	 */
 	public static function sanitize_username( string $user_login ): string|WP_Error {
-		
+
 		// Trim the username.
 		$sanitized_user_login = trim( $user_login );
-		
+
 		// Sanitize the username.
 		$sanitized_user_login = sanitize_user( $sanitized_user_login, true );
 		if ( empty( $sanitized_user_login ) ) {
 			return new WP_Error( 'empty_username', sprintf( "Sanitation of desired username '%s' results in empty string, please choose another username.", $user_login ) );
 		}
-		
+
 		// Ensure the username is not longer than the maximum length.
 		if ( strlen( $sanitized_user_login ) >= self::MAX_USER_LOGIN_LENGTH ) {
 			$sanitized_user_login = trim( mb_substr( $sanitized_user_login, 0, self::MAX_USER_LOGIN_LENGTH ) );
@@ -297,7 +297,8 @@ class UsersHelper {
 	 * @param array  $data              The data to create the user with. If the 'role' key is present, the user will be assigned that role.
 	 * @param string $unique_identifier A unique identifier for your user – can be any string, but should be unique.
 	 *
-	 * @throws InvalidArgumentException If the data array is empty or if the 'role' key is in the array and does not contain a valid role. .
+	 * @throws InvalidArgumentException If the data array is empty or if the 'role' key is in the array and does not contain a valid role.
+	 * @throws Exception If user creation fails.
 	 */
 	public static function create_or_get_user( array $data, string $unique_identifier ): WP_User|WP_Error {
 		if ( empty( trim( $unique_identifier ) ) ) {
@@ -365,7 +366,7 @@ class UsersHelper {
 		$user_login_options = [
 			$user_login,
 			$user_nicename,
-			$data['display_name'],
+			$data['display_name'] ?? '',
 
 			// Hash the whole array to get an ugly, but unique username.
 			self::get_short_sha_from_array( $data ),
@@ -399,9 +400,11 @@ class UsersHelper {
 		$data['meta_input'][ self::UNIQUE_IDENTIFIER_META_KEY ] = $unique_identifier;
 
 		// If the user website URL is longer than 100 characters, truncate it.
-		$data['user_url'] = apply_filters( 'pre_user_url', $data['user_url'] );
-		if ( isset( $data['user_url'] ) && strlen( $data['user_url'] ) > 100 ) {
-			$data['user_url'] = substr( $data['user_url'], 0, 100 );
+		if ( isset( $data['user_url'] ) ) {
+			$data['user_url'] = apply_filters( 'pre_user_url', $data['user_url'] );
+			if ( strlen( $data['user_url'] ) > 100 ) {
+				$data['user_url'] = substr( $data['user_url'], 0, 100 );
+			}
 		}
 
 		$data = apply_filters( 'nmt_user_user_pre_insert', $data, $unique_identifier );

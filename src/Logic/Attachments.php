@@ -58,8 +58,8 @@ class Attachments {
 	 * @return int|WP_Error Attachment ID.
 	 */
 	public static function import_external_file( $path, $title = null, $caption = null, $description = null, $alt = null, $post_id = 0, $args = [], $desired_filename = '', $try_existing = true, $unique_identifier = null, $cropped_url = null ) {
-		$file_array         = self::download_file( $path );
-		$cropped_file_array = $cropped_url ? self::download_file( $cropped_url ) : null;
+		$file_array         = self::download_file( $path, $desired_filename );
+		$cropped_file_array = $cropped_url ? self::download_file( $cropped_url, $desired_filename ) : null;
 
 		if ( is_wp_error( $file_array ) ) {
 			return $file_array;
@@ -140,7 +140,7 @@ class Attachments {
 				}
 			}
 
-			try{
+			try {
 				$saved_image = wp_save_image_file( $new_path, $img, $attachment->post_mime_type, $att_id );
 			} catch ( \Throwable $e ) {
 				return $att_id;
@@ -276,7 +276,7 @@ class Attachments {
 	 *
 	 * @return array|WP_Error The file array.
 	 */
-	public static function download_file( $path ) {
+	public static function download_file( $path, $desired_filename = '' ) {
 		// Fetch remote or local file.
 		$is_http = 'http' == substr( $path, 0, 4 );
 		if ( $is_http ) {

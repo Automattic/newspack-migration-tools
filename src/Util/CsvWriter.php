@@ -12,14 +12,14 @@ use Exception;
 class CsvWriter {
 	/**
 	 * CSV file pointer.
-	 * 
+	 *
 	 * @var resource
 	 */
 	private $file_pointer;
 
 	/**
 	 * Constructor.
-	 * 
+	 *
 	 * @param string $filename The name of the CSV file to write to.
 	 * @throws Exception If the file cannot be opened.
 	 */
@@ -37,7 +37,7 @@ class CsvWriter {
 
 	/**
 	 * Sets the Header columns for the CSV file.
-	 * 
+	 *
 	 * @param  array $header The header columns to write.
 	 * @return void
 	 */
@@ -52,7 +52,7 @@ class CsvWriter {
 
 	/**
 	 * Writes a row to the CSV file.
-	 * 
+	 *
 	 * @param  array $row The row data to write.
 	 * @return void
 	 * @throws Exception If the row cannot be written to the file.
@@ -67,7 +67,7 @@ class CsvWriter {
 
 	/**
 	 * Closes the file pointer.
-	 * 
+	 *
 	 * @return void
 	 * @throws Exception If the file cannot be closed.
 	 */
