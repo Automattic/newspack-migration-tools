@@ -507,7 +507,7 @@ class UsersHelper {
 
 		global $coauthors_plus;
 
-		// Assign ids to post.
+		// Assign authors to post.
 		$success = $coauthors_plus->add_coauthors( $post_id, $authors, $append, $query_type );
 		if ( ! $success ) {
 			return new WP_Error( 'ERROR_ASSIGN_CONTRIBUTORS', self::ERROR_ASSIGN_CONTRIBUTORS );
