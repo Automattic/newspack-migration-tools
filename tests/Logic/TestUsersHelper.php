@@ -216,15 +216,15 @@ class TestUsersHelper extends WP_UnitTestCase {
 
 		$post_id = wp_insert_post(
 			[
-				'post_title' => 'Test Post'
+				'post_title' => 'Test Post',
 			]
 		);
 
 		$user = UsersHelper::create_or_get_user(
 			[
-				'user_login' => 'test_user_login'
+				'user_login' => 'test_user_login',
 			],
-			rand()
+			wp_rand()
 		);
 
 		$success_single = UsersHelper::assign_authors_to_post( $post_id, [ $user->ID ] );
@@ -232,6 +232,5 @@ class TestUsersHelper extends WP_UnitTestCase {
 		
 		$success_mulitple = UsersHelper::assign_authors_to_post( $post_id, [ $user->ID, $this->peter_parker_id ] );
 		$this->assertTrue( $success_mulitple );
-
 	}
 }

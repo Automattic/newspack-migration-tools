@@ -484,6 +484,7 @@ class UsersHelper {
 	 * Most likely you'll want to pass in an array of WP_User IDs as the $authors argument, so this requires the $query_type to be 'id'.
 	 * 
 	 * For other options, please see the underlying CoAuthors Plus function `add_coauthors` and $query_type ($field) options;
+	 * 
 	 * @link https://github.com/Automattic/Co-Authors-Plus/blob/30602dbd59c6cd73bd4aa3ff8a3e6eda0c1bccea/php/class-coauthors-plus.php#L1022
 	 * @link https://github.com/Automattic/Co-Authors-Plus/blob/30602dbd59c6cd73bd4aa3ff8a3e6eda0c1bccea/php/class-coauthors-plus.php#L1050-L1052
 	 *
