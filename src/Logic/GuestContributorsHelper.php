@@ -8,7 +8,7 @@ use WP_User;
 use WP_Error;
 use WP_Role;
 
-class GuestContributorsHelper extends UsersHelper {
+class GuestContributorsHelper {
 
 	const ERROR_ATTEMPTS        = 'Might be in an infinite loop.';
 	const ERROR_CREATE_USER     = 'Could not create user.';
@@ -132,14 +132,23 @@ class GuestContributorsHelper extends UsersHelper {
 	 * @return bool|WP_Error True if successful, WP_Error if not.
 	 */
 	public static function assign_contributors_to_post( int $post_id, array $contributor_ids ): bool|WP_Error {
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
 
-		// deprepcate this...what is the point of having to have both objects in a migrator?
-		// why even have this GuestContributors file???
-		// of just have this object extend the UsersHelper???
-		// UsersHelper assign_coauthors_to_post( int $post_id, array $coauthors, $append = false, $query_type = 'id' ): bool|WP_Error {
+		if ( ! is_plugin_active( 'co-authors-plus/co-authors-plus.php' ) ) {
+			return new WP_Error( 'ERROR_COAUTHORS_PLUS', 'Co-Authors Plus plugin not found. Install and activate it before using this code.' );
+		}
 
+		global $coauthors_plus;
 
+		// Assign ids to post.
+		$success = $coauthors_plus->add_coauthors( $post_id, $contributor_ids, false, 'id' );
+		if ( ! $success ) {
+			return new WP_Error( 'ERROR_ASSIGN_CONTRIBUTORS', 'Failed to set authors. The add_coauthors() function did not successfully add contributors to the post.' );
+		}
 
+		return true;
 	}
 
 	/**

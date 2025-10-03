@@ -19,7 +19,6 @@ use WP_User;
 class UsersHelper {
 
 	const MAX_USER_LOGIN_LENGTH = 60;
-	
 	/**
 	 * Meta key for the unique identifier for users.
 	 */
