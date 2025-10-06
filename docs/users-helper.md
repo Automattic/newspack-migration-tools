@@ -40,6 +40,26 @@ Obviously – the more data you pass the better, but the method will create a us
 
 Fake emails will be created that look something like f3e895c937@example.com. 
 
+## Assigning Authors to a Post
+
+The `assign_authors_to_post()` function can be used to assign author(s) to a post. The [Co-Authors Plus](https://wordpress.org/plugins/co-authors-plus/) plugin is required to use this function.  (Co-Authors Plus is Newspack's preferred plugin for managing "multiple authors per post").
+
+Co-Authors Plus will create author taxonomy relationships in the `terms` db tables, and also update the post's `post_author` column too.
+
+### Usage
+
+```php
+
+// Assign one author (single value array) to the post.
+UsersHelper::assign_authors_to_post( 1, [ 1 ] );
+
+// Assign multiple authors (multiple value array) to the post.
+UsersHelper::assign_authors_to_post( 1, [ 1, 2, 3 ] );
+
+```
+
+Please see the underlying Co-Authors Plus function [add_coauthors](https://github.com/Automattic/Co-Authors-Plus/blob/30602dbd59c6cd73bd4aa3ff8a3e6eda0c1bccea/php/class-coauthors-plus.php#L1022) (specifically the variables [$query_type and $field](https://github.com/Automattic/Co-Authors-Plus/blob/30602dbd59c6cd73bd4aa3ff8a3e6eda0c1bccea/php/class-coauthors-plus.php#L1050-L1052)) for other argument options.
+
 ## Logging
 This class logs to file in `UsersHelper.log`.
 
