@@ -138,7 +138,6 @@ class GuestContributorsHelper {
 		_deprecated_function( __METHOD__, '', 'UsersHelper::assign_authors_to_post()' );
 		
 		return UsersHelper::assign_authors_to_post( $post_id, $contributor_ids );
-
 	}
 
 	/**
