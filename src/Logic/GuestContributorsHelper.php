@@ -126,29 +126,19 @@ class GuestContributorsHelper {
 	/**
 	 * Assigns Guest Contributors to the Post.
 	 *
+	 * @deprecated Call UsersHelper::assign_authors_to_post() directly instead.
+	 * 
 	 * @param int   $post_id                 Post IDs.
 	 * @param array $contributor_ids         Contributor IDs.
 	 *
 	 * @return bool|WP_Error True if successful, WP_Error if not.
 	 */
 	public static function assign_contributors_to_post( int $post_id, array $contributor_ids ): bool|WP_Error {
-		if ( ! function_exists( 'is_plugin_active' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/plugin.php';
-		}
 
-		if ( ! is_plugin_active( 'co-authors-plus/co-authors-plus.php' ) ) {
-			return new WP_Error( 'ERROR_COAUTHORS_PLUS', 'Co-Authors Plus plugin not found. Install and activate it before using this code.' );
-		}
+		_deprecated_function( __METHOD__, '', 'UsersHelper::assign_authors_to_post()' );
+		
+		return UsersHelper::assign_authors_to_post( $post_id, $contributor_ids );
 
-		global $coauthors_plus;
-
-		// Assign ids to post.
-		$success = $coauthors_plus->add_coauthors( $post_id, $contributor_ids, false, 'id' );
-		if ( ! $success ) {
-			return new WP_Error( 'ERROR_ASSIGN_CONTRIBUTORS', 'Failed to set authors. The add_coauthors() function did not successfully add contributors to the post.' );
-		}
-
-		return true;
 	}
 
 	/**

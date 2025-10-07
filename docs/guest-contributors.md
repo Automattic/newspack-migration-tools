@@ -104,28 +104,7 @@ if ( is_wp_error( $users ) ) WP_CLI::error( $users->get_error_message() );
 
 #### assign_contributors_to_post
 
-Assigns Guest Contributors to a Post using Co-Authors Plus.
-
-**Parameters:**
-
--   `$post_id` (int): Post ID.
--   `$contributor_ids` (array): Array of contributor IDs.
-
-**Returns:** `true|WP_Error` - True if successful, WP_Error if not.
-
-Example usage:
-
-```php
-use Newspack\MigrationTools\Logic\GuestContributorsHelper;
-
-$post_id = 123;
-$contributor_ids = [ 1, 2, 3 ];
-
-$result = GuestContributorsHelper::assign_contributors_to_post( $post_id, $contributor_ids );
-if ( is_wp_error( $result ) ) {
-    WP_CLI::error( $result->get_error_message() );
-}
-```
+Deprecated. Since guest contributors are just WP_Users, call [UsersHelper::assign_authors_to_post](https://github.com/Automattic/newspack-migration-tools/blob/trunk/docs/users-helper.md) directly instead.
 
 ### Error Handling
 
