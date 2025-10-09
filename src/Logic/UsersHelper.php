@@ -414,6 +414,13 @@ class UsersHelper {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			throw new Exception( sprintf( 'Could not create user: %s. Context data: %s', $user_id->get_error_message(), wp_json_encode( $data ) ) );
 		}
+		if ( ! ( $user_id > 0 ) ) {
+			// Core bug could result in "0" being returned: https://core.trac.wordpress.org/ticket/53109
+			// This happens if display_name is > 250 characters. A wp_error should be returned from wp_insert_user, but instead a 
+			// value of "0" is returned. We need to check for this case since get_user_by needs a $user_id > 0, otherwise $wp_user will equal "false".
+			throw new Exception( sprintf( 'Could not create user: %s. Context data: %s', 'core bug: return was not gt 0', wp_json_encode( $data ) ) );
+		}
+
 		$wp_user = get_user_by( 'ID', $user_id );
 
 		FileLog::get_logger( 'UsersHelper' )->notice(

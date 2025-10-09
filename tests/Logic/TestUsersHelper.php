@@ -94,6 +94,19 @@ class TestUsersHelper extends WP_UnitTestCase {
 		);
 	}
 
+	public function test_create_user_core_bug() {
+
+		// Test core bug when display_name is longer then 250 chars.
+		$this->expectException( \Exception::class );
+		UsersHelper::create_or_get_user(
+			[
+				'display_name' => str_repeat( 'a', 251 ),
+			],
+			'bork'
+		);
+
+	}
+
 	/**
 	 * Test that when a user is created – the unique identifier is set.
 	 */
