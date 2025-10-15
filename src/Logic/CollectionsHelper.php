@@ -82,7 +82,7 @@ class CollectionsHelper {
 		}
 
 		// Unfortunately, collection titles can not contain commas because of a known core issue, re: https://core.trac.wordpress.org/ticket/14691.
-		if ( false !== strpos( $data['post_title'], ',' ) ) {
+		if ( str_contains( $data['post_title'], ',' ) ) {
 			return new WP_Error( 'invalid_collection_title', 'Collection title cannot contain a comma.' );
 		}
 
