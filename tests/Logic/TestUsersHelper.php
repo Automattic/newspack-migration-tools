@@ -232,5 +232,9 @@ class TestUsersHelper extends WP_UnitTestCase {
 		
 		$success_mulitple = UsersHelper::assign_authors_to_post( $post_id, [ $user->ID, $this->peter_parker_id ] );
 		$this->assertTrue( $success_mulitple );
+
+		$failure_empty = UsersHelper::assign_authors_to_post( $post_id, [] );
+		$this->assertInstanceOf( \WP_Error::class, $failure_empty );
+		$this->assertEquals( 'ERROR_ASSIGN_CONTRIBUTORS', $failure_empty->get_error_code() );
 	}
 }

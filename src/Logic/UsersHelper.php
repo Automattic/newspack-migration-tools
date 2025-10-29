@@ -26,12 +26,6 @@ class UsersHelper {
 	public const UNIQUE_IDENTIFIER_META_KEY = '_nmt_user_uniqid';
 
 	/**
-	 * WP_Error enum
-	 */
-	const ERROR_ASSIGN_CONTRIBUTORS = 'Failed to set authors. The underlying add_coauthors() function was not successful.';
-	const ERROR_COAUTHORS_PLUS      = 'Co-Authors Plus plugin not found. Install and activate it before using this function.';
-
-	/**
 	 * Get a user by its unique identifier.
 	 *
 	 * The identifier was set when the user was created (if it was created by this class), so you probably know what it is.
@@ -495,14 +489,14 @@ class UsersHelper {
 	 *
 	 * @return bool|WP_Error True if successful, WP_Error if not.
 	 */
-	public static function assign_authors_to_post( int $post_id, array $authors, $append = false, $query_type = 'id' ): bool|WP_Error {
+	public static function assign_authors_to_post( int $post_id, array $authors, bool $append = false, string $query_type = 'id' ): bool|WP_Error {
 	
 		if ( ! function_exists( 'is_plugin_active' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
 
 		if ( ! is_plugin_active( 'co-authors-plus/co-authors-plus.php' ) ) {
-			return new WP_Error( 'ERROR_COAUTHORS_PLUS', self::ERROR_COAUTHORS_PLUS );
+			return new WP_Error( 'ERROR_COAUTHORS_PLUS', 'Co-Authors Plus plugin not found. Install and activate it before using this function.' );
 		}
 
 		global $coauthors_plus;
@@ -510,7 +504,7 @@ class UsersHelper {
 		// Assign authors to post.
 		$success = $coauthors_plus->add_coauthors( $post_id, $authors, $append, $query_type );
 		if ( ! $success ) {
-			return new WP_Error( 'ERROR_ASSIGN_CONTRIBUTORS', self::ERROR_ASSIGN_CONTRIBUTORS );
+			return new WP_Error( 'ERROR_ASSIGN_CONTRIBUTORS', 'Failed to set authors. The underlying add_coauthors() function was not successful.' );
 		}
 
 		return true;
