@@ -38,6 +38,10 @@
             "rm -rf release",
             "composer install --no-dev --optimize-autoloader",
             "composer archive --format=zip --dir=release --file=newspack-migration-tools"
+        ],
+        "gh-release": [
+            "@build-release",
+            "./release.sh"
         ]
     }
 }
