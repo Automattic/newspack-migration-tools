@@ -130,11 +130,11 @@ main() {
     git tag "v$new_version"
     printf " * Created tag v%s\n" "$new_version"
 
-    gh release create "v$new_version" --generate-notes release/newspack-migration-tools.zip
-    printf " * Created GitHub release with zip file\n"
-
     git push && git push --tags
     printf " * Pushed changes and tags\n"
+
+    gh release create "v$new_version" --generate-notes release/newspack-migration-tools.zip
+    printf " * Created GitHub release with zip file\n"
 
     echo ""
     echo "-------------------------------------"
