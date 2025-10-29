@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
+# Disable gh update notifications
+export GH_NO_UPDATE_NOTIFIER=1
+
 # Main plugin file where the version number lives.
 PLUGIN_FILE="newspack-migration-tools.php"
 

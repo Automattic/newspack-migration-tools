@@ -728,7 +728,7 @@ AUDIO;
 		}
 
 		if ( ! empty( $style ) ) {
-			$classnames[]               = $style;
+			$classnames[] = $style;
 		}
 
 		$attrs['className'] = implode( ' ', $classnames );
