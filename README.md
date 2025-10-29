@@ -6,7 +6,7 @@ The repository contains a set of WP commands to migrate different data to WordPr
 
 ## Requirements
 * WordPress
-* Minimum PHP version required is 8.1.
+* Minimum PHP version required is 8.3.
 * If you use the JsonIterator class, you must have `jq` installed on your system. See [download instructions](https://jqlang.github.io/jq/download/).
 
 ## Documentation
@@ -25,7 +25,7 @@ The repository contains a set of WP commands to migrate different data to WordPr
 * [GhostCMS](./docs/GhostCMS.md)
 * [Newspaper Theme](./docs/newspaper-theme.md)
 
-## Development
+## Using the library
 
 You can load this package in your PHP project as follows:
 
@@ -39,9 +39,11 @@ _composer.json_
     }
 ],
 "require": {
-    "automattic/newspack-migration-tools": "dev-trunk"
+    "automattic/newspack-migration-tools": "VERSION"
 }
 ```
+
+Where `VERSION` is a version constraint (e.g., `^0.1.3`), or `dev-trunk` for bleeding edge. See [available releases](https://github.com/Automattic/newspack-migration-tools/releases).
 
 You can either include the `newspack-migration-tools.php` file in your code, use the classes directly, or call `NMT:setup()`.
 
@@ -73,6 +75,8 @@ foreach ( $cli_commands as $command_class ) {
     }
 }
 ```
+## Creating a release of this library.
+To create a release, make sure you have the [gh cli tool](https://cli.github.com) installed. We do releases from trunk, so switch to the trunk branch and pull so you have the latest. Then run `composer release` and follow the steps on screen. The release script will create a tag, update the plugin file version number, and create a release on Github. 
 
 ## Tests
 To get started with tests, run `./bin/install-wp-tests.sh`. If you are using Local.app, then the args could look something like this: `./bin/install-wp-tests.sh local root root "localhost:/Users/<your-username>/Library/Application Support/Local/run/<some-id>/mysql/mysqld.sock"` You can find the part to put after "socket:" on the Database tab in the local app for the site.
