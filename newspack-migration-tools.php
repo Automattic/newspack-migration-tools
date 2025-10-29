@@ -1,12 +1,11 @@
 <?php
 /**
- * Newspack Migration Tools.
- *
- * Version: 0.1.3
+ * Newspack Migration Tools
  *
  * This is a library to be included by plugins. See README.md for more information.
  *
- * Requires PHP 8.1 or later.
+ * Version:           1.0.2
+ * Requires at least: 8.3
  *
  * @package newspack-migration-tools
  */
