@@ -41,7 +41,7 @@
         ],
         "gh-release": [
             "@build-release",
-            "./release.sh"
+            "./gh-release.sh"
         ]
     }
 }
