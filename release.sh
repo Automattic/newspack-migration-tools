@@ -4,8 +4,8 @@ set -e
 # Disable gh update notifications
 export GH_NO_UPDATE_NOTIFIER=1
 
-# Main plugin file where the version number lives.
-PLUGIN_FILE="newspack-migration-tools.php"
+# Main file where the version number lives.
+MAIN_FILE="newspack-migration-tools.php"
 
 # Make text red.
 print_red() {
@@ -35,27 +35,27 @@ check_prerequisites() {
     fi
 }
 
-# Extract the current version from the plugin file.
+# Extract the current version from the main file.
 get_current_version() {
     local version
-    version=$(grep "Version:" "$PLUGIN_FILE" | sed -E 's/.*Version: +([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+    version=$(grep "Version:" "$MAIN_FILE" | sed -E 's/.*Version: +([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
 
     if [ -z "$version" ]; then
-        print_red "Error: Could not find version in $PLUGIN_FILE"
+        print_red "Error: Could not find version in $MAIN_FILE"
         exit 1
     fi
 
     echo "$version"
 }
 
-# Update the version number in the plugin file.
+# Update the version number in the main file.
 update_version() {
     local new_version=$1
 
-    # Update the version in the plugin file
-    sed -i '' -E "s/(Version: +)[0-9]+\.[0-9]+\.[0-9]+/\1$new_version/" "$PLUGIN_FILE"
+    # Update the version in the main file
+    sed -i.bak -E "s/(Version: +)[0-9]+\.[0-9]+\.[0-9]+/\1$new_version/" "$MAIN_FILE" && rm "${MAIN_FILE}.bak"
 
-    printf " * Updated version in %s to %s\n" "$PLUGIN_FILE" "$new_version"
+    printf " * Updated version in %s to %s\n" "$MAIN_FILE" "$new_version"
 }
 
 # Main release workflow.
@@ -126,7 +126,7 @@ main() {
 
     update_version "$new_version"
 
-    git add "$PLUGIN_FILE"
+    git add "$MAIN_FILE"
     git commit -m "Bump version to $new_version"
     printf " * Created commit\n"
 
