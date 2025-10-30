@@ -17,5 +17,6 @@
 /.gitattributes export-ignore
 /.github export-ignore
 .DS_Store export-ignore
-
+.env* export-ignore
+*.log export-ignore
 
