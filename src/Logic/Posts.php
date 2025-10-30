@@ -2,6 +2,7 @@
 
 namespace Newspack\MigrationTools\Logic;
 
+use Newspack\MigrationTools\Hooks\PostUpdateHook;
 use Newspack\MigrationTools\Util\Log\CliLog;
 use Newspack\MigrationTools\Util\Log\FileLog;
 use WP_Post;
@@ -759,5 +760,33 @@ SQL;
 		);
 
 		return empty( $post_id ) ? false : (int) $post_id;
+	}
+
+	/**
+	 * Shorthand for updating a post without touching the post_modified and post_modified_gmt fields.
+	 *
+	 * Parameters are the same as for wp_update_post.
+	 *
+	 * @static
+	 * @access public
+	 *
+	 * @uses \Newspack\MigrationTools\Hooks\PostUpdateHook
+	 * @see https://developer.wordpress.org/reference/functions/wp_update_post/
+	 *
+	 * @param array|object $postarr          Optional. Post data. Arrays are expected to be escaped,
+	 *                                       objects are not. See wp_insert_post() for accepted arguments.
+	 *                                       Default array.
+	 * @param bool         $wp_error         Optional. Whether to return a WP_Error on failure. Default false.
+	 * @param bool         $fire_after_hooks Optional. Whether to fire the after insert hooks. Default true.
+	 * @return int|WP_Error The post ID on success. The value 0 or WP_Error on failure.
+	 */
+	public static function update_post_without_modified_date( $postarr = array(), $wp_error = false, $fire_after_hooks = true ) {
+		PostUpdateHook::attach_hook_to_prevent_modified_date_update();
+
+		$result = wp_update_post( $postarr, $wp_error, $fire_after_hooks );
+
+		PostUpdateHook::detach_hook_to_prevent_modified_date_update();
+
+		return $result;
 	}
 }
