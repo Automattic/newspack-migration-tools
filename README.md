@@ -75,8 +75,8 @@ foreach ( $cli_commands as $command_class ) {
     }
 }
 ```
-## Creating a release of this library.
-To create a release, make sure you have the [gh cli tool](https://cli.github.com) installed. We do releases from trunk, so switch to the trunk branch and pull so you have the latest. Then run `composer release` and follow the steps on screen. The release script will create a tag, update the plugin file version number, and create a release on Github. 
+## Creating a GitHub release of this library.
+To create a release, make sure you have the [gh cli tool](https://cli.github.com) installed on your machine. We do releases from trunk, so switch to the trunk branch and pull so you have the latest. Then run `composer gh-release` and follow the steps on screen. The release script will create a tag, update the plugin file version number, and create a release on GitHub. 
 
 ## Tests
 To get started with tests, run `./bin/install-wp-tests.sh`. If you are using Local.app, then the args could look something like this: `./bin/install-wp-tests.sh local root root "localhost:/Users/<your-username>/Library/Application Support/Local/run/<some-id>/mysql/mysqld.sock"` You can find the part to put after "socket:" on the Database tab in the local app for the site.
