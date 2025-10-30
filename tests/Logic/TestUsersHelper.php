@@ -224,4 +224,30 @@ class TestUsersHelper extends WP_UnitTestCase {
 		$this->assertEquals( $user1->ID, $user5->ID );
 		$this->assertEquals( $user1->user_email, $user5->user_email ); // Should return original user, not create new one
 	}
+
+	public function test_assign_authors_to_post() {
+
+		$post_id = wp_insert_post(
+			[
+				'post_title' => 'Test Post',
+			]
+		);
+
+		$user = UsersHelper::create_or_get_user(
+			[
+				'user_login' => 'test_user_login',
+			],
+			wp_rand()
+		);
+
+		$success_single = UsersHelper::assign_authors_to_post( $post_id, [ $user->ID ] );
+		$this->assertTrue( $success_single );
+		
+		$success_mulitple = UsersHelper::assign_authors_to_post( $post_id, [ $user->ID, $this->peter_parker_id ] );
+		$this->assertTrue( $success_mulitple );
+
+		$failure_empty = UsersHelper::assign_authors_to_post( $post_id, [] );
+		$this->assertInstanceOf( \WP_Error::class, $failure_empty );
+		$this->assertEquals( 'ERROR_ASSIGN_CONTRIBUTORS', $failure_empty->get_error_code() );
+	}
 }
