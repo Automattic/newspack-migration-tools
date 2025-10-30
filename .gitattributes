@@ -16,6 +16,6 @@
 /.gitignore export-ignore
 /.gitattributes export-ignore
 /.github export-ignore
-/.DS_Store export-ignore
+.DS_Store export-ignore
 
 
