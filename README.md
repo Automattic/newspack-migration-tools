@@ -10,6 +10,7 @@ The repository contains a set of WP commands to migrate different data to WordPr
 * If you use the JsonIterator class, you must have `jq` installed on your system. See [download instructions](https://jqlang.github.io/jq/download/).
 
 ## Documentation
+[Documentation on GitHub](https://github.com/Automattic/newspack-migration-tools/blob/trunk/README.md)
 
 * [Coding Conventions and Standards](./docs/coding-conventions-and-standards.md)
 

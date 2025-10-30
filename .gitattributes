@@ -1,7 +1,21 @@
-/tests export-ignore
+/bin export-ignore
 /coverage export-ignore
+/docs export-ignore
 /release export-ignore
+/tests export-ignore
+/.cache export-ignore
+/.idea export-ignore
+/.vscode export-ignore
+
+/composer.json export-ignore
+/composer.lock export-ignore
 /phpcs.xml export-ignore
 /phpunit.xml.dist export-ignore
+/gh-release.sh export-ignore
+
 /.gitignore export-ignore
 /.gitattributes export-ignore
+/.github export-ignore
+/.DS_Store export-ignore
+
+
