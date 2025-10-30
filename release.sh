@@ -146,5 +146,4 @@ main() {
 }
 
 # Run main function
-#main
-update_version 1.2.2
+main
