@@ -6,6 +6,7 @@ export GH_NO_UPDATE_NOTIFIER=1
 
 # Main file where the version number lives.
 MAIN_FILE="newspack-migration-tools.php"
+RELEASE_ZIP="release/newspack-migration-tools.zip"
 
 # Make text red.
 print_red() {
@@ -136,7 +137,7 @@ main() {
     git push && git push --tags
     printf " * Pushed changes and tags\n"
 
-    gh release create "v$new_version" --generate-notes release/newspack-migration-tools.zip
+    gh release create "v$new_version" --generate-notes "$RELEASE_ZIP"
     printf " * Created GitHub release with zip file\n"
 
     echo ""

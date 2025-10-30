@@ -11,7 +11,6 @@
 /composer.lock export-ignore
 /phpcs.xml export-ignore
 /phpunit.xml.dist export-ignore
-/gh-release.sh export-ignore
 
 /.gitignore export-ignore
 /.gitattributes export-ignore
