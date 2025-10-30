@@ -96,15 +96,24 @@ class TestUsersHelper extends WP_UnitTestCase {
 
 	public function test_create_user_core_bug() {
 
-		// Test core bug when display_name is longer then 250 chars.
+		// Test that a display name of 250 chars is OK.
+		$user = UsersHelper::create_or_get_user(
+			[
+				'display_name' => str_repeat( 'a', 250 ),
+			],
+			wp_rand()
+		);
+		$this->assertInstanceOf( 'WP_User', $user );
+
+		// Now, test that a display name of 251 chars will fail with proper error handling.
 		$this->expectException( \Exception::class );
+		$this->expectExceptionMessage( 'core bug: return was not gt 0' );
 		UsersHelper::create_or_get_user(
 			[
 				'display_name' => str_repeat( 'a', 251 ),
 			],
-			'bork'
+			wp_rand()
 		);
-
 	}
 
 	/**
