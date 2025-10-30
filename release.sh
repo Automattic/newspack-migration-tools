@@ -142,6 +142,7 @@ main() {
     echo ""
     echo "-------------------------------------"
     echo "Release v$new_version created successfully!"
+    gh release view "v$new_version" --json url --jq '.url' | cat
     echo "-------------------------------------"
 }
 
