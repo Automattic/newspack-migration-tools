@@ -119,7 +119,7 @@ class Attachments {
 			$dirname  = pathinfo( $path, PATHINFO_DIRNAME );
 			$ext      = pathinfo( $path, PATHINFO_EXTENSION );
 			$filename = pathinfo( $path, PATHINFO_FILENAME );
-			$suffix   = time() . \rand( 100, 999 );
+			$suffix   = time() . wp_rand( 100, 999 );
 
 			if ( defined( 'IMAGE_EDIT_OVERWRITE' ) && IMAGE_EDIT_OVERWRITE
 				&& isset( $backup_sizes['full-orig'] ) && $backup_sizes['full-orig']['file'] !== $basename
@@ -184,6 +184,7 @@ class Attachments {
 			$meta['height']   = $size['height'];
 			$meta['filesize'] = $saved_image['filesize'];
 
+			// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.get_intermediate_image_sizes_get_intermediate_image_sizes
 			$sizes = get_intermediate_image_sizes();
 
 			/*
