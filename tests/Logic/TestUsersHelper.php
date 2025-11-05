@@ -98,6 +98,7 @@ class TestUsersHelper extends WP_UnitTestCase {
 	 * We need to capture if wp_insert_user returns integer 0.
 	 * 
 	 * Once such example is when display_name is > 250 chars.
+	 * 
 	 * @link https://core.trac.wordpress.org/ticket/53109
 	 */
 	public function test_create_user_core_bug() {
