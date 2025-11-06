@@ -95,6 +95,35 @@ class TestUsersHelper extends WP_UnitTestCase {
 	}
 
 	/**
+	 * We need to capture if wp_insert_user returns integer 0.
+	 * 
+	 * Once such example is when display_name is > 250 chars.
+	 * 
+	 * @link https://core.trac.wordpress.org/ticket/53109
+	 */
+	public function test_create_user_core_bug() {
+
+		// Test that a display name of 250 chars is OK.
+		$user = UsersHelper::create_or_get_user(
+			[
+				'display_name' => str_repeat( 'a', 250 ),
+			],
+			wp_rand()
+		);
+		$this->assertInstanceOf( 'WP_User', $user );
+
+		// Now, test that a display name of 251 chars will fail with proper error handling.
+		$this->expectException( \Exception::class );
+		$this->expectExceptionMessage( 'wp_insert_user return was not gt 0' );
+		UsersHelper::create_or_get_user(
+			[
+				'display_name' => str_repeat( 'a', 251 ),
+			],
+			wp_rand()
+		);
+	}
+
+	/**
 	 * Test that when a user is created – the unique identifier is set.
 	 */
 	public function test_create_user_sets_unique_identifier() {
