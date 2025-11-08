@@ -363,8 +363,7 @@ class UsersHelper {
 		$user_email    = $data['user_email'] ?? '';
 		$user_nicename = $data['user_nicename'] ?? '';
 		$user_login    = $data['user_login'] ?? '';
-		$display_name  = $data['display_name'] ?? '';
-
+		$display_name  = $data['display_name'] ? self::sanitize_display_name( $data['display_name'] ) : '';
 
 		// If we don't have an email, we'll create an ugly unusable one so that we can create the user.
 		if ( empty( $user_email ) ) {
@@ -376,8 +375,8 @@ class UsersHelper {
 		if ( empty( $user_nicename ) ) {
 			$user_nicename = trim( ( $data['first_name'] ?? '' ) . ' ' . ( $data['last_name'] ?? '' ) );
 			if ( empty( $user_nicename ) ) { // Yes, that is a whitespace and not an empty string.
-				if ( ! empty( $display_name ) && ! str_contains( $display_name, '@' ) ) {
-					$user_nicename = $display_name;
+				if ( ! empty( $display_name ) ) {
+					$user_nicename = $display_name; // ok, since sanitize_display_name above will remove possible "@" (email) in string.
 				} elseif ( ! empty( $user_login ) && ! str_contains( $user_login, '@' ) ) {
 					$user_nicename = $user_login;
 				} else {
@@ -419,7 +418,7 @@ class UsersHelper {
 		$data['user_email']    = self::get_unused_fake_email( $user_email );
 		$data['user_nicename'] = self::get_unused_nicename( $user_nicename );
 		$data['user_login']    = self::get_unused_username( $user_login );
-		$data['display_name']  = self::sanitize_display_name( $display_name );
+		$data['display_name']  = $display_name;
 
 		// Add the unique identifier to the user's meta so we can find them later.
 		$data['meta_input'][ self::UNIQUE_IDENTIFIER_META_KEY ] = $unique_identifier;
