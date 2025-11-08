@@ -97,27 +97,31 @@ class TestUsersHelper extends WP_UnitTestCase {
 	/**
 	 * We need to capture if wp_insert_user returns integer 0.
 	 * 
-	 * Once such example is when display_name is > 250 chars.
+	 * Once such example is when display_name is > 250 chars (though, we now pre-sanitize this value),
+	 * but the bug can still happen for some other value if it's length is greater than
+	 * it's database column length.
 	 * 
 	 * @link https://core.trac.wordpress.org/ticket/53109
 	 */
 	public function test_create_user_core_bug() {
 
-		// Test that a display name of 250 chars is OK.
+		// Test a value within its db column length.
 		$user = UsersHelper::create_or_get_user(
 			[
-				'display_name' => str_repeat( 'a', 250 ),
+				'user_login' => 'my-login',
+				'user_activation_key' => str_repeat( 'a', 255 ),
 			],
 			wp_rand()
 		);
 		$this->assertInstanceOf( 'WP_User', $user );
 
-		// Now, test that a display name of 251 chars will fail with proper error handling.
+		// Now, test a case where a value is greater than its db column length.
 		$this->expectException( \Exception::class );
 		$this->expectExceptionMessage( 'wp_insert_user return was not gt 0' );
 		UsersHelper::create_or_get_user(
 			[
-				'display_name' => str_repeat( 'a', 251 ),
+				'user_login' => 'my-login',
+				'user_activation_key' => str_repeat( 'a', 256 ),
 			],
 			wp_rand()
 		);
