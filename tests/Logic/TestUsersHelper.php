@@ -266,4 +266,55 @@ class TestUsersHelper extends WP_UnitTestCase {
 		$this->assertInstanceOf( \WP_Error::class, $failure_empty );
 		$this->assertEquals( 'ERROR_ASSIGN_CONTRIBUTORS', $failure_empty->get_error_code() );
 	}
+
+	/**
+	 * Test temp...
+	 */
+	public function test_create_or_get_user_temp() {
+				
+		 $display_names = [
+			'empty string'        => [ '', [], false, true ], // expects error.
+			'html content'        => [ '&nbsp; <div>', [], false, true ], // expects error.
+			'normal name'         => [ 'John Smith' ], // success.
+
+			'normal name with random'  => [ 'John Smith', '/^john-smith-[0-9]{5}$/' ],
+			'long name username'    => [ str_repeat( 'José ', 13 ), '/^' . str_repeat( 'jose-', 11 ) . '[0-9]{5}$/' ],
+
+			'normal name email'  => [ 'John Smith', '/^john-smith-[0-9]{5}@example.com$/' ],
+			'long name email'    => [ str_repeat( 'José ', 21 ), '/^' . str_repeat( 'jose-', 16 ) . 'jo-[0-9]{5}@example.com$/' ],
+
+			'accented chars'      => [ 'José' ], // success.
+
+			'long name ok'        => [ str_repeat( 'A', 250 ) ], // success.
+			'long name too long'  => [ str_repeat( 'B', 251 ), [], false, true ], // expects error.
+
+			'user_nicename'       => [ 'John Smith', [ 'user_nicename' => 'john-smith' ] ], // success.
+			'user_nicename empty' => [ 'John Smith', [ 'user_nicename' => '' ], false, true ], // expects error.
+			'user_nicename html'  => [ 'John Smith', [ 'user_nicename' => '&nbsp; <div>' ], false, true ], // expects error.
+
+		];
+
+		// $display_name = time();
+		$display_name = $display_names['long name too long'][0];
+
+
+		$user_data = [
+			'display_name' => $display_name,
+		];
+		$unique_id = microtime( true );
+
+		$user1 = UsersHelper::create_or_get_user( $user_data, $unique_id );
+
+		$this->assertInstanceOf( 'WP_User', $user1 );
+
+		$this->assertEquals( $user1->user_login,    $display_name );
+		$this->assertEquals( $user1->user_nicename, $display_name );
+		// $this->assertEquals( $user1->user_email,    $display_name ); // not in scope.
+		$this->assertEquals( $user1->display_name,  $display_name );
+
+		$this->assertEquals( get_user_meta( $user1->ID, 'nickname', 'single' ),  $display_name );
+
+		// var_dump($user1);
+		// exit();
+	}
 }
