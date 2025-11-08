@@ -119,6 +119,7 @@ class Sponsors {
 		$sponsor_name = sanitize_text_field( $sponsor_name );
 
 		// Try to find existing sponsor by name
+		// phpcs:ignore WordPress.WP.DeprecatedFunctions.get_page_by_titleFound
 		$existing_sponsor = get_page_by_title( $sponsor_name, OBJECT, self::SPONSORS_POST_TYPE );
 
 		if ( $existing_sponsor ) {

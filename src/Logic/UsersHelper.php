@@ -414,6 +414,14 @@ class UsersHelper {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			throw new Exception( sprintf( 'Could not create user: %s. Context data: %s', $user_id->get_error_message(), wp_json_encode( $data ) ) );
 		}
+		if ( ! ( $user_id > 0 ) ) {
+			// wp_insert_user could return integer 0. We need to capture this case.
+			// While a WP_Error should be returned from wp_insert_user, but instead a value of "0" is returned.
+			// We need to check for this case since get_user_by needs a $user_id > 0, otherwise $wp_user will equal "false".
+			// One example is this bug: https://core.trac.wordpress.org/ticket/53109
+			throw new Exception( sprintf( 'Could not create user: %s. Context data: %s', 'wp_insert_user return was not gt 0', wp_json_encode( $data ) ) );
+		}
+
 		$wp_user = get_user_by( 'ID', $user_id );
 
 		FileLog::get_logger( 'UsersHelper' )->notice(
@@ -466,5 +474,47 @@ class UsersHelper {
 	 */
 	public static function get_short_sha_from_array( array $data ): string {
 		return substr( sha1( wp_json_encode( $data ) ), 0, 10 );
+	}
+
+	/**
+	 * Assign Authors to a Post.
+	 * 
+	 * This function will create the related 'author' taxonomy database rows using CoAuthorsPlus (our preferred plugin for managing
+	 * "multiple authors per post"). CoAuthorsPlus will create the author taxonomy relationships and also update the post's `post_author`
+	 * database column too.
+	 * 
+	 * Most likely you'll want to pass in an array of WP_User IDs as the $authors argument, so this requires the $query_type to be 'id'.
+	 * 
+	 * For other options, please see the underlying CoAuthors Plus function `add_coauthors` and $query_type ($field) options;
+	 * 
+	 * @link https://github.com/Automattic/Co-Authors-Plus/blob/30602dbd59c6cd73bd4aa3ff8a3e6eda0c1bccea/php/class-coauthors-plus.php#L1022
+	 * @link https://github.com/Automattic/Co-Authors-Plus/blob/30602dbd59c6cd73bd4aa3ff8a3e6eda0c1bccea/php/class-coauthors-plus.php#L1050-L1052
+	 *
+	 * @param int    $post_id    Post ID.
+	 * @param array  $authors    WP_User ids (preferred), but see links above for other options.
+	 * @param bool   $append     Append to existing authors. (Default false - do not append, replace existing).
+	 * @param string $query_type 'id' (for WP_User ids), but see links above for other options.
+	 *
+	 * @return bool|WP_Error True if successful, WP_Error if not.
+	 */
+	public static function assign_authors_to_post( int $post_id, array $authors, bool $append = false, string $query_type = 'id' ): bool|WP_Error {
+	
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		if ( ! is_plugin_active( 'co-authors-plus/co-authors-plus.php' ) ) {
+			return new WP_Error( 'ERROR_COAUTHORS_PLUS', 'Co-Authors Plus plugin not found. Install and activate it before using this function.' );
+		}
+
+		global $coauthors_plus;
+
+		// Assign authors to post.
+		$success = $coauthors_plus->add_coauthors( $post_id, $authors, $append, $query_type );
+		if ( ! $success ) {
+			return new WP_Error( 'ERROR_ASSIGN_CONTRIBUTORS', 'Failed to set authors. The underlying add_coauthors() function was not successful.' );
+		}
+
+		return true;
 	}
 }
