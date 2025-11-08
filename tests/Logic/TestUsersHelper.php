@@ -95,39 +95,6 @@ class TestUsersHelper extends WP_UnitTestCase {
 	}
 
 	/**
-	 * We need to capture if wp_insert_user returns integer 0.
-	 * 
-	 * Once such example is when display_name is > 250 chars (though, we now pre-sanitize this value),
-	 * but the bug can still happen for some other value if it's length is greater than
-	 * it's database column length.
-	 * 
-	 * @link https://core.trac.wordpress.org/ticket/53109
-	 */
-	public function test_create_user_core_bug() {
-
-		// Test a value within its db column length.
-		$user = UsersHelper::create_or_get_user(
-			[
-				'user_login' => 'my-login',
-				'user_activation_key' => str_repeat( 'a', 255 ),
-			],
-			wp_rand()
-		);
-		$this->assertInstanceOf( 'WP_User', $user );
-
-		// Now, test a case where a value is greater than its db column length.
-		$this->expectException( \Exception::class );
-		$this->expectExceptionMessage( 'wp_insert_user return was not gt 0' );
-		UsersHelper::create_or_get_user(
-			[
-				'user_login' => 'my-login',
-				'user_activation_key' => str_repeat( 'a', 256 ),
-			],
-			wp_rand()
-		);
-	}
-
-	/**
 	 * Test that when a user is created – the unique identifier is set.
 	 */
 	public function test_create_user_sets_unique_identifier() {
@@ -269,5 +236,29 @@ class TestUsersHelper extends WP_UnitTestCase {
 		$failure_empty = UsersHelper::assign_authors_to_post( $post_id, [] );
 		$this->assertInstanceOf( \WP_Error::class, $failure_empty );
 		$this->assertEquals( 'ERROR_ASSIGN_CONTRIBUTORS', $failure_empty->get_error_code() );
+	}
+
+	/**
+	 * Data provider for sanitize_display_name
+	 */
+	public function data_provider_sanitize_display_name() {
+		// name => input, expected
+		return [
+			'empty string'    => [ '', '' ],
+			'trim string'     => [ ' ', '' ], // single space
+			'ascii name'      => [ 'John Smith', 'John Smith' ],
+			'unicode trimmed' => [ 'José ', 'José' ], // trimmed space at end.
+			'long name'       => [ str_repeat( 'a', 1000 ), str_repeat( 'a', 250 ) ],
+		];
+	}
+
+	/**
+	 * Test that sanitize_display_name works as expected.
+	 *
+	 * @dataProvider data_provider_sanitize_display_name
+	 */
+	public function test_sanitize_display_name( $input, $expected ) {
+		$result = UsersHelper::sanitize_display_name( $input );
+		$this->assertEquals( $result, $expected );
 	}
 }

@@ -363,7 +363,7 @@ class UsersHelper {
 		$user_email    = $data['user_email'] ?? '';
 		$user_nicename = $data['user_nicename'] ?? '';
 		$user_login    = $data['user_login'] ?? '';
-		$display_name  = $data['display_name'] ? self::sanitize_display_name( $data['display_name'] ) : '';
+		$display_name  = isset( $data['display_name'] ) ? self::sanitize_display_name( $data['display_name'] ) : '';
 
 		// If we don't have an email, we'll create an ugly unusable one so that we can create the user.
 		if ( empty( $user_email ) ) {
@@ -439,8 +439,8 @@ class UsersHelper {
 			throw new Exception( sprintf( 'Could not create user: %s. Context data: %s', $user_id->get_error_message(), wp_json_encode( $data ) ) );
 		}
 		if ( ! ( $user_id > 0 ) ) {
-			// wp_insert_user might return integer 0 if an insert value has a length greater than it's database column length.
-			// see TestUsersHelper->test_create_user_core_bug docblock for more info.
+			// wp_insert_user might return integer 0 in really rare cases were a $data value has a
+			// length or charset that is not allowed per the database column's length or charset.
 			throw new Exception( sprintf( 'Could not create user: %s. Context data: %s', 'wp_insert_user return was not gt 0', wp_json_encode( $data ) ) );
 		}
 
