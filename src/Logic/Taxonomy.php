@@ -455,7 +455,7 @@ class Taxonomy {
 	 *
 	 * @param string $taxonomy                  Taxonomy name - e.g. 'post_tag'.
 	 * @param int    $assigned_to_max_num_posts Max number of posts a term can be assigned to.
-	 * @param int    $limit                     Optional limit for batching. If 0, returns all results.
+	 * @param int    $limit                     Optional limit for batching. If empty, returns all results.
 	 *
 	 * @return array Ids of terms assigned to fewer than or equal to $assigned_to_max_num_posts posts.
 	 * @throws InvalidArgumentException If the taxonomy does not exist.
