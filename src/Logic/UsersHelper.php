@@ -181,10 +181,8 @@ class UsersHelper {
 
 		$display_name = trim( $display_name );
 
-		// Don't allow email.
-		if ( is_email( $display_name ) ) {
-			$display_name = trim( mb_substr( $display_name, 0, strpos( $display_name, '@' ) ) );
-		}
+		// Don't allow email - remove everything after @ (if exists).
+		$display_name = trim( preg_replace('/@.*/u', '', $display_name) ); // multibyte safe (/u).
 
 		// Trim to 250 chars (max database column length).
 		$display_name = trim( mb_substr( $display_name, 0, 250 ) );

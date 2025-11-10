@@ -244,11 +244,14 @@ class TestUsersHelper extends WP_UnitTestCase {
 	public function data_provider_sanitize_display_name() {
 		// name => input, expected
 		return [
-			'empty string'    => [ '', '' ],
-			'trim string'     => [ ' ', '' ], // single space
-			'ascii name'      => [ 'John Smith', 'John Smith' ],
-			'unicode trimmed' => [ 'José ', 'José' ], // trimmed space at end.
-			'long name'       => [ str_repeat( 'a', 1000 ), str_repeat( 'a', 250 ) ],
+			'empty string'   => [ '', '' ],
+			'trim string'    => [ ' ', '' ], // single space
+			'ascii'          => [ 'John Smith', 'John Smith' ],
+			'email'          => [ 'someone@example.com', 'someone' ],
+			'name and email' => [ 'Joan - Reporter, someone@example.com', 'Joan - Reporter, someone' ],
+			'unicode safe 1' => [ 'Café 😀', 'Café 😀' ], // unicode chars.
+			'unicode safe 2' => [ 'Café 😀 @ Café 😀', 'Café 😀' ], // unicode chars with "@".
+			'over limit'     => [ str_repeat( 'a', 251 ), str_repeat( 'a', 250 ) ], // over db columnn max.
 		];
 	}
 
