@@ -280,12 +280,12 @@ class TestUsersHelper extends WP_UnitTestCase {
 		try {
 			$data = [
 				'display_name' => $provider['empty'][0],
-			];	
+			];  
 			$user = UsersHelper::create_or_get_user( $data, wp_rand() );
 			$this->fail( 'Expected Exception was not thrown. (Note: further tests below also stopped until this is fixed).' );
-		} catch (\InvalidArgumentException $e) {
+		} catch ( \InvalidArgumentException $e ) {
 			// Exception was thrown, as expected - continue on to further tests below.
-			$this->assertStringContainsString( 'Data array is missing one or more of the vital fields', $e->getMessage());
+			$this->assertStringContainsString( 'Data array is missing one or more of the vital fields', $e->getMessage() );
 		}
 		
 		// Plain ascii.
@@ -329,6 +329,5 @@ class TestUsersHelper extends WP_UnitTestCase {
 		$user = UsersHelper::create_or_get_user( $data, wp_rand() );
 		$this->assertInstanceOf( 'WP_User', $user );
 		$this->assertEquals( $user->display_name, $provider['limit'][1] );
-
 	}
 }
