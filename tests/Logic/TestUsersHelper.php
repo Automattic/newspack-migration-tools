@@ -239,29 +239,96 @@ class TestUsersHelper extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Data provider for sanitize_display_name
+	 * Data provider for display name tests.
 	 */
-	public function data_provider_sanitize_display_name() {
+	public function data_provider_display_name_tests() {
 		// name => input, expected
 		return [
-			'empty string'   => [ '', '' ],
-			'trim string'    => [ ' ', '' ], // single space
-			'ascii'          => [ 'John Smith', 'John Smith' ],
-			'email'          => [ 'someone@example.com', 'someone' ],
-			'name and email' => [ 'Joan - Reporter, someone@example.com', 'Joan - Reporter, someone' ],
-			'unicode safe 1' => [ 'Café 😀', 'Café 😀' ], // unicode chars.
-			'unicode safe 2' => [ 'Café 😀 @ Café 😀', 'Café 😀' ], // unicode chars with "@".
-			'over limit'     => [ str_repeat( 'a', 251 ), str_repeat( 'a', 250 ) ], // over db columnn max.
+			'empty'      => [ '', '' ],
+			'trim'       => [ ' ', '' ], // single space
+			'ascii'      => [ 'John Smith', 'John Smith' ],
+			'email'      => [ 'someone@example.com', 'someone' ],
+			'name-email' => [ 'Joan - Reporter, someone@example.com', 'Joan - Reporter, someone' ],
+			'unicode-1'  => [ 'Café 😀', 'Café 😀' ], // unicode chars.
+			'unicode-2'  => [ 'Café 😀 @ Café 😀', 'Café 😀' ], // unicode chars with "@".
+			'limit'      => [ str_repeat( 'a', 251 ), str_repeat( 'a', 250 ) ], // over db columnn max.
 		];
 	}
 
 	/**
 	 * Test that sanitize_display_name works as expected.
 	 *
-	 * @dataProvider data_provider_sanitize_display_name
+	 * @dataProvider data_provider_display_name_tests
 	 */
 	public function test_sanitize_display_name( $input, $expected ) {
 		$result = UsersHelper::sanitize_display_name( $input );
 		$this->assertEquals( $result, $expected );
+	}
+
+	/**
+	 * Test create users by display name.
+	 */
+	public function test_create_or_get_user_by_display_name() {
+
+		$provider = $this->data_provider_display_name_tests();
+
+		// Blank string causes an exception.
+		// Don't use $this->expectException() with multiple tests in same function, since it exits early
+		// upon first test "passed" - this no further code will run.  Using try/catch will allow multiple tests
+		// in same function to run.  Note: $this->fail() will also stop further execution but only if a failure
+		// happens - which someone will need to fix.  There will not be "false positives".
+		try {
+			$data = [
+				'display_name' => $provider['empty'][0],
+			];	
+			$user = UsersHelper::create_or_get_user( $data, wp_rand() );
+			$this->fail( 'Expected Exception was not thrown. (Note: further tests below also stopped until this is fixed).' );
+		} catch (\InvalidArgumentException $e) {
+			// Exception was thrown, as expected - continue on to further tests below.
+			$this->assertStringContainsString( 'Data array is missing one or more of the vital fields', $e->getMessage());
+		}
+		
+		// Plain ascii.
+		$data = [
+			'display_name' => $provider['ascii'][0],
+		];
+		$user = UsersHelper::create_or_get_user( $data, wp_rand() );
+		$this->assertInstanceOf( 'WP_User', $user );
+		$this->assertEquals( $user->display_name, $provider['ascii'][1] );
+
+		// Email.
+		$data = [
+			'display_name' => $provider['email'][0],
+		];
+		$user = UsersHelper::create_or_get_user( $data, wp_rand() );
+		$this->assertInstanceOf( 'WP_User', $user );
+		$this->assertEquals( $user->display_name, $provider['email'][1] );
+		$this->assertEquals( $user->user_nicename, 'someone' ); // user_nicename must not use email address (Bad: someoneexample-com).
+
+		// Name and email.
+		$data = [
+			'display_name' => $provider['name-email'][0],
+		];
+		$user = UsersHelper::create_or_get_user( $data, wp_rand() );
+		$this->assertInstanceOf( 'WP_User', $user );
+		$this->assertEquals( $user->display_name, $provider['name-email'][1] );
+		$this->assertEquals( $user->user_nicename, 'joan-reporter-someone' ); // user_nicename must not use email address (Bad: someoneexample-com).
+		
+		// Unicode.
+		$data = [
+			'display_name' => $provider['unicode-2'][0],
+		];
+		$user = UsersHelper::create_or_get_user( $data, wp_rand() );
+		$this->assertInstanceOf( 'WP_User', $user );
+		$this->assertEquals( $user->display_name, $provider['unicode-2'][1] );
+
+		// Over char limit.
+		$data = [
+			'display_name' => $provider['limit'][0],
+		];
+		$user = UsersHelper::create_or_get_user( $data, wp_rand() );
+		$this->assertInstanceOf( 'WP_User', $user );
+		$this->assertEquals( $user->display_name, $provider['limit'][1] );
+
 	}
 }
