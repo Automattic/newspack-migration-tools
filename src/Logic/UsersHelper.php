@@ -190,7 +190,6 @@ class UsersHelper {
 		$display_name = trim( mb_substr( $display_name, 0, 250 ) );
 
 		return $display_name;
-
 	}
 
 	/**
