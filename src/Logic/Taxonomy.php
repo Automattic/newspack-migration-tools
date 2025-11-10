@@ -455,11 +455,12 @@ class Taxonomy {
 	 *
 	 * @param string $taxonomy                  Taxonomy name - e.g. 'post_tag'.
 	 * @param int    $assigned_to_max_num_posts Max number of posts a term can be assigned to.
+	 * @param int    $limit                     Optional limit for batching. If 0, returns all results.
 	 *
 	 * @return array Ids of terms assigned to fewer than or equal to $assigned_to_max_num_posts posts.
 	 * @throws InvalidArgumentException If the taxonomy does not exist.
 	 */
-	public function get_terms_assigned_to_max_num_posts( string $taxonomy, int $assigned_to_max_num_posts ): array {
+	public function get_terms_assigned_to_max_num_posts( string $taxonomy, int $assigned_to_max_num_posts, int $limit = PHP_INT_MAX ): array {
 		if ( ! taxonomy_exists( $taxonomy ) ) {
 			throw new InvalidArgumentException( esc_html( sprintf( 'Taxonomy "%s" does not exist.', $taxonomy ) ) );
 		}
@@ -474,10 +475,12 @@ class Taxonomy {
 					LEFT JOIN $wpdb->term_taxonomy tt ON t.term_id = tt.term_id
 					LEFT JOIN $wpdb->term_relationships tr ON tt.term_taxonomy_id = tr.term_taxonomy_id
 				WHERE tt.taxonomy = %s
-			GROUP BY t.term_id
-			HAVING COUNT(tr.object_id) <= %d",
+				GROUP BY t.term_id
+				HAVING COUNT(tr.object_id) <= %d
+				LIMIT %d",
 				$taxonomy,
-				$assigned_to_max_num_posts
+				$assigned_to_max_num_posts,
+				$limit
 			)
 		);
 	}
