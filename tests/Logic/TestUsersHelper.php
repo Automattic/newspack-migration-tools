@@ -251,7 +251,7 @@ class TestUsersHelper extends WP_UnitTestCase {
 			'name-email' => [ 'Joan - Reporter, someone@example.com', 'Joan - Reporter, someone' ],
 			'unicode-1'  => [ 'Café 😀', 'Café 😀' ], // unicode chars.
 			'unicode-2'  => [ 'Café 😀 @ Café 😀', 'Café 😀' ], // unicode chars with "@".
-			'limit'      => [ str_repeat( 'a', 251 ), str_repeat( 'a', 250 ) ], // over db columnn max.
+			'limit'      => [ str_repeat( 'a', 251 ), str_repeat( 'a', 250 ) ], // over db column max.
 		];
 	}
 
@@ -280,7 +280,7 @@ class TestUsersHelper extends WP_UnitTestCase {
 		try {
 			$data = [
 				'display_name' => $provider['empty'][0],
-			];  
+			];
 			$user = UsersHelper::create_or_get_user( $data, wp_rand() );
 			$this->fail( 'Expected Exception was not thrown. (Note: further tests below also stopped until this is fixed).' );
 		} catch ( \InvalidArgumentException $e ) {

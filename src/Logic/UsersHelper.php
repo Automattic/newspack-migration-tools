@@ -436,7 +436,7 @@ class UsersHelper {
 			throw new Exception( sprintf( 'Could not create user: %s. Context data: %s', $user_id->get_error_message(), wp_json_encode( $data ) ) );
 		}
 		if ( ! ( $user_id > 0 ) ) {
-			// wp_insert_user might return integer 0 in really rare cases were a $data value has a
+			// wp_insert_user might return integer 0 in really rare cases where a $data value has a
 			// length or charset that is not allowed per the database column's length or charset.
 			throw new Exception( sprintf( 'Could not create user: %s. Context data: %s', 'wp_insert_user return was not gt 0', wp_json_encode( $data ) ) );
 		}
