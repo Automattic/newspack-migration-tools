@@ -171,6 +171,26 @@ class UsersHelper {
 	}
 
 	/**
+	 * Sanitize the display_name.
+	 *
+	 * @param string $display_name The display_name to sanitize.
+	 *
+	 * @return string The sanitized display_name.
+	 */
+	public static function sanitize_display_name( string $display_name ): string {
+
+		$display_name = trim( $display_name );
+
+		// Don't allow email - remove everything after @ (if exists).
+		$display_name = trim( preg_replace( '/@.*/u', '', $display_name ) ); // multibyte safe (/u).
+
+		// Trim to 250 chars (max database column length).
+		$display_name = trim( mb_substr( $display_name, 0, 250 ) );
+
+		return $display_name;
+	}
+
+	/**
 	 * Sanitize the username/user_login the same way that wp_insert_user() sanitizes it.
 	 *
 	 * @param string $user_login The username to sanitize.
@@ -340,7 +360,7 @@ class UsersHelper {
 		$user_email    = $data['user_email'] ?? '';
 		$user_nicename = $data['user_nicename'] ?? '';
 		$user_login    = $data['user_login'] ?? '';
-
+		$display_name  = isset( $data['display_name'] ) ? self::sanitize_display_name( $data['display_name'] ) : '';
 
 		// If we don't have an email, we'll create an ugly unusable one so that we can create the user.
 		if ( empty( $user_email ) ) {
@@ -352,8 +372,8 @@ class UsersHelper {
 		if ( empty( $user_nicename ) ) {
 			$user_nicename = trim( ( $data['first_name'] ?? '' ) . ' ' . ( $data['last_name'] ?? '' ) );
 			if ( empty( $user_nicename ) ) { // Yes, that is a whitespace and not an empty string.
-				if ( ! empty( $data['display_name'] ) ) {
-					$user_nicename = $data['display_name'];
+				if ( ! empty( $display_name ) ) {
+					$user_nicename = $display_name; // ok, since sanitize_display_name above will remove possible "@" (email) in string.
 				} elseif ( ! empty( $user_login ) && ! str_contains( $user_login, '@' ) ) {
 					$user_nicename = $user_login;
 				} else {
@@ -366,7 +386,7 @@ class UsersHelper {
 		$user_login_options = [
 			$user_login,
 			$user_nicename,
-			$data['display_name'] ?? '',
+			$display_name,
 
 			// Hash the whole array to get an ugly, but unique username.
 			self::get_short_sha_from_array( $data ),
@@ -395,6 +415,7 @@ class UsersHelper {
 		$data['user_email']    = self::get_unused_fake_email( $user_email );
 		$data['user_nicename'] = self::get_unused_nicename( $user_nicename );
 		$data['user_login']    = self::get_unused_username( $user_login );
+		$data['display_name']  = $display_name;
 
 		// Add the unique identifier to the user's meta so we can find them later.
 		$data['meta_input'][ self::UNIQUE_IDENTIFIER_META_KEY ] = $unique_identifier;
@@ -415,10 +436,8 @@ class UsersHelper {
 			throw new Exception( sprintf( 'Could not create user: %s. Context data: %s', $user_id->get_error_message(), wp_json_encode( $data ) ) );
 		}
 		if ( ! ( $user_id > 0 ) ) {
-			// wp_insert_user could return integer 0. We need to capture this case.
-			// While a WP_Error should be returned from wp_insert_user, but instead a value of "0" is returned.
-			// We need to check for this case since get_user_by needs a $user_id > 0, otherwise $wp_user will equal "false".
-			// One example is this bug: https://core.trac.wordpress.org/ticket/53109
+			// wp_insert_user might return integer 0 in really rare cases where a $data value has a
+			// length or charset that is not allowed per the database column's length or charset.
 			throw new Exception( sprintf( 'Could not create user: %s. Context data: %s', 'wp_insert_user return was not gt 0', wp_json_encode( $data ) ) );
 		}
 
