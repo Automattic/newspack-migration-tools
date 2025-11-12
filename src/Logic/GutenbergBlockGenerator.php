@@ -182,7 +182,7 @@ class GutenbergBlockGenerator {
 		foreach ( $attachment_posts as $attachment_post ) {
 			// Priority: custom caption → attachment excerpt → attachment title
 			if ( ! empty( $custom_captions[ $attachment_post->ID ] ) ) {
-				$caption = $custom_captions[ $attachment_post->ID ];
+				$caption = wp_kses_post( $custom_captions[ $attachment_post->ID ] );
 			} elseif ( ! empty( $attachment_post->post_excerpt ) ) {
 				$caption = $attachment_post->post_excerpt;
 			} else {
@@ -296,7 +296,7 @@ class GutenbergBlockGenerator {
 		// Determine caption to use: custom_caption takes priority, then attachment excerpt
 		$caption_text = null;
 		if ( null !== $custom_caption ) {
-			$caption_text = $custom_caption;
+			$caption_text = wp_kses_post( $custom_caption );
 		} elseif ( ! empty( $attachment_post->post_excerpt ) ) {
 			$caption_text = $attachment_post->post_excerpt;
 		}
