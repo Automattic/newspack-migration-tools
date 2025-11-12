@@ -192,7 +192,7 @@ class GutenbergBlockGenerator {
 			$slideshow_content .= '<li class="wp-block-jetpack-slideshow_slide swiper-slide">
             <figure>
             <img alt="' . $attachment_post->post_title . '" class="wp-block-jetpack-slideshow_image wp-image-' . $attachment_post->ID . '" data-id="' . $attachment_post->ID . '" src="' . wp_get_attachment_url( $attachment_post->ID ) . '"/>
-            <figcaption class="wp-block-jetpack-slideshow_caption gallery-caption">' . $caption . '</figcaption>
+            <figcaption class="wp-block-jetpack-slideshow_caption gallery-caption">' . wp_kses_post( $caption ) . '</figcaption>
             </figure>
             </li>';
 		}
@@ -301,7 +301,7 @@ class GutenbergBlockGenerator {
 			$caption_text = $attachment_post->post_excerpt;
 		}
 
-		$caption_tag   = ! empty( $caption_text ) && ! $hide_caption ? '<figcaption class="wp-element-caption">' . $caption_text . '</figcaption>' : '';
+		$caption_tag   = ! empty( $caption_text ) && ! $hide_caption ? '<figcaption class="wp-element-caption">' . wp_kses_post( $caption_text ) . '</figcaption>' : '';
 		$image_alt     = get_post_meta( $attachment_post->ID, '_wp_attachment_image_alt', true );
 		$image_url     = Attachments::get_attachment_image_src( $attachment_post->ID, $size )[0];
 		$attachment_id = $attachment_post->ID;
