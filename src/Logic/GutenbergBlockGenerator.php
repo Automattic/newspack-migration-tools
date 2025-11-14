@@ -148,14 +148,15 @@ class GutenbergBlockGenerator {
 	/**
 	 * Generate a Jetpack Slideshow Block.
 	 *
-	 * @param int[]     $attachment_ids Attachments IDs to be used in the tiled gallery.
-	 * @param string    $transition     Slideshow transition (slide or fade).
-	 * @param int|false $autoplay       False de disable, on the delay in seconds.
-	 * @param string    $image_size     Image size (thumbnail, medium, large, full).
+	 * @param int[]     $attachment_ids   Attachments IDs to be used in the tiled gallery.
+	 * @param string    $transition       Slideshow transition (slide or fade).
+	 * @param int|false $autoplay         False de disable, on the delay in seconds.
+	 * @param string    $image_size       Image size (thumbnail, medium, large, full).
+	 * @param array     $custom_captions  Optional associative array of custom captions keyed by attachment ID. If provided, will use this caption instead of the attachment excerpt/title.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_jetpack_slideshow( array $attachment_ids, $transition = 'slide', $autoplay = false, $image_size = 'large' ) {
+	public function get_jetpack_slideshow( array $attachment_ids, $transition = 'slide', $autoplay = false, $image_size = 'large', array $custom_captions = [] ) {
 		$data_autoplay = is_numeric( $autoplay ) ? 'data-autoplay="true" data-delay="' . $autoplay . '"' : '';
 		$data_effect   = 'data-effect="' . $transition . '"';
 
@@ -179,7 +180,14 @@ class GutenbergBlockGenerator {
         ';
 
 		foreach ( $attachment_posts as $attachment_post ) {
-			$caption = ! empty( $attachment_post->post_excerpt ) ? $attachment_post->post_excerpt : $attachment_post->post_title;
+			// Priority: custom caption → attachment excerpt → attachment title
+			if ( ! empty( $custom_captions[ $attachment_post->ID ] ) ) {
+				$caption = wp_kses_post( $custom_captions[ $attachment_post->ID ] );
+			} elseif ( ! empty( $attachment_post->post_excerpt ) ) {
+				$caption = $attachment_post->post_excerpt;
+			} else {
+				$caption = $attachment_post->post_title;
+			}
 
 			$slideshow_content .= '<li class="wp-block-jetpack-slideshow_slide swiper-slide">
             <figure>
@@ -274,16 +282,26 @@ class GutenbergBlockGenerator {
 	 * @param ?string  $classname              Media HTML class.
 	 * @param ?string  $align                  Image alignment (left, right).
 	 * @param ?string  $custom_link            If provided, will set custom link. Overrides $link_to_attachment_url.
+	 * @param bool     $hide_caption           Whether to hide the caption. Defaults to false.
+	 * @param ?string  $custom_caption         If provided, will use this caption instead of the attachment excerpt.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_image( $attachment_post, $size = 'full', $link_to_attachment_url = true, $classname = null, $align = null, $custom_link = null, $hide_caption = false ) {
+	public function get_image( $attachment_post, $size = 'full', $link_to_attachment_url = true, $classname = null, $align = null, $custom_link = null, $hide_caption = false, $custom_caption = null ) {
 		// Validate size.
 		if ( ! in_array( $size, [ 'thumbnail', 'medium', 'large', 'full' ] ) ) {
 			$size = 'full';
 		}
 
-		$caption_tag   = ! empty( $attachment_post->post_excerpt ) && ! $hide_caption ? '<figcaption class="wp-element-caption">' . $attachment_post->post_excerpt . '</figcaption>' : '';
+		// Determine caption to use: custom_caption takes priority, then attachment excerpt
+		$caption_text = null;
+		if ( null !== $custom_caption ) {
+			$caption_text = wp_kses_post( $custom_caption );
+		} elseif ( ! empty( $attachment_post->post_excerpt ) ) {
+			$caption_text = $attachment_post->post_excerpt;
+		}
+
+		$caption_tag   = ! empty( $caption_text ) && ! $hide_caption ? '<figcaption class="wp-element-caption">' . $caption_text . '</figcaption>' : '';
 		$image_alt     = get_post_meta( $attachment_post->ID, '_wp_attachment_image_alt', true );
 		$image_url     = Attachments::get_attachment_image_src( $attachment_post->ID, $size )[0];
 		$attachment_id = $attachment_post->ID;
