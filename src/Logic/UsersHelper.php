@@ -536,4 +536,44 @@ class UsersHelper {
 
 		return true;
 	}
+
+	/**
+	 * Reassign authorship of post from one author to another. Makes sure that additional coauthors are preserved.
+	 *
+	 * @param int $post_id      Post ID.
+	 * @param int $from_user_id User ID to reassign from.
+	 * @param int $to_user_id   User ID to reassign to.
+	 *
+	 * @return bool|null|WP_Error True if reassignment was successful. Null if $from_user_id is not one of post's coauthors.
+	 *                            WP_Error no coauthors are found for post or assignment fails.
+	 */
+	public static function reassign_author( int $post_id, int $from_user_id, int $to_user_id ): bool|null|WP_Error {
+		// Get current authors for the post.
+		$current_authors = get_coauthors( $post_id );
+
+		// If no authors found (it might mean that author terms are missing on a legacy author setup, and that `wp co-authors-plus create-author-terms-for-posts` should be run first).
+		if ( empty( $current_authors ) ) {
+			return new WP_Error( 'ERROR_NO_AUTHORS', sprintf( 'No authors found for post ID %d.', $post_id ) );
+		}
+
+		// Get $new_author_ids.
+		$is_from_user_author = false;
+		$new_author_ids      = [];
+		foreach ( $current_authors as $author ) {
+			if ( $author->ID == $from_user_id ) {
+				$new_author_ids[]    = $to_user_id;
+				$is_from_user_author = true;
+			} else {
+				$new_author_ids[] = $author->ID;
+			}
+		}
+
+		// $from_user_id is not an author.
+		if ( false === $is_from_user_author ) {
+			return null;
+		}
+
+		// Assign new authors.
+		return self::assign_authors_to_post( $post_id, $new_author_ids );
+	}
 }
