@@ -24,7 +24,7 @@ class PublishPressHelper {
 
 	 * @param int    $post_id   Post ID.
 	 * @param string $status    Options: draft, trash, or delete.
-	 * @param int    $epoch_gmt Expiration date in GMT epoch time. PHP: date( 'U' ) format.
+	 * @param int    $epoch_gmt Expiration date in GMT epoch time.
 	 * 
 	 * @return bool|WP_Error  True or WP_Error.
 	 */
