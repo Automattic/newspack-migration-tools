@@ -5,6 +5,8 @@
 
 namespace Newspack\MigrationTools\Logic;
 
+use WP_Error;
+
 /**
  * PublishPressHelper migration logic.
  */
@@ -24,12 +26,12 @@ class PublishPressHelper {
 	 * @param string $status    Options: draft, trash, or delete.
 	 * @param int    $epoch_gmt Expiration date in GMT epoch time. PHP: date( 'U' ) format.
 	 * 
-	 * @return bool  Success or failure.
+	 * @return bool|WP_Error  True or WP_Error.
 	 */
-	public static function set_post_expiration( int $post_id, string $status, int $epoch_gmt ): bool {
+	public static function set_post_expiration( int $post_id, string $status, int $epoch_gmt ): bool|WP_Error {
 		
 		if ( ! defined( 'PUBLISHPRESS_FUTURE_LOADED' ) || ! defined( '\PublishPress\Future\Modules\Expirator\HooksAbstract::ACTION_SCHEDULE_POST_EXPIRATION' ) ) {
-			return false;
+			return new WP_Error( 'ERROR_PUBLISHPRESS', 'PublishPress Future ( post-expirator ) not loaded.' );
 		}
 
 		$options = [
