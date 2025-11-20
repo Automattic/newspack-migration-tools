@@ -546,15 +546,8 @@ class UsersHelper {
 	 *
 	 * @return bool|null|WP_Error True if reassignment was successful. Null if $from_user_id is not one of post's coauthors.
 	 *                            WP_Error no coauthors are found for post or assignment fails.
-	 *
-	 * @throws Exception If Co-Authors Plus plugin is not active.
 	 */
 	public static function reassign_author( int $post_id, int $from_user_id, int $to_user_id ): bool|null|WP_Error {
-		// Validate CAP is available.
-		if ( ! is_plugin_active( 'co-authors-plus/co-authors-plus.php' ) || ! function_exists( 'get_coauthors' ) ) {
-			throw new Exception( 'Co-Authors Plus plugin is not active.' );
-		}
-
 		// Get current authors for the post.
 		$current_authors = get_coauthors( $post_id );
 
