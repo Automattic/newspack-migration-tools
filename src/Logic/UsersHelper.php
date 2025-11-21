@@ -591,6 +591,13 @@ class UsersHelper {
 	 */
 	public static function validate_co_authors_plus( $guest_authors = false ): bool|WP_Error {
 	
+		// Only run this function once, as long as argument(s) are the same.
+		static $validated = [];
+		$args_hash = wp_hash( serialize( func_get_args() ) );
+		if ( isset( $validated[$args_hash] ) ) {
+			return $validated[$args_hash];
+		}
+
 		if ( ! function_exists( 'is_plugin_active' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
@@ -615,6 +622,6 @@ class UsersHelper {
 			return new WP_Error( 'ERROR_COAUTHORS_PLUS_GAS', 'Co-Authors Plus Guest Authors not set.' );
 		}
 
-		return true;        
+		return ( $validated[$args_hash] = true );
 	}
 }
