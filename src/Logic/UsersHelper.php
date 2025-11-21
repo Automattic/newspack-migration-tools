@@ -593,9 +593,9 @@ class UsersHelper {
 	
 		// Only run this function once, as long as argument(s) are the same.
 		static $validated = [];
-		$args_hash = wp_hash( serialize( func_get_args() ) );
-		if ( isset( $validated[$args_hash] ) ) {
-			return $validated[$args_hash];
+		$args_hash        = wp_hash( wp_json_encode( func_get_args() ) );
+		if ( isset( $validated[ $args_hash ] ) ) {
+			return $validated[ $args_hash ];
 		}
 
 		if ( ! function_exists( 'is_plugin_active' ) ) {
@@ -622,6 +622,8 @@ class UsersHelper {
 			return new WP_Error( 'ERROR_COAUTHORS_PLUS_GAS', 'Co-Authors Plus Guest Authors not set.' );
 		}
 
-		return ( $validated[$args_hash] = true );
+		$validated[ $args_hash ] = true;
+		
+		return $validated[ $args_hash ];
 	}
 }
