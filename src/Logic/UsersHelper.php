@@ -518,7 +518,8 @@ class UsersHelper {
 	 */
 	public static function assign_authors_to_post( int $post_id, array $authors, bool $append = false, string $query_type = 'id' ): bool|WP_Error {
 	
-		if( true !== ( $validate_cap = self::validate_co_authors_plus() ) ) {
+		$validate_cap = self::validate_co_authors_plus();
+		if ( true !== $validate_cap ) {
 			return $validate_cap;
 		}
 
@@ -545,7 +546,8 @@ class UsersHelper {
 	 */
 	public static function reassign_author( int $post_id, int $from_user_id, int $to_user_id ): bool|null|WP_Error {
 
-		if( true !== ( $validate_cap = self::validate_co_authors_plus() ) ) {
+		$validate_cap = self::validate_co_authors_plus();
+		if ( true !== $validate_cap ) {
 			return $validate_cap;
 		}
 
@@ -601,11 +603,11 @@ class UsersHelper {
 			return new WP_Error( 'ERROR_COAUTHORS_PLUS_OBJ', 'Co-Authors Plus global is not set.' );
 		}
 		
-		if( ! method_exists( $GLOBALS['coauthors_plus'], 'add_coauthors' ) ) {
+		if ( ! method_exists( $GLOBALS['coauthors_plus'], 'add_coauthors' ) ) {
 			return new WP_Error( 'ERROR_COAUTHORS_PLUS_ADD', 'Co-Authors Plus method add_coauthors does not exist.' );
 		}
 
-		if( ! function_exists( '\get_coauthors' ) ) {
+		if ( ! function_exists( '\get_coauthors' ) ) {
 			return new WP_Error( 'ERROR_COAUTHORS_PLUS_GET', 'Co-Authors Plus function get_coauthors does not exist.' );
 		}
 
@@ -613,6 +615,6 @@ class UsersHelper {
 			return new WP_Error( 'ERROR_COAUTHORS_PLUS_GAS', 'Co-Authors Plus Guest Authors not set.' );
 		}
 
-		return true;		
+		return true;        
 	}
 }
