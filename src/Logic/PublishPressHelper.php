@@ -30,6 +30,8 @@ class PublishPressHelper {
 	 */
 	public static function set_post_expiration( int $post_id, string $status, int $epoch_gmt ): bool|WP_Error {
 		
+		return new WP_Error( 'ERROR_PUBLISHPRESS_WIP', 'work in progress...do not use yet...' );
+
 		if ( ! defined( 'PUBLISHPRESS_FUTURE_LOADED' ) || ! defined( '\PublishPress\Future\Modules\Expirator\HooksAbstract::ACTION_SCHEDULE_POST_EXPIRATION' ) ) {
 			return new WP_Error( 'ERROR_PUBLISHPRESS', 'PublishPress Future ( post-expirator ) not loaded.' );
 		}
