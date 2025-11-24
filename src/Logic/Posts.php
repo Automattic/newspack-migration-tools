@@ -789,4 +789,35 @@ SQL;
 
 		return $result;
 	}
+
+	/**
+	 * Shorthand for updating a post without touching the post_modified and post_modified_gmt fields,
+	 * but it saves a revision before the update.
+	 *
+	 * Parameters are the same as for wp_update_post.
+	 *
+	 * @static
+	 * @access public
+	 *
+	 * @uses \Newspack\MigrationTools\Hooks\PostUpdateHook
+	 * @see https://developer.wordpress.org/reference/functions/wp_update_post/
+	 *
+	 * @param array|object $postarr          Post data. Arrays are expected to be escaped, objects are not. Default array. ID key or property is required. @see wp_update_post().
+	 * @param bool         $wp_error         @see wp_update_post(). Optional. Whether to return a WP_Error on failure. Default false.
+	 * @param bool         $fire_after_hooks @see wp_update_post(). Optional. Whether to fire the after insert hooks. Default true.
+	 * @return int|WP_Error The post ID on success. The value 0 or WP_Error on failure.
+	 */
+	public static function update_post_without_modified_date_with_review( array|object $postarr, bool $wp_error = false, bool $fire_after_hooks = true ) {
+		// Validate $postarr['ID'] is set.
+		if ( ! isset( $postarr['ID'] ) ) {
+			return new WP_Error( 'missing_post_id', 'Post ID is required.' );
+		}
+
+		$post_id = is_array( $postarr ) ? $postarr['ID'] : $postarr->ID;
+
+		// Save revision before update.
+		wp_save_post_revision( $post_id );
+
+		return self::update_post_without_modified_date( $postarr, $wp_error, $fire_after_hooks );
+	}
 }
