@@ -808,12 +808,16 @@ SQL;
 	 * @return int|WP_Error The post ID on success. The value 0 or WP_Error on failure.
 	 */
 	public static function update_post_without_modified_date_with_review( array|object $postarr, bool $wp_error = false, bool $fire_after_hooks = true ) {
-		// Validate $postarr['ID'] is set.
-		if ( ! isset( $postarr['ID'] ) ) {
+		// Validate if $postarr ID key/property is set.
+		if ( is_array( $postarr ) ) {
+			$post_id = $postarr['ID'] ?? null;
+		} else {
+			$post_id = $postarr->ID ?? null;
+		}
+		
+		if ( ! $post_id ) {
 			return new WP_Error( 'missing_post_id', 'Post ID is required.' );
 		}
-
-		$post_id = is_array( $postarr ) ? $postarr['ID'] : $postarr->ID;
 
 		// Save revision before update.
 		wp_save_post_revision( $post_id );
