@@ -27,8 +27,8 @@ class WpCliCommands {
 			PostFeaturedVideoMigrator::class,
 			PostsMigrator::class,
 			SettingsMigrator::class,
-			SourcePermalink::class,
 			ShortcodesMigrator::class,
+			SourcePermalink::class,
 			WooCommMigrator::class,
 		];
 
