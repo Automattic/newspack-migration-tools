@@ -3,7 +3,9 @@
  * Helper to save and retrieve source permalink paths for posts and terms.
  *
  * A source permalink is the original path of a post or term from the source site.
- * For example /news/some-article-title or /category/some-category. @see docs/source-permalinks.md Full documentation with usage examples.
+ * For example /news/some-article-title or /category/some-category.
+ *
+ * @see docs/source-permalinks.md Full documentation with usage examples
  *
  * @package Newspack\MigrationTools
  */

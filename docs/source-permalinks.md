@@ -102,6 +102,35 @@ You can also output as CSV for easy spreadsheet viewing:
 wp newspack-migration-tools source-permalink post list --format=csv > posts.csv
 ```
 
+### Find URL mismatches
+
+These commands show only posts or terms where the source permalink doesn't match the current WordPress URL. Super useful for debugging URL changes or finding content that needs redirects.
+
+```bash
+# List posts with mismatched URLs
+wp newspack-migration-tools source-permalink post list-mismatches
+
+# List terms with mismatched URLs
+wp newspack-migration-tools source-permalink term list-mismatches
+```
+
+The comparison is exact (after normalizing trailing slashes), so `/news/article` and `/blog/article` would show up as a mismatch, but `/news/article` and `/news/article/` are considered the same.
+
+Like the regular list commands, these support all the same options:
+
+```bash
+# Batch through mismatches
+wp newspack-migration-tools source-permalink post list-mismatches --num-items=50
+
+# Show full URLs instead of paths
+wp newspack-migration-tools source-permalink post list-mismatches --source-domain=oldsite.com
+
+# Export to CSV
+wp newspack-migration-tools source-permalink post list-mismatches --format=csv > mismatches.csv
+```
+
+If you get "No mismatches found in this batch" - great! That means your URLs stayed consistent during migration.
+
 ### Delete source permalinks
 
 When you're done with the migration and don't need the source permalinks anymore, clean them up:

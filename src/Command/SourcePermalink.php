@@ -4,7 +4,9 @@
  *
  * Provides commands to retrieve, list, and delete source permalink metadata
  * that is stored during content migration. Source permalinks represent the
- * original URLs from the source site before migration to WordPress. @see docs/source-permalinks.md Full documentation with usage examples.
+ * original URLs from the source site before migration to WordPress.
+ *
+ * @see docs/source-permalinks.md Full documentation with usage examples
  *
  * @package Newspack\MigrationTools
  */
@@ -115,6 +117,32 @@ class SourcePermalink implements WpCliCommandInterface {
 				[ self::class, 'term_list' ],
 				[
 					'shortdesc' => 'List all terms that have a source permalink.',
+					'synopsis'  => [
+						$term_display_field,
+						$source_domain_arg,
+						$format_arg,
+						...BatchLogic::get_batch_args(),
+					],
+				],
+			],
+			[
+				'newspack-migration-tools source-permalink post list-mismatches',
+				[ self::class, 'post_list_mismatches' ],
+				[
+					'shortdesc' => 'List posts where the source permalink does not match the current WordPress permalink.',
+					'synopsis'  => [
+						$post_display_field,
+						$source_domain_arg,
+						$format_arg,
+						...BatchLogic::get_batch_args(),
+					],
+				],
+			],
+			[
+				'newspack-migration-tools source-permalink term list-mismatches',
+				[ self::class, 'term_list_mismatches' ],
+				[
+					'shortdesc' => 'List terms where the source permalink does not match the current WordPress permalink.',
 					'synopsis'  => [
 						$term_display_field,
 						$source_domain_arg,
@@ -267,10 +295,11 @@ class SourcePermalink implements WpCliCommandInterface {
 
 			$source_permalink = SourcePermalinkHelper::get_post_source_permalink( $post_id );
 			$wp_permalink     = get_permalink( $post->ID );
+			$wp_path          = SourcePermalinkHelper::ensure_path_format( $wp_permalink );
 
 			$data[] = [
 				'post_id'               => $post_id,
-				'wp_path'               => empty( $source_domain ) ? SourcePermalinkHelper::ensure_path_format( $wp_permalink ) : $wp_permalink,
+				'wp_path'               => empty( $source_domain ) ? untrailingslashit( $wp_path ) : $wp_permalink,
 				'source_permalink_path' => self::maybe_convert_to_url( $source_permalink, $source_domain ),
 			];
 		}
@@ -420,6 +449,199 @@ class SourcePermalink implements WpCliCommandInterface {
 
 			return;
 		}
+
+		$format = $assoc_args['format'] ?? 'table';
+		$fields = $assoc_args['fields'] ?? 'term_id,taxonomy,wp_path,source_permalink_path';
+		WP_CLI\Utils\format_items( $format, $data, explode( ',', $fields ) );
+	}
+
+	/**
+	 * List posts where the source permalink does not match the current WordPress permalink.
+	 *
+	 * Queries all posts with source permalinks and filters to show only those where
+	 * the source path differs from the current WordPress path. Useful for debugging
+	 * URL changes and identifying redirect opportunities.
+	 *
+	 * Uses exact string comparison. Future enhancements could include:
+	 * - Case-insensitive comparison
+	 * - Ignoring trailing slashes
+	 * - Partial/fuzzy matching
+	 *
+	 * @todo Consider adding fuzzy matching options (case-insensitive, trailing slash handling).
+	 *
+	 * @param array $pos_args   Positional arguments (unused).
+	 * @param array $assoc_args Associative arguments. Optional: 'source-domain', 'field', 'format',
+	 *                          'start', 'end', 'num-items'.
+	 *
+	 * @return void
+	 */
+	public static function post_list_mismatches( array $pos_args, array $assoc_args ): void {
+		global $wpdb;
+
+		$batch_args    = BatchLogic::validate_and_get_batch_args( $assoc_args );
+		$source_domain = $assoc_args['source-domain'] ?? '';
+
+		// First get total count.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$total_posts = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = %s",
+				SourcePermalinkHelper::POSTS_META_KEY
+			)
+		);
+
+		if ( 0 === $total_posts ) {
+			WP_CLI::warning( 'No posts found with source permalinks.' );
+			return;
+		}
+
+		// Calculate offset and limit for SQL query.
+		$offset = $batch_args['start'] - 1;
+		$limit  = min( $batch_args['end'], $total_posts ) - $batch_args['start'];
+
+		if ( $offset >= $total_posts ) {
+			WP_CLI::warning( sprintf( 'Start index %d exceeds total posts %d.', $batch_args['start'], $total_posts ) );
+			return;
+		}
+
+		// Query for post IDs with LIMIT/OFFSET.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$post_ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s ORDER BY post_id LIMIT %d OFFSET %d",
+				SourcePermalinkHelper::POSTS_META_KEY,
+				$limit,
+				$offset
+			)
+		);
+
+		// Build data array and filter to mismatches.
+		$data = [];
+		foreach ( $post_ids as $post_id ) {
+			$post = get_post( $post_id );
+			if ( empty( $post ) ) {
+				continue;
+			}
+
+			$source_permalink = SourcePermalinkHelper::get_post_source_permalink( $post_id );
+			$wp_permalink     = get_permalink( $post->ID );
+			$wp_path          = SourcePermalinkHelper::ensure_path_format( $wp_permalink );
+
+			// Only include if paths don't match (exact comparison, normalized).
+			if ( untrailingslashit( $source_permalink ) !== untrailingslashit( $wp_path ) ) {
+				$data[] = [
+					'post_id'               => $post_id,
+					'wp_path'               => empty( $source_domain ) ? untrailingslashit( $wp_path ) : $wp_permalink,
+					'source_permalink_path' => self::maybe_convert_to_url( $source_permalink, $source_domain ),
+				];
+			}
+		}
+
+		if ( empty( $data ) ) {
+			WP_CLI::success( 'No mismatches found in this batch.' );
+			return;
+		}
+
+		WP_CLI::line( sprintf( 'Found %d mismatches in batch (showing posts %d to %d of %d total).', count( $data ), $batch_args['start'], min( $batch_args['end'] - 1, $total_posts ), $total_posts ) );
+
+		$format = $assoc_args['format'] ?? 'table';
+		$fields = $assoc_args['fields'] ?? 'post_id,wp_path,source_permalink_path';
+		WP_CLI\Utils\format_items( $format, $data, explode( ',', $fields ) );
+	}
+
+	/**
+	 * List terms where the source permalink does not match the current WordPress permalink.
+	 *
+	 * Queries all terms with source permalinks and filters to show only those where
+	 * the source path differs from the current WordPress path. Useful for debugging
+	 * URL changes and identifying redirect opportunities.
+	 *
+	 * Uses exact string comparison. Future enhancements could include:
+	 * - Case-insensitive comparison
+	 * - Ignoring trailing slashes
+	 * - Partial/fuzzy matching
+	 *
+	 * @todo Consider adding fuzzy matching options (case-insensitive, trailing slash handling).
+	 *
+	 * @param array $pos_args   Positional arguments (unused).
+	 * @param array $assoc_args Associative arguments. Optional: 'source-domain', 'field', 'format',
+	 *                          'start', 'end', 'num-items'.
+	 *
+	 * @return void
+	 */
+	public static function term_list_mismatches( array $pos_args, array $assoc_args ): void {
+		global $wpdb;
+
+		$batch_args    = BatchLogic::validate_and_get_batch_args( $assoc_args );
+		$source_domain = $assoc_args['source-domain'] ?? '';
+
+		// First get total count.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$total_terms = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->termmeta} WHERE meta_key = %s",
+				SourcePermalinkHelper::TERMS_META_KEY
+			)
+		);
+
+		if ( 0 === $total_terms ) {
+			WP_CLI::warning( 'No terms found with source permalinks.' );
+			return;
+		}
+
+		// Calculate offset and limit for SQL query.
+		$offset = $batch_args['start'] - 1;
+		$limit  = min( $batch_args['end'], $total_terms ) - $batch_args['start'];
+
+		if ( $offset >= $total_terms ) {
+			WP_CLI::warning( sprintf( 'Start index %d exceeds total terms %d.', $batch_args['start'], $total_terms ) );
+			return;
+		}
+
+		// Query for term IDs with LIMIT/OFFSET.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$term_ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT term_id FROM {$wpdb->termmeta} WHERE meta_key = %s ORDER BY term_id LIMIT %d OFFSET %d",
+				SourcePermalinkHelper::TERMS_META_KEY,
+				$limit,
+				$offset
+			)
+		);
+
+		// Build data array and filter to mismatches.
+		$data = [];
+		foreach ( $term_ids as $term_id ) {
+			$term = get_term( $term_id );
+			if ( empty( $term ) || is_wp_error( $term ) ) {
+				continue;
+			}
+
+			$source_permalink = SourcePermalinkHelper::get_term_source_permalink( $term_id );
+			$term_link        = get_term_link( $term );
+			$wp_path          = '';
+
+			if ( ! is_wp_error( $term_link ) ) {
+				$wp_path = SourcePermalinkHelper::ensure_path_format( $term_link );
+			}
+
+			// Only include if paths don't match (exact comparison, normalized).
+			if ( untrailingslashit( $source_permalink ) !== untrailingslashit( $wp_path ) ) {
+				$data[] = [
+					'term_id'               => $term_id,
+					'taxonomy'              => $term->taxonomy,
+					'wp_path'               => empty( $source_domain ) ? untrailingslashit( $wp_path ) : $term_link,
+					'source_permalink_path' => self::maybe_convert_to_url( $source_permalink, $source_domain ),
+				];
+			}
+		}
+
+		if ( empty( $data ) ) {
+			WP_CLI::success( 'No mismatches found in this batch.' );
+			return;
+		}
+
+		WP_CLI::line( sprintf( 'Found %d mismatches in batch (showing terms %d to %d of %d total).', count( $data ), $batch_args['start'], min( $batch_args['end'] - 1, $total_terms ), $total_terms ) );
 
 		$format = $assoc_args['format'] ?? 'table';
 		$fields = $assoc_args['fields'] ?? 'term_id,taxonomy,wp_path,source_permalink_path';
@@ -595,6 +817,7 @@ class SourcePermalink implements WpCliCommandInterface {
 			$total_deleted += $deleted_terms;
 		}
 
+		// Delete post metadata.
 		if ( ! empty( $post_meta_ids ) ) {
 			$placeholders = implode( ',', array_fill( 0, count( $post_meta_ids ), '%d' ) );
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
