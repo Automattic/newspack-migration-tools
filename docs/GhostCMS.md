@@ -1,21 +1,103 @@
 # GhostCMS Migrator
 
-The documentation for this migrator has been moved to the stand-alone Newspack GhostCMS Migrator plugin.
+This migrator will import a [Ghost (CMS)](https://ghost.org/) JSON export file into new posts, featured images, authors, and categories.
 
-Please see the README: https://github.com/Automattic/newspack-ghostcms-migrator
+### Posts and Content
 
-The stand-alone plugin is just a thin wrapper to the NMT GhostCMS migrator, but it's important to keep the stand-alone plugin up to date with NMT changes. Instead of having documentation in both places, here and there, we keep the documentation in the stand-alone plugin. This forces us to document changes there and do releases there too.  
+Public, published posts that contain body content and a title will be migrated. Excerpts are imported too. Already imported posts will be skipped, along with posts that have a matching title on the same date or a matching slug. An optional migration argument allows migrating only posts after a given date. 
 
-Please make every effort to avoid allowing the stand-alone plugin to become out of date with NMT GhostCMS changes. Follow the "Development" section of the stand-alone plugin's README whenever changes are made in this NMT GhostCMS migrator.
+### Images
 
-## Differences between NMT and Stand-alone
+Featured images are fetched from the current Ghost website. Alt and captions are added too.
 
-The differences between how the GhostCMS migrator functions within NMT and the stand-alone Newspack GhostCMS Migrator plugin should be kept to a minimum.  
+### Authors
 
-**Known differences:**
+Post authors are imported. Authors must have a visibility of public. If the imported author's user login matches an existing WordPress user with role ('Administrator', 'Editor', 'Author', or 'Contributor') then the WP User will be used, otherwise a Co-Authors Plus Guest Author will be created.
 
-- [Step 2](https://github.com/Automattic/newspack-ghostcms-migrator/blob/trunk/README.md#step-2-install-this-plugin) of the README requires downloading and installing `newspack-ghostcms-migrator.zip`. This is not needed here since you can just run the CLI within NMT (or NCCM).
-- The [Development](https://github.com/Automattic/newspack-ghostcms-migrator/blob/trunk/README.md#development) section of the stand-alone documentation is specific to that plugin when NMT changes need to be incorprated into a new stand-alone release.  Please keep the stand-alone plugin up to date.
+### Categories and Tags
 
+Ghost tags will be imported as WordPress categories.
 
+## How to Migrate
 
+### Step 1: Export JSON from Ghost
+
+A JSON file backup/export of the current Ghost website is needed. 
+
+Options:
+- [Export from a self-hosted site using the Admin](https://ghost.org/docs/faq/manual-backup/#export-content). Choose "Export your content".
+- [Export from a self-hosted site using the Ghost CLI](https://ghost.org/docs/ghost-cli/#ghost-backup). Run `ghost backup`.
+- [Export from a Ghost Pro site](https://ghost.org/help/exports/). See "content" export.
+
+Note: the JSON export file could be very large. In most cases, the GhostCMS Migrator should be able to injest the file as-is. But if smaller chunks are needed, the Linux "jq" command or Ghost's gctools [json-split](https://github.com/TryGhost/gctools?tab=readme-ov-file#json-split) command line utilities could be used to create smaller files.
+
+### Step 2: Verify requirements
+
+To run the migrator, you'll need:
+
+- The free plugin [Co-Authors Plus](https://wordpress.org/plugins/co-authors-plus/) must also be installed and activated.
+
+### Step 3: Review help and arguments
+
+Before running the migrator, please review the help output to understand the required and optional arguments.
+
+Help command: `wp help newspack-migration-tools ghostcms-import` 
+
+Required arguments:
+```
+--default-user-id=<default-user-id>
+  User ID for default "post_author" for wp_insert_post(). Integer.
+
+--ghost-url=<ghost-url>
+  Public URL of current/live Ghost Website. Scheme with domain: https://www.mywebsite.com
+
+--json-file=<json-file>
+  Path to Ghost JSON export file.
+```
+
+Optional arguments:
+```
+--created-after=<created-after>
+Datetime cut-off to only import posts AFTER this date. (Must be parseable by strtotime).
+```
+
+### Step 4: Run a test
+
+For testing, you can use these test values (with the included "test/fixture" file):
+
+```
+--default-user-id=1
+--ghost-url=https://newspack.com
+--json-file=wp-content/plugins/newspack-ghostcms-migrator/vendor/automattic/newspack-migration-tools/tests/fixtures/ghostcms.json
+```
+
+### Step 5: Run a real migration
+
+Command (_be sure to replace your values_):
+```
+wp newspack-migration-tools ghostcms-import --default-user-id=<default-user-id> --ghost-url=<ghost-url> --json-file=<json-file> [--created-after=<created-after>]
+```
+
+If the migrator command is stopped mid-migration, it is OK to simply re-run the command.
+- Previously imported content will be skipped.
+- Log files will be appended to automatically.
+
+If the command will not run, please view the `wp-content/debug.log` file and/or the output logs listed below. Also see _Errors_ below.
+
+### Step 6: Review output logs 
+
+The following output logs will be created:
+
+* `GhostCMSMigrator_cmd_ghostcms_import.log` - This log file will list all content that was imported along with any warning or errors encountered.
+* `GhostCMSMigrator_cmd_ghostcms_import.log-skips.log` - If a post was already imported, it will not be imported again. A list of "skipped" posts will be written to this file.
+
+## Common Errors and Fixes
+
+If the Newspack Plugin is also active on the WordPress site, and the following error has been encountered:
+
+?? what is the error ??
+
+Please add a config value to the `wp-config.com` file:
+
+- By hand: `define( 'NEWSPACK_ENABLE_CAP_GUEST_AUTHORS', true );`
+- Or by wp-cli: `wp config set NEWSPACK_ENABLE_CAP_GUEST_AUTHORS true --raw --type=constant`
