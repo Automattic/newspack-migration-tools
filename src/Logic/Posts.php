@@ -792,9 +792,11 @@ SQL;
 
 	/**
 	 * Shorthand for updating a post without touching the post_modified and post_modified_gmt fields,
-	 * but it saves a revision before the update.
+	 * but instead of wp_update_post only doing a revison after the update, this functions saves a
+	 * revision before the update too.
 	 *
-	 * Parameters are the same as for wp_update_post.
+	 * Parameters are the same as for wp_update_post. Even though wp_update_post allows $postarr to be
+	 * optional, it's required here so that we have a post ID for saving the revision.
 	 *
 	 * @static
 	 * @access public
@@ -802,12 +804,12 @@ SQL;
 	 * @uses \Newspack\MigrationTools\Hooks\PostUpdateHook
 	 * @see https://developer.wordpress.org/reference/functions/wp_update_post/
 	 *
-	 * @param array|object $postarr          Post data. Arrays are expected to be escaped, objects are not. Default array. ID key or property is required. @see wp_update_post().
+	 * @param array|object $postarr          Post data. Arrays are expected to be escaped, objects are not. ID key or property is required. @see wp_update_post().
 	 * @param bool         $wp_error         @see wp_update_post(). Optional. Whether to return a WP_Error on failure. Default false.
 	 * @param bool         $fire_after_hooks @see wp_update_post(). Optional. Whether to fire the after insert hooks. Default true.
 	 * @return int|WP_Error The post ID on success. The value 0 or WP_Error on failure.
 	 */
-	public static function update_post_without_modified_date_with_review( array|object $postarr, bool $wp_error = false, bool $fire_after_hooks = true ) {
+	public static function update_post_without_modified_date_with_pre_revision( array|object $postarr, bool $wp_error = false, bool $fire_after_hooks = true ) {
 		// Validate if $postarr ID key/property is set.
 		if ( is_array( $postarr ) ) {
 			$post_id = $postarr['ID'] ?? null;
