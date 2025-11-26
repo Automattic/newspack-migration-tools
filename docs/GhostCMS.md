@@ -63,12 +63,12 @@ Datetime cut-off to only import posts AFTER this date. (Must be parseable by str
 
 ### Step 4: Run a test
 
-For testing, you can use these test values (with the included "test/fixture" file):
+For testing, you can use these test values (with the included `json` test file):
 
 ```
 --default-user-id=1
 --ghost-url=https://newspack.com
---json-file=wp-content/plugins/newspack-ghostcms-migrator/vendor/automattic/newspack-migration-tools/tests/fixtures/ghostcms.json
+--json-file=wp-content/plugins/newspack-custom-content-migrator/vendor/automattic/newspack-migration-tools/tests/fixtures/ghostcms.json
 ```
 
 ### Step 5: Run a real migration
@@ -93,9 +93,12 @@ The following output logs will be created:
 
 ## Common Errors and Fixes
 
-If the Newspack Plugin is also active on the WordPress site, and the following error has been encountered:
+Error:
 
-?? what is the error ??
+`CoAuthorsPlusHelper construct threw exception: CoAuthors Plus is not installed or active.`
+
+1. Check that the Co-Authors Plus plugin is properly activated.
+2. If the Newspack Plugin is also active, then the needed Guest Authors feature within Co-Authors Plus may have been removed by the Newspack Plugin.   
 
 Please add a config value to the `wp-config.com` file:
 
