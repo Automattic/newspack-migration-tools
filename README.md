@@ -20,7 +20,7 @@ The repository contains a set of WP commands to migrate different data to WordPr
 * [UsersHelper](./docs/users-helper.md)
 * [UserMeta](./docs/user-meta.md)
 * [FG Helper](./docs/fg-helper.md)
-* [Source Permalinks](./docs/source-permalinks.md) (original urls from migration) For both the Helper and the Commands.
+* [Source Permalinks](./docs/source-permalinks.md) (original URLs from migration) For both the Helper and the Commands.
 
 ### Individual Migrators
 * Attachments (todo)

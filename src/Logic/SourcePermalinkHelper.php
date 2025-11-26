@@ -88,6 +88,6 @@ class SourcePermalinkHelper {
 	 * @return string The path formatted string – eg. /some/path/here.
 	 */
 	public static function ensure_path_format( string $url_or_path ): string {
-		return '/' . ltrim( wp_make_link_relative( $url_or_path ), '/' );
+		return untrailingslashit( '/' . ltrim( wp_make_link_relative( $url_or_path ), '/' ) );
 	}
 }
