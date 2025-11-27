@@ -1,44 +1,45 @@
 <?php
 /**
- * Helper to save and retrieve source permalink paths for posts and terms.
+ * Helper to save original permalink paths for posts and terms.
  *
- * A source permalink is the original path of a post or term from the source site.
+ * It's a thin wrapper for the OriginalValueStore class, that ensures path normalization.
+ *
+ * An original permalink is the original path of a post or term from the source site.
  * For example /news/some-article-title or /category/some-category.
+ *
+ * This class handles path normalization when saving. To retrieve permalinks,
+ * use OriginalValueStore::get_for_post() or OriginalValueStore::get_for_term()
+ * with the key 'permalink'.
  *
  * @see docs/source-permalinks.md Full documentation with usage examples
  *
  * @package Newspack\MigrationTools
  */
 
-namespace Newspack\MigrationTools\Logic;
+namespace Newspack\MigrationTools\Util;
 
-class SourcePermalinkHelper {
+use Newspack\MigrationTools\Logic\OriginalValueStore;
+
+class OriginalPermalink {
 
 	/**
-	 * Meta key for post source permalink paths.
+	 * The key used for storing permalinks with the OriginalValueStore.
 	 *
 	 * @var string
 	 */
-	const string POSTS_META_KEY = '_newspack_post_source_permalink';
+	const string KEY = 'permalink';
 
 	/**
-	 * Meta key for term source permalink paths.
-	 *
-	 * @var string
-	 */
-	const string TERMS_META_KEY = '_newspack_term_source_permalink';
-
-	/**
-	 * Saves a path or url.
+	 * Saves a post source permalink.
 	 *
 	 * @param int    $post_id          Post ID.
 	 * @param string $source_permalink Source permalink URL or path.
 	 *
 	 * @return string The saved path – eg. /some/path/here.
 	 */
-	public static function save_post_source_permalink( int $post_id, string $source_permalink ): string {
+	public static function save_for_post( int $post_id, string $source_permalink ): string {
 		$path = self::ensure_path_format( $source_permalink );
-		update_post_meta( $post_id, self::POSTS_META_KEY, $path );
+		OriginalValueStore::save_for_post( $post_id, self::KEY, $path );
 
 		return $path;
 	}
@@ -51,7 +52,7 @@ class SourcePermalinkHelper {
 	 * @return string The saved path – eg. /some/path/here.
 	 */
 	public static function get_post_source_permalink( int $post_id ): string {
-		return get_post_meta( $post_id, self::POSTS_META_KEY, true );
+		return OriginalValueStore::get_for_post( $post_id, self::KEY );
 	}
 
 	/**
@@ -62,23 +63,13 @@ class SourcePermalinkHelper {
 	 *
 	 * @return string The saved path – eg. /some/path/here.
 	 */
-	public static function save_term_source_permalink( int $term_id, string $source_permalink ): string {
+	public static function save_for_term( int $term_id, string $source_permalink ): string {
 		$path = self::ensure_path_format( $source_permalink );
-		update_term_meta( $term_id, self::TERMS_META_KEY, $path );
+		OriginalValueStore::save_for_term( $term_id, self::KEY, $path );
 
 		return $path;
 	}
 
-	/**
-	 * Get the saved source permalink (path) for a term.
-	 *
-	 * @param int $term_id Term ID.
-	 *
-	 * @return string The saved path – eg. /some/path/here.
-	 */
-	public static function get_term_source_permalink( int $term_id ): string {
-		return get_term_meta( $term_id, self::TERMS_META_KEY, true );
-	}
 
 	/**
 	 * Ensures that a url or path is in path format, starting with a single leading slash.

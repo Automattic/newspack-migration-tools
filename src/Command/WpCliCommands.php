@@ -24,11 +24,12 @@ class WpCliCommands {
 			MenusMigrator::class,
 			MetaToContentMigrator::class,
 			NewspaperThemeCommand::class,
+			OriginalPermalinkCommands::class,
+			OriginalValueCommands::class,
 			PostFeaturedVideoMigrator::class,
 			PostsMigrator::class,
 			SettingsMigrator::class,
 			ShortcodesMigrator::class,
-			SourcePermalink::class,
 			WooCommMigrator::class,
 		];
 
