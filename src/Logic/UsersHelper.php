@@ -593,7 +593,7 @@ class UsersHelper {
 	
 		// Only run this function once, as long as argument(s) are the same.
 		static $validated = [];
-		$args_key = $guest_authors ? '1' : '0';
+		$args_key         = $guest_authors ? '1' : '0';
 		if ( isset( $validated[ $args_key ] ) ) {
 			return $validated[ $args_key ];
 		}
