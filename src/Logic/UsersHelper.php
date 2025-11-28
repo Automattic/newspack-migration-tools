@@ -518,12 +518,9 @@ class UsersHelper {
 	 */
 	public static function assign_authors_to_post( int $post_id, array $authors, bool $append = false, string $query_type = 'id' ): bool|WP_Error {
 	
-		if ( ! function_exists( 'is_plugin_active' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/plugin.php';
-		}
-
-		if ( ! is_plugin_active( 'co-authors-plus/co-authors-plus.php' ) ) {
-			return new WP_Error( 'ERROR_COAUTHORS_PLUS', 'Co-Authors Plus plugin not found. Install and activate it before using this function.' );
+		$validate_cap = self::validate_co_authors_plus();
+		if ( true !== $validate_cap ) {
+			return $validate_cap;
 		}
 
 		global $coauthors_plus;
@@ -548,7 +545,13 @@ class UsersHelper {
 	 *                            WP_Error no coauthors are found for post or assignment fails.
 	 */
 	public static function reassign_author( int $post_id, int $from_user_id, int $to_user_id ): bool|null|WP_Error {
-		// Get current authors for the post.
+
+		$validate_cap = self::validate_co_authors_plus();
+		if ( true !== $validate_cap ) {
+			return $validate_cap;
+		}
+
+		// Get current authors for the post using Co-Authors Plus plugin's function.
 		$current_authors = get_coauthors( $post_id );
 
 		// If no authors found (it might mean that author terms are missing on a legacy author setup, and that `wp co-authors-plus create-author-terms-for-posts` should be run first).
@@ -575,5 +578,52 @@ class UsersHelper {
 
 		// Assign new authors.
 		return self::assign_authors_to_post( $post_id, $new_author_ids );
+	}
+
+	/**
+	 * Validate Co-Authors Plus.
+	 * 
+	 * For some functions of this UsersHelper class, we need to first verify Co-Authors Plus is installed and active.
+	 *
+	 * @param bool $guest_authors Is the Guest Authors feature of CAP required. Default is not required.
+	 * 
+	 * @return bool|WP_Error True if active, WP_Error if not.
+	 */
+	public static function validate_co_authors_plus( $guest_authors = false ): bool|WP_Error {
+	
+		// Only run this function once, as long as argument(s) are the same.
+		static $validated = [];
+		$args_key         = $guest_authors ? '1' : '0';
+		if ( isset( $validated[ $args_key ] ) ) {
+			return $validated[ $args_key ];
+		}
+
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		if ( ! is_plugin_active( 'co-authors-plus/co-authors-plus.php' ) ) {
+			return new WP_Error( 'ERROR_COAUTHORS_PLUS', 'Co-Authors Plus plugin not found. Install and activate it before using this function.' );
+		}
+		
+		if ( ! isset( $GLOBALS['coauthors_plus'] ) ) {
+			return new WP_Error( 'ERROR_COAUTHORS_PLUS_OBJ', 'Co-Authors Plus global is not set.' );
+		}
+		
+		if ( ! method_exists( $GLOBALS['coauthors_plus'], 'add_coauthors' ) ) {
+			return new WP_Error( 'ERROR_COAUTHORS_PLUS_ADD', 'Co-Authors Plus method add_coauthors does not exist.' );
+		}
+
+		if ( ! function_exists( '\get_coauthors' ) ) {
+			return new WP_Error( 'ERROR_COAUTHORS_PLUS_GET', 'Co-Authors Plus function get_coauthors does not exist.' );
+		}
+
+		if ( $guest_authors && empty( $GLOBALS['coauthors_plus']->guest_authors ) ) {
+			return new WP_Error( 'ERROR_COAUTHORS_PLUS_GAS', 'Co-Authors Plus Guest Authors not set.' );
+		}
+
+		$validated[ $args_key ] = true;
+		
+		return $validated[ $args_key ];
 	}
 }
