@@ -27,6 +27,7 @@ class WpCliCommands {
 			WooCommMigrator::class,
 			ShortcodesMigrator::class,
 			EnviraGalleryMigrator::class,
+			UsersMigrator::class,
 			FooGalleryMigrator::class,
 			PostFeaturedVideoMigrator::class,
 		];
