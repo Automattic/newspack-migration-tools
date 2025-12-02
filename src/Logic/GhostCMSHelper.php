@@ -68,6 +68,13 @@ class GhostCMSHelper {
 	private array $tags_to_categories;
 
 	/**
+	 * Simple Local Avatars helper instance.
+	 *
+	 * @var ?SimpleLocalAvatars $simple_local_avatars
+	 */
+	private ?SimpleLocalAvatars $simple_local_avatars = null;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
@@ -93,6 +100,9 @@ class GhostCMSHelper {
 		}
 		if ( ! GuestContributorsHelper::validate_newspack_plugin() ) {
 			$this->log( 'Newspack Plugin\'s Guest Contributors feature is required.', LogLevel::ERROR, true );
+		}
+		if ( ! is_plugin_active( 'simple-local-avatars/simple-local-avatars.php' ) ) {
+			$this->log( 'Simple Local Avatars plugin must be active for avatar imports.', LogLevel::ERROR, true );
 		}
 
 		// Argument parsing.
@@ -408,6 +418,16 @@ class GhostCMSHelper {
 			'display_name' => $display_name,
 			'user_login'   => $json_author_user->slug ?? sanitize_title( $display_name ),
 		];
+		if ( ! empty( $json_author_user->email ) ) {
+			$user_data['user_email'] = $json_author_user->email;
+		}
+		if ( ! empty( $json_author_user->bio ) ) {
+			$user_data['description'] = $json_author_user->bio;
+		}
+		if ( ! empty( $json_author_user->website ) ) {
+			$user_data['user_url'] = $json_author_user->website;
+		}
+
 		try {
 			$wp_user = GuestContributorsHelper::create_or_get_contributor( $user_data, $unique_identifier );
 		} catch ( Exception $e ) {
@@ -428,7 +448,74 @@ class GhostCMSHelper {
 		// Save old slug for possible redirect.
 		update_user_meta( $wp_user->ID, 'newspack_ghostcms_slug', $json_author_user->slug );
 
+		// Newspack Theme implements `function newspack_author_get_social_links` which adds social fields.
+		// Note: 'twitter' expects handle only while others expect full URLs.
+		if ( ! empty( $json_author_user->twitter ) ) {
+			update_user_meta( $wp_user->ID, 'twitter', ltrim( $json_author_user->twitter, '@' ) );
+		}
+		if ( ! empty( $json_author_user->instagram ) ) {
+			$instagram = $json_author_user->instagram;
+			if ( ! str_starts_with( $instagram, 'http' ) ) {
+				$instagram = 'https://instagram.com/' . ltrim( $instagram, '@' );
+			}
+			update_user_meta( $wp_user->ID, 'instagram', $instagram );
+		}
+		if ( ! empty( $json_author_user->linkedin ) ) {
+			$linkedin = $json_author_user->linkedin;
+			if ( ! str_starts_with( $linkedin, 'http' ) ) {
+				$linkedin = 'https://linkedin.com/in/' . $linkedin;
+			}
+			update_user_meta( $wp_user->ID, 'linkedin', $linkedin );
+		}
+		if ( ! empty( $json_author_user->bluesky ) ) {
+			$bluesky = $json_author_user->bluesky;
+			if ( ! str_starts_with( $bluesky, 'http' ) ) {
+				$bluesky = 'https://bsky.app/profile/' . $bluesky;
+			}
+			update_user_meta( $wp_user->ID, 'bluesky', $bluesky );
+		}
+
+		// Import profile image as avatar.
+		if ( ! empty( $json_author_user->profile_image ) ) {
+			$this->import_author_avatar( $wp_user->ID, $json_author_user->profile_image, $display_name );
+		}
+
 		return $wp_user;
+	}
+
+	/**
+	 * Import author avatar from Ghost profile_image URL.
+	 *
+	 * @param int    $user_id      WP User ID.
+	 * @param string $image_url    Ghost profile image URL.
+	 * @param string $display_name Author display name for logging.
+	 */
+	private function import_author_avatar( int $user_id, string $image_url, string $display_name ): void {
+		// Fill in the Ghost CMS URL placeholder.
+		$image_url = str_replace( '__GHOST_URL__', $this->ghost_url, $image_url );
+
+		// Import the image as attachment.
+		$attachment_id = $this->get_or_import_url( $image_url, sprintf( 'Avatar: %s', $display_name ) );
+		if ( is_wp_error( $attachment_id ) || ! is_numeric( $attachment_id ) || $attachment_id <= 0 ) {
+			$this->log( sprintf( 'Could not import avatar for user %d: %s', $user_id, $image_url ), LogLevel::WARNING );
+			return;
+		}
+
+		// Assign avatar with Simple Local Avatars (validated at import start).
+		$this->get_simple_local_avatars()->assign_avatar( $user_id, $attachment_id );
+		$this->log( sprintf( 'Assigned avatar (attachment %d) to user %d.', $attachment_id, $user_id ) );
+	}
+
+	/**
+	 * Get Simple Local Avatars helper.
+	 *
+	 * @return SimpleLocalAvatars
+	 */
+	private function get_simple_local_avatars(): SimpleLocalAvatars {
+		if ( null === $this->simple_local_avatars ) {
+			$this->simple_local_avatars = new SimpleLocalAvatars();
+		}
+		return $this->simple_local_avatars;
 	}
 
 	/**
