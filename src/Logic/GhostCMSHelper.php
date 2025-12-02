@@ -357,7 +357,7 @@ class GhostCMSHelper {
 		// Unique identifier is JSON author ID.
 		$unique_identifier = $json_author_user->id;
 
-		// Check if user exists by unique identifier.
+		// 1) Check if user exists by unique identifier.
 		$existing_user = UsersHelper::get_user_by_unique_identifier( $unique_identifier );
 		if ( $existing_user ) {
 			$this->log( 'Found existing WP_User.' );
@@ -368,53 +368,46 @@ class GhostCMSHelper {
 			return $existing_user;
 		}
 
-		// Check for existing WP User with same display name, which has admin/editing access or is Guest Contributor role.
-		$wp_user_found = null;
-		$user_query    = new \WP_User_Query(
+		// 2) Check for existing WP User with same email.
+		$json_email = $json_author_user->email ?? null;
+		if ( $json_email ) {
+			$user_by_email = get_user_by( 'email', $json_email );
+			if ( $user_by_email ) {
+				$this->log( sprintf( 'Using existing WP_User with same email (user ID %d).', $user_by_email->ID ), LogLevel::WARNING );
+				update_user_meta( $user_by_email->ID, UsersHelper::UNIQUE_IDENTIFIER_META_KEY, $unique_identifier );
+				update_user_meta( $user_by_email->ID, 'newspack_ghostcms_slug', $json_author_user->slug );
+				return $user_by_email;
+			}
+		}
+
+		// 3) Check for existing WP User with same display name.
+		$user_query = new \WP_User_Query(
 			array(
 				'search'         => $display_name,
 				'search_columns' => array( 'display_name' ),
 				'role__in'       => array( 'administrator', 'editor', 'author', Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME, 'contributor' ),
-				'number'         => 1,
 			)
 		);
-		$users         = $user_query->get_results();
+		$users      = $user_query->get_results();
 		if ( ! empty( $users ) ) {
-			$wp_user_found = $users[0];
+			$user_by_name = $users[0];
+
+			$message = '';
+			if ( count( $users ) > 1 ) {
+				$message = sprintf( 'Multiple WP users (count %d) with same display name found, using the first one: ', count( $users ) );
+			}
+			$this->log( $message . sprintf( "Using existing WP_User with same display name '%s' (user ID %d).", $display_name, $user_by_name->ID ), LogLevel::WARNING );
+
+			update_user_meta( $user_by_name->ID, UsersHelper::UNIQUE_IDENTIFIER_META_KEY, $unique_identifier );
+			update_user_meta( $user_by_name->ID, 'newspack_ghostcms_slug', $json_author_user->slug );
+			return $user_by_name;
 		}
 
-		// If we found an existing WP User with editing capabilities OR Guest Contributor role, use it.
-		if ( $wp_user_found && $wp_user_found instanceof WP_User ) {
-			$should_return_user = false;
-			
-			// Check if Guest Contributor (has 'edit_cap_posts' capability but NOT 'edit_posts').
-			if ( $wp_user_found->has_cap( Guest_Contributor_Role::ASSIGNABLE_TO_POSTS_CAPABILITY_NAME ) ) {
-				$should_return_user = true;
-			} elseif ( $wp_user_found->has_cap( 'edit_posts' ) ) {
-				// Or if found user has editing capabilities.
-				$should_return_user = true;
-			}
-
-			if ( true === $should_return_user ) {
-				$this->log( sprintf( "Using existing WP_User with display name '%s' and user ID %d", $wp_user_found->display_name, $wp_user_found->ID ), LogLevel::WARNING );
-
-				// Save the unique identifier so we can find this mapping next time.
-				update_user_meta( $wp_user_found->ID, UsersHelper::UNIQUE_IDENTIFIER_META_KEY, $unique_identifier );
-
-				// Save old slug for possible redirect.
-				update_user_meta( $wp_user_found->ID, 'newspack_ghostcms_slug', $json_author_user->slug );
-
-				return $wp_user_found;
-			}
-		}
-
-		// Prepare user data for Guest Contributor creation.
+		// Create Guest Contributor.
 		$user_data = [
 			'display_name' => $display_name,
 			'user_login'   => $json_author_user->slug ?? sanitize_title( $display_name ),
 		];
-
-		// Create Guest Contributor using GuestContributorsHelper wrapper.
 		try {
 			$wp_user = GuestContributorsHelper::create_or_get_contributor( $user_data, $unique_identifier );
 		} catch ( Exception $e ) {
