@@ -2,7 +2,7 @@
 
 namespace Newspack\MigrationTools\Tests\Logic;
 
-use Newspack\MigrationTools\Logic\CoAuthorsPlusHelper;
+use Newspack\Guest_Contributor_Role;
 use Newspack\MigrationTools\Logic\GhostCMSHelper;
 use WP_UnitTestCase;
 
@@ -38,9 +38,21 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$this->assertCount( 1, $posts );
 		$this->assertEquals( 'the-title', $posts[0]->post_name );
 
-		// CoAuthorsPlus / GA
-		$test_cap_helper = new CoAuthorsPlusHelper();
-		$this->assertIsObject( $test_cap_helper->get_guest_author_by_user_login( 'some-user' ) );
+		$user = get_user_by( 'login', 'some-user' );
+		$this->assertInstanceOf( \WP_User::class, $user );
+		
+		// Guest Contributor created with correct role.
+		$this->assertContains( Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME, $user->roles );
+
+		// User data imported correctly.
+		$this->assertEquals( 'Test author biography for unit tests.', $user->description );
+		$this->assertEquals( 'https://newspack.com', $user->user_url );
+
+		// Social links imported as user meta (twitter as handle, others as full URLs, as defined in Newspack theme, `function newspack_author_get_social_links()`).
+		$this->assertEquals( 'someuser', get_user_meta( $user->ID, 'twitter', true ) );
+		$this->assertEquals( 'https://instagram.com/someuser_insta', get_user_meta( $user->ID, 'instagram', true ) );
+		$this->assertEquals( 'https://linkedin.com/in/someuser-linkedin', get_user_meta( $user->ID, 'linkedin', true ) );
+		$this->assertEquals( 'https://bsky.app/profile/someuser.bsky.social', get_user_meta( $user->ID, 'bluesky', true ) );
 
 		// Categories.
 		$category = get_term_by( 'name', 'News', 'category' );

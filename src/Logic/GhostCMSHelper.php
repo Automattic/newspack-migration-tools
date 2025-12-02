@@ -504,7 +504,7 @@ class GhostCMSHelper {
 			return;
 		}
 
-		// Assign avatar with Simple Local Avatars (validated at import start).
+		// Assign avatar with Simple Local Avatars.
 		$this->get_simple_local_avatars()->assign_avatar( $user_id, $attachment_id );
 		$this->log( sprintf( 'Assigned avatar (attachment %d) to user %d.', $attachment_id, $user_id ) );
 	}
