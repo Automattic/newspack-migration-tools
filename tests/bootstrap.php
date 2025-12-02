@@ -38,6 +38,8 @@ function set_up_contrib_plugins(): void {
 		'co-authors-plus' => 'co-authors-plus/co-authors-plus.php',
 		// The Newspack plugin is required for GuestContributorsHelper tests.
 		'newspack-plugin' => 'newspack-plugin/newspack.php',
+		// Simple Local Avatars is required for GhostCMSHelper avatar imports.
+		'simple-local-avatars' => 'simple-local-avatars/simple-local-avatars.php',
 	];
 
 	$wordpress_dir = rtrim( sys_get_temp_dir(), '/\\' ) . '/wordpress';
