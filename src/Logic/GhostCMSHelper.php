@@ -101,6 +101,9 @@ class GhostCMSHelper {
 		if ( ! GuestContributorsHelper::validate_newspack_plugin() ) {
 			$this->log( 'Newspack Plugin\'s Guest Contributors feature is required.', LogLevel::ERROR, true );
 		}
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
 		if ( ! is_plugin_active( 'simple-local-avatars/simple-local-avatars.php' ) ) {
 			$this->log( 'Simple Local Avatars plugin must be active for avatar imports.', LogLevel::ERROR, true );
 		}
