@@ -7,13 +7,6 @@ use WP_UnitTestCase;
 
 class DependencyValidatorTest extends WP_UnitTestCase {
 
-	protected function setUp(): void {
-		// parent::setUp();
-		// No need for logging.
-		// add_filter( 'newspack_migration_tools_log_file_logger_disable', '__return_true' );
-		// add_filter( 'newspack_migration_tools_log_clilog_disable', '__return_true' );
-	}
-
 	public function test_static_idea(): void {
 
         $is_active = DependencyValidatorStatic::is_active( 'newspack-plugin/newspack.php' );
