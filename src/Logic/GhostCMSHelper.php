@@ -10,6 +10,9 @@
 namespace Newspack\MigrationTools\Logic;
 
 use Exception;
+use Newspack\Guest_Contributor_Role;
+use Newspack\MigrationTools\Logic\UsersHelper;
+use Newspack\MigrationTools\Logic\GuestContributorsHelper;
 use Newspack\MigrationTools\NMT;
 use Newspack\MigrationTools\Util\Log\CliLog;
 use Newspack\MigrationTools\Util\Log\FileLog;
@@ -18,6 +21,7 @@ use Monolog\Level;
 use Psr\Log\LogLevel;
 use UnhandledMatchError;
 use WP_Error;
+use WP_User;
 
 /**
  * GhostCMS Helper.
@@ -25,20 +29,13 @@ use WP_Error;
 class GhostCMSHelper {
 
 	/**
-	 * Lookup to convert json authors to wp objects (WP Users and/or CAP GAs).
+	 * Lookup to convert json authors to Guest Contributor user objects.
 	 * 
 	 * Note: json author_id key may exist, but if json author (user) visibility was not public, value will be 0
 	 *
-	 * @var array $authors_to_wp_objects
+	 * @var array $authors_to_wp_users
 	 */
-	private array $authors_to_wp_objects;
-
-	/**
-	 * CoAuthorsPlusHelper
-	 * 
-	 * @var CoAuthorsPlusHelper 
-	 */
-	private $coauthorsplus_helper;
+	private array $authors_to_wp_users;
 
 	/**
 	 * Ghost URL for image downloads.
@@ -71,6 +68,13 @@ class GhostCMSHelper {
 	private array $tags_to_categories;
 
 	/**
+	 * Simple Local Avatars helper instance.
+	 *
+	 * @var ?SimpleLocalAvatars $simple_local_avatars
+	 */
+	private ?SimpleLocalAvatars $simple_local_avatars = null;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
@@ -89,17 +93,19 @@ class GhostCMSHelper {
 		// Set log slug from args.
 		$this->log_slug = $log_slug;
 
-		// CoAuthorsPlus is required.
-		try {
-			// Verify code plugin is included.
-			$this->coauthorsplus_helper = new CoAuthorsPlusHelper();
-		} catch ( Exception $e ) {
-			$this->log( 'CoAuthorsPlusHelper construct threw exception: ' . $e->getMessage(), LogLevel::ERROR, true );
+		// Validate dependencies.
+		$validate_cap = UsersHelper::validate_co_authors_plus();
+		if ( true !== $validate_cap ) {
+			$this->log( 'CoAuthorsPlus plugin must be active before running this command: ' . ( is_wp_error( $validate_cap ) ? $validate_cap->get_error_message() : 'Unknown error' ), LogLevel::ERROR, true );
 		}
-
-		// CoAuthorsPlus plugin must be activated.
-		if ( ! $this->coauthorsplus_helper->validate_co_authors_plus_dependencies() ) {
-			$this->log( 'CoAuthorsPlus plugin must be active before running this command.', LogLevel::ERROR, true );
+		if ( ! GuestContributorsHelper::validate_newspack_plugin() ) {
+			$this->log( 'Newspack Plugin\'s Guest Contributors feature is required.', LogLevel::ERROR, true );
+		}
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		if ( ! is_plugin_active( 'simple-local-avatars/simple-local-avatars.php' ) ) {
+			$this->log( 'Simple Local Avatars plugin must be active for avatar imports.', LogLevel::ERROR, true );
 		}
 
 		// Argument parsing.
@@ -345,85 +351,174 @@ class GhostCMSHelper {
 	}
 
 	/**
-	 * Insert JSON author (user)
+	 * Insert JSON author (user) as Guest Contributor.
 	 *
 	 * @param object $json_author_user json author (user) object.
-	 * @return int|object|WP_User Return of integer 0 means not inserted, otherwise generic "Guest Author" object or WP_User is returned.
+	 * @return int|WP_User Return of integer 0 means not inserted, otherwise WP_User is returned.
 	 */
-	private function insert_json_author_user( object $json_author_user ): mixed {
+	private function insert_json_author_user( object $json_author_user ): int|WP_User {
 
 		// Must have visibility property with value of 'public'.
 		if ( empty( $json_author_user->visibility ) || 'public' != $json_author_user->visibility ) {
-
 			$this->log( 'JSON user not visible. Could not be inserted.', LogLevel::WARNING );
-
 			return 0;
-
-		} 
-		
-		// Get existing GA if exists.
-		// As of 2024-03-19 the use of 'coauthorsplus_helper->create_guest_author()' to return existing match
-		// may return an error. WP Error occures if existing database GA is "Jon A. Doe" but new GA is "Jon A Doe".
-		// New GA will not match on display name, but will fail on create when existing sanitized slug is found.
-		// Use a more direct approach here.
-		
-		$user_login = sanitize_title( urldecode( $json_author_user->name ) );
-
-		$this->log( 'Get or insert author: ' . $user_login );
-
-		$ga = $this->coauthorsplus_helper->get_guest_author_by_user_login( $user_login );
-
-		// GA Exists.
-		if ( is_object( $ga ) ) {
-
-			$this->log( 'Found existing GA.' );
-
-			// Save old slug for possible redirect.
-			update_post_meta( $ga->ID, 'newspack_ghostcms_slug', $json_author_user->slug );
-
-			return $ga;
-		
 		}
 
-		// Check for WP user with admin access.
+		$display_name = $json_author_user->name;
+		$this->log( sprintf( "Get or insert author: '%s'", $display_name ) );
+
+		// Unique identifier is JSON author ID with prefix.
+		$unique_identifier = 'ghostauthorid_' . $json_author_user->id;
+
+		// 1) Check if user exists by unique identifier.
+		$existing_user = UsersHelper::get_user_by_unique_identifier( $unique_identifier );
+		if ( $existing_user ) {
+			$this->log( 'Found existing WP_User.' );
+
+			// Save old slug for possible redirect.
+			update_user_meta( $existing_user->ID, 'newspack_ghostcms_slug', $json_author_user->slug );
+
+			return $existing_user;
+		}
+
+		// 2) Check for existing WP User with same email.
+		$json_email = $json_author_user->email ?? null;
+		if ( $json_email ) {
+			$user_by_email = get_user_by( 'email', $json_email );
+			if ( $user_by_email ) {
+				$this->log( sprintf( 'Using existing WP_User with same email (user ID %d).', $user_by_email->ID ), LogLevel::WARNING );
+				update_user_meta( $user_by_email->ID, UsersHelper::UNIQUE_IDENTIFIER_META_KEY, $unique_identifier );
+				update_user_meta( $user_by_email->ID, 'newspack_ghostcms_slug', $json_author_user->slug );
+				return $user_by_email;
+			}
+		}
+
+		// 3) Check for existing WP User with same display name.
 		$user_query = new \WP_User_Query(
-			array( 
-				'login'    => $user_login,
-				'role__in' => array( 'Administrator', 'Editor', 'Author', 'Contributor' ),
+			array(
+				'search'         => $display_name,
+				'search_columns' => array( 'display_name' ),
+				'role__in'       => array( 'administrator', 'editor', 'author', Guest_Contributor_Role::CONTRIBUTOR_NO_EDIT_ROLE_NAME, 'contributor' ),
 			)
 		);
+		$users      = $user_query->get_results();
+		if ( ! empty( $users ) ) {
+			$user_by_name = $users[0];
 
-		foreach ( $user_query->get_results() as $wp_user ) {
+			$message = '';
+			if ( count( $users ) > 1 ) {
+				$message = sprintf( 'Multiple WP users (count %d) with same display name found, using the first one: ', count( $users ) );
+			}
+			$this->log( $message . sprintf( "Using existing WP_User with same display name '%s' (user ID %d).", $display_name, $user_by_name->ID ), LogLevel::WARNING );
 
-			$this->log( 'Found existing WP User.' );
-
-			// Save old slug for possible redirect.
-			update_user_meta( $wp_user->ID, 'newspack_ghostcms_slug', $json_author_user->slug );
-
-			// Return the first user found.
-			return $wp_user;
-
+			update_user_meta( $user_by_name->ID, UsersHelper::UNIQUE_IDENTIFIER_META_KEY, $unique_identifier );
+			update_user_meta( $user_by_name->ID, 'newspack_ghostcms_slug', $json_author_user->slug );
+			return $user_by_name;
 		}
 
-		// Create a GA.
-		$ga_id = $this->coauthorsplus_helper->create_guest_author( array( 'display_name' => $json_author_user->name ) );
+		// Create Guest Contributor.
+		$user_data = [
+			'display_name' => $display_name,
+			'user_login'   => $json_author_user->slug ?? sanitize_title( $display_name ),
+		];
+		if ( ! empty( $json_author_user->email ) ) {
+			$user_data['user_email'] = $json_author_user->email;
+		}
+		if ( ! empty( $json_author_user->bio ) ) {
+			$user_data['description'] = $json_author_user->bio;
+		}
+		if ( ! empty( $json_author_user->website ) ) {
+			$user_data['user_url'] = $json_author_user->website;
+		}
 
-		if ( is_wp_error( $ga_id ) || ! is_numeric( $ga_id ) || ! ( $ga_id > 0 ) ) {
-
-			$this->log( 'GA create failed: ' . $json_author_user->name, LogLevel::WARNING );
-
+		try {
+			$wp_user = GuestContributorsHelper::create_or_get_contributor( $user_data, $unique_identifier );
+		} catch ( Exception $e ) {
+			$this->log( 'Guest Contributor create failed: ' . $e->getMessage(), LogLevel::ERROR );
 			return 0;
-
+		}
+		if ( is_wp_error( $wp_user ) ) {
+			$this->log( sprintf( 'Guest Contributor create failed, message: %s, context: %s', $wp_user->get_error_message(), wp_json_encode( $json_author_user ) ), LogLevel::ERROR );
+			return 0;
+		}
+		if ( ! ( $wp_user instanceof WP_User ) || ! ( $wp_user->ID > 0 ) ) {
+			$this->log( 'Guest Contributor create failed: Invalid user object returned, context: ' . wp_json_encode( $json_author_user ), LogLevel::ERROR );
+			return 0;
 		}
 
-		$this->log( 'Created new GA.' );
+		$this->log( 'Created new Guest Contributor.' );
 
-		$ga = $this->coauthorsplus_helper->get_guest_author_by_id( $ga_id );
-	
 		// Save old slug for possible redirect.
-		update_post_meta( $ga->ID, 'newspack_ghostcms_slug', $json_author_user->slug );
+		update_user_meta( $wp_user->ID, 'newspack_ghostcms_slug', $json_author_user->slug );
 
-		return $ga;
+		// Newspack Theme implements `function newspack_author_get_social_links` which adds social fields.
+		// Note: 'twitter' expects handle only while others expect full URLs.
+		if ( ! empty( $json_author_user->twitter ) ) {
+			update_user_meta( $wp_user->ID, 'twitter', ltrim( $json_author_user->twitter, '@' ) );
+		}
+		if ( ! empty( $json_author_user->instagram ) ) {
+			$instagram = $json_author_user->instagram;
+			if ( ! str_starts_with( $instagram, 'http' ) ) {
+				$instagram = 'https://instagram.com/' . ltrim( $instagram, '@' );
+			}
+			update_user_meta( $wp_user->ID, 'instagram', $instagram );
+		}
+		if ( ! empty( $json_author_user->linkedin ) ) {
+			$linkedin = $json_author_user->linkedin;
+			if ( ! str_starts_with( $linkedin, 'http' ) ) {
+				$linkedin = 'https://linkedin.com/in/' . $linkedin;
+			}
+			update_user_meta( $wp_user->ID, 'linkedin', $linkedin );
+		}
+		if ( ! empty( $json_author_user->bluesky ) ) {
+			$bluesky = $json_author_user->bluesky;
+			if ( ! str_starts_with( $bluesky, 'http' ) ) {
+				$bluesky = 'https://bsky.app/profile/' . $bluesky;
+			}
+			update_user_meta( $wp_user->ID, 'bluesky', $bluesky );
+		}
+
+		// Import profile image as avatar.
+		if ( ! empty( $json_author_user->profile_image ) ) {
+			$this->import_author_avatar( $wp_user->ID, $json_author_user->profile_image, $display_name );
+		}
+
+		return $wp_user;
+	}
+
+	/**
+	 * Import author avatar from Ghost profile_image URL.
+	 *
+	 * @param int    $user_id      WP User ID.
+	 * @param string $image_url    Ghost profile image URL.
+	 * @param string $display_name Author display name for logging.
+	 */
+	private function import_author_avatar( int $user_id, string $image_url, string $display_name ): void {
+		// Fill in the Ghost CMS URL placeholder.
+		$image_url = str_replace( '__GHOST_URL__', $this->ghost_url, $image_url );
+
+		// Import the image as attachment.
+		$attachment_id = $this->get_or_import_url( $image_url, sprintf( 'Avatar: %s', $display_name ) );
+		if ( is_wp_error( $attachment_id ) || ! is_numeric( $attachment_id ) || $attachment_id <= 0 ) {
+			$this->log( sprintf( 'Could not import avatar for user %d: %s', $user_id, $image_url ), LogLevel::WARNING );
+			return;
+		}
+
+		// Assign avatar with Simple Local Avatars.
+		$this->get_simple_local_avatars()->assign_avatar( $user_id, $attachment_id );
+		$this->log( sprintf( 'Assigned avatar (attachment %d) to user %d.', $attachment_id, $user_id ) );
+	}
+
+	/**
+	 * Get Simple Local Avatars helper.
+	 *
+	 * @return SimpleLocalAvatars
+	 */
+	private function get_simple_local_avatars(): SimpleLocalAvatars {
+		if ( null === $this->simple_local_avatars ) {
+			$this->simple_local_avatars = new SimpleLocalAvatars();
+		}
+		return $this->simple_local_avatars;
 	}
 
 	/**
@@ -491,7 +586,7 @@ class GhostCMSHelper {
 		try {
 			$level = Level::fromName( $level );
 		} catch ( UnhandledMatchError $e ) {
-			$level = Level::fromName( Level::Info );
+			$level = Level::fromName( 'info' );
 		}
 		
 		$logger->log( $level, $message );
@@ -511,18 +606,14 @@ class GhostCMSHelper {
 	private function set_post_authors( int $wp_post_id, string $json_post_id ): void {
 
 		if ( empty( $this->json->db[0]->data->posts_authors ) ) {
-			
 			$this->log( 'JSON has no post author relationships.', LogLevel::WARNING );
-
 			return;
-
 		}
 
-		$wp_objects = [];
+		$wp_user_ids = [];
 
 		// Each posts_authors relationship.
 		foreach ( $this->json->db[0]->data->posts_authors as $json_post_author ) {
-			
 			// Skip if post id does not match relationship.
 			if ( $json_post_author->post_id != $json_post_id ) {
 				continue;
@@ -531,45 +622,41 @@ class GhostCMSHelper {
 			$this->log( 'Relationship found for author: ' . $json_post_author->author_id );
 
 			// If author_id wasn't already processed.
-			if ( ! isset( $this->authors_to_wp_objects[ $json_post_author->author_id ] ) ) {
-
+			if ( ! isset( $this->authors_to_wp_users[ $json_post_author->author_id ] ) ) {
 				// Get the json author (user) object.
 				$json_author_user = $this->get_json_author_user_by_id( $json_post_author->author_id );
 
 				// Verify related author (user) was found in json.
 				if ( empty( $json_author_user ) ) {
-
 					$this->log( 'JSON author (user) not found: ' . $json_post_author->author_id, LogLevel::WARNING );
-
 					continue;
-
 				}
 
 				// Attempt insert and save return value into lookup.
-				$this->authors_to_wp_objects[ $json_post_author->author_id ] = $this->insert_json_author_user( $json_author_user );
-
+				$this->authors_to_wp_users[ $json_post_author->author_id ] = $this->insert_json_author_user( $json_author_user );
 			}
 
-			// Verify lookup value is an object
+			// Verify lookup value is a WP_User object.
 			// A value of 0 means json author (user) did not have visibility of public.
 			// In that case, don't add to return array.
-			if ( is_object( $this->authors_to_wp_objects[ $json_post_author->author_id ] ) ) {
-				$wp_objects[] = $this->authors_to_wp_objects[ $json_post_author->author_id ];
+			if ( $this->authors_to_wp_users[ $json_post_author->author_id ] instanceof WP_User ) {
+				$wp_user_ids[] = $this->authors_to_wp_users[ $json_post_author->author_id ]->ID;
 			}       
 		} // foreach relationship
 
-		if ( empty( $wp_objects ) ) {
-
+		if ( empty( $wp_user_ids ) ) {
 			$this->log( 'No authors.' );
-
 			return;
-		
 		}
 
-		// WP Users and/or CAP GAs.
-		$this->coauthorsplus_helper->assign_authors_to_post( $wp_objects, $wp_post_id );
+		// Assign WP User IDs (Guest Contributors) to post using UsersHelper.
+		$result = UsersHelper::assign_authors_to_post( $wp_post_id, $wp_user_ids );
+		if ( is_wp_error( $result ) ) {
+			$this->log( 'Failed to assign authors: ' . $result->get_error_message(), LogLevel::ERROR );
+			return;
+		}
 
-		$this->log( 'Assigned authors (wp users and/or cap gas). Count: ' . count( $wp_objects ) );
+		$this->log( 'Assigned authors (guest contributors). Count: ' . count( $wp_user_ids ) );
 	}
 
 	/**
