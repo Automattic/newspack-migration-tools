@@ -367,8 +367,8 @@ class GhostCMSHelper {
 		$display_name = $json_author_user->name;
 		$this->log( sprintf( "Get or insert author: '%s'", $display_name ) );
 
-		// Unique identifier is JSON author ID.
-		$unique_identifier = $json_author_user->id;
+		// Unique identifier is JSON author ID with prefix.
+		$unique_identifier = 'ghostauthorid_' . $json_author_user->id;
 
 		// 1) Check if user exists by unique identifier.
 		$existing_user = UsersHelper::get_user_by_unique_identifier( $unique_identifier );
