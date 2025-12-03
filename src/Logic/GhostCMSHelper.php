@@ -319,13 +319,13 @@ class GhostCMSHelper {
 	 *
 	 * @param string $path URL.
 	 * @param string $title URL or title string.
-	 * @param string $caption Image caption (optional).
-	 * @param string $description Image desc (optional).
-	 * @param string $alt Image alt (optional).
+	 * @param ?string $caption Image caption (optional).
+	 * @param ?string $description Image desc (optional).
+	 * @param ?string $alt Image alt (optional).
 	 * @param int    $post_id Post ID (optional).
 	 * @return int|WP_Error $attachment_id
 	 */
-	private function get_or_import_url( string $path, string $title, string $caption = null, string $description = null, string $alt = null, int $post_id = 0 ): int|WP_Error {
+	private function get_or_import_url( string $path, string $title, ?string $caption = null, ?string $description = null, ?string $alt = null, int $post_id = 0 ): int|WP_Error {
 
 		global $wpdb;
 
