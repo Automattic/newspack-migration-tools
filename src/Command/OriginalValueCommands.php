@@ -215,7 +215,7 @@ class OriginalValueCommands implements WpCliCommandInterface {
 	public static function get_posts_data_for_key( string $key, array $assoc_args ): ?array {
 		global $wpdb;
 
-		$meta_key   = OriginalValueStore::key_for_post( $key );
+		$meta_key   = OriginalValueStore::key_for( $key );
 		$batch_args = BatchLogic::validate_and_get_batch_args( $assoc_args );
 
 		// Get total count.
@@ -332,7 +332,7 @@ class OriginalValueCommands implements WpCliCommandInterface {
 	public static function get_terms_data_for_key( string $key, array $assoc_args ): ?array {
 		global $wpdb;
 
-		$meta_key   = OriginalValueStore::key_for_term( $key );
+		$meta_key   = OriginalValueStore::key_for( $key );
 		$batch_args = BatchLogic::validate_and_get_batch_args( $assoc_args );
 
 		// Get total count.
@@ -447,7 +447,7 @@ class OriginalValueCommands implements WpCliCommandInterface {
 		global $wpdb;
 
 		$key        = $pos_args[0];
-		$meta_key   = OriginalValueStore::key_for_user( $key );
+		$meta_key   = OriginalValueStore::key_for( $key );
 		$batch_args = BatchLogic::validate_and_get_batch_args( $assoc_args );
 
 		// Get total count.
@@ -524,7 +524,7 @@ class OriginalValueCommands implements WpCliCommandInterface {
 		$deleted_count = 0;
 
 		if ( $delete_posts ) {
-			$meta_key = OriginalValueStore::key_for_post( $key );
+			$meta_key = OriginalValueStore::key_for( $key );
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$deleted        = $wpdb->query(
 				$wpdb->prepare(
@@ -537,7 +537,7 @@ class OriginalValueCommands implements WpCliCommandInterface {
 		}
 
 		if ( $delete_terms ) {
-			$meta_key = OriginalValueStore::key_for_term( $key );
+			$meta_key = OriginalValueStore::key_for( $key );
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$deleted        = $wpdb->query(
 				$wpdb->prepare(
@@ -550,7 +550,7 @@ class OriginalValueCommands implements WpCliCommandInterface {
 		}
 
 		if ( $delete_users ) {
-			$meta_key = OriginalValueStore::key_for_user( $key );
+			$meta_key = OriginalValueStore::key_for( $key );
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$deleted        = $wpdb->query(
 				$wpdb->prepare(

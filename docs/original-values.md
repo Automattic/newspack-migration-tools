@@ -48,22 +48,22 @@ $original_username = OriginalValueStore::get_for_user( $user_id, 'alternative_us
 
 ### Storage Format
 
-All values are stored with entity-specific keys:
+All values are stored with the same meta key prefix:
 
-- Posts: `_nmt_original_post_<key>` (e.g., `_nmt_original_post_author_id`)
-- Terms: `_nmt_original_term_<key>` (e.g., `_nmt_original_term_taxonomy`)
-- Users: `_nmt_original_user_<key>` (e.g., `_nmt_original_user_username`)
+- `_nmt_original_permalink`
+- `_nmt_original_thing`
+- `_nmt_original_something_else`
 
 You can also get the full meta key programmatically:
 
 ```php
-$meta_key = OriginalValueStore::key_for_post( 'author_id' );
-// Returns: _nmt_original_post_author_id
+$meta_key = OriginalValueStore::key_for( 'author_id' );
+// Returns: _nmt_original_author_id
 ```
 
 ## WP-CLI Commands
 
-Note that when passing the key to CLI command, just use the part after `_nmt_original_`. So for `nmt_original_post_author_id`, just use `author_id`.
+Note that when passing the key to CLI command, just use the part after `_nmt_original_`. So for `nmt_original_author_id`, just use `author_id`.
 
 ### Get a Single Value
 
