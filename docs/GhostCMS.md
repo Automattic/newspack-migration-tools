@@ -91,6 +91,43 @@ The following output logs will be created:
 * `GhostCMSMigrator_cmd_ghostcms_import.log` - This log file will list all content that was imported along with any warning or errors encountered.
 * `GhostCMSMigrator_cmd_ghostcms_import.log-skips.log` - If a post was already imported, it will not be imported again. A list of "skipped" posts will be written to this file.
 
+### Step 7: Download files from external host
+
+The content has now been imported, but the images are still hosted on the external host. You will need to download the images to your local WordPress installation. Recommended to use the [Newspack Post Image Downloader](https://wordpress.org/plugins/newspack-post-image-downloader/) plugin to download the images.
+
+```
+wp plugin install https://github.com/Automattic/newspack-post-image-downloader/releases/latest/download/newspack-post-image-downloader.zip --activate
+```
+
+Here is the recommended workflow:
+1. List and pick hostnames used in HTML to be downloaded
+```
+wp newspack-post-image-downloader scan-existing-urls
+```
+- from the resulting list, select the hosts to download from, e.g. `--only-download-from-hosts=example.com,*.example.com` will download from all subdomains of example.com and example.com itself (no subdomain specified).
+
+2. Download all the images
+```
+wp newspack-post-image-downloader download-images \
+--only-download-from-hosts=example.com,*.example.com \
+--default-host-and-schema=https://www.example.com
+```
+
+3. Once the images are downloaded, list the remaining non-image file extensions in HTML
+```
+wp newspack-post-image-downloader scan-existing-urls --include-non-image-urls
+```
+- first use this opportunity to examine whether some image extensions were not downloaded and why. Possible reason is that the image links are embedded in custom syntax which needs custom work.
+- from this list, selecting the remaining non-image extensions you wish to downloaded from Ghost host and import locally, e.g. `--extensions=m4a,mp4`
+
+4. Download the non-image files
+```
+wp newspack-post-image-downloader download-non-images-files \
+--only-download-from-hosts=example.com,*.example.com \
+--default-host-and-schema=https://www.example.com \
+--extensions=m4a,mp4
+```
+
 ## Common Errors and Fixes
 
 Error:
