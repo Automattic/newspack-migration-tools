@@ -171,6 +171,26 @@ class UsersHelper {
 	}
 
 	/**
+	 * Sanitize the display_name.
+	 *
+	 * @param string $display_name The display_name to sanitize.
+	 *
+	 * @return string The sanitized display_name.
+	 */
+	public static function sanitize_display_name( string $display_name ): string {
+
+		$display_name = trim( $display_name );
+
+		// Don't allow email - remove everything after @ (if exists).
+		$display_name = trim( preg_replace( '/@.*/u', '', $display_name ) ); // multibyte safe (/u).
+
+		// Trim to 250 chars (max database column length).
+		$display_name = trim( mb_substr( $display_name, 0, 250 ) );
+
+		return $display_name;
+	}
+
+	/**
 	 * Sanitize the username/user_login the same way that wp_insert_user() sanitizes it.
 	 *
 	 * @param string $user_login The username to sanitize.
@@ -340,7 +360,7 @@ class UsersHelper {
 		$user_email    = $data['user_email'] ?? '';
 		$user_nicename = $data['user_nicename'] ?? '';
 		$user_login    = $data['user_login'] ?? '';
-
+		$display_name  = isset( $data['display_name'] ) ? self::sanitize_display_name( $data['display_name'] ) : '';
 
 		// If we don't have an email, we'll create an ugly unusable one so that we can create the user.
 		if ( empty( $user_email ) ) {
@@ -352,8 +372,8 @@ class UsersHelper {
 		if ( empty( $user_nicename ) ) {
 			$user_nicename = trim( ( $data['first_name'] ?? '' ) . ' ' . ( $data['last_name'] ?? '' ) );
 			if ( empty( $user_nicename ) ) { // Yes, that is a whitespace and not an empty string.
-				if ( ! empty( $data['display_name'] ) ) {
-					$user_nicename = $data['display_name'];
+				if ( ! empty( $display_name ) ) {
+					$user_nicename = $display_name; // ok, since sanitize_display_name above will remove possible "@" (email) in string.
 				} elseif ( ! empty( $user_login ) && ! str_contains( $user_login, '@' ) ) {
 					$user_nicename = $user_login;
 				} else {
@@ -366,7 +386,7 @@ class UsersHelper {
 		$user_login_options = [
 			$user_login,
 			$user_nicename,
-			$data['display_name'] ?? '',
+			$display_name,
 
 			// Hash the whole array to get an ugly, but unique username.
 			self::get_short_sha_from_array( $data ),
@@ -395,6 +415,7 @@ class UsersHelper {
 		$data['user_email']    = self::get_unused_fake_email( $user_email );
 		$data['user_nicename'] = self::get_unused_nicename( $user_nicename );
 		$data['user_login']    = self::get_unused_username( $user_login );
+		$data['display_name']  = $display_name;
 
 		// Add the unique identifier to the user's meta so we can find them later.
 		$data['meta_input'][ self::UNIQUE_IDENTIFIER_META_KEY ] = $unique_identifier;
@@ -415,10 +436,8 @@ class UsersHelper {
 			throw new Exception( sprintf( 'Could not create user: %s. Context data: %s', $user_id->get_error_message(), wp_json_encode( $data ) ) );
 		}
 		if ( ! ( $user_id > 0 ) ) {
-			// wp_insert_user could return integer 0. We need to capture this case.
-			// While a WP_Error should be returned from wp_insert_user, but instead a value of "0" is returned.
-			// We need to check for this case since get_user_by needs a $user_id > 0, otherwise $wp_user will equal "false".
-			// One example is this bug: https://core.trac.wordpress.org/ticket/53109
+			// wp_insert_user might return integer 0 in really rare cases where a $data value has a
+			// length or charset that is not allowed per the database column's length or charset.
 			throw new Exception( sprintf( 'Could not create user: %s. Context data: %s', 'wp_insert_user return was not gt 0', wp_json_encode( $data ) ) );
 		}
 
@@ -499,12 +518,9 @@ class UsersHelper {
 	 */
 	public static function assign_authors_to_post( int $post_id, array $authors, bool $append = false, string $query_type = 'id' ): bool|WP_Error {
 	
-		if ( ! function_exists( 'is_plugin_active' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/plugin.php';
-		}
-
-		if ( ! is_plugin_active( 'co-authors-plus/co-authors-plus.php' ) ) {
-			return new WP_Error( 'ERROR_COAUTHORS_PLUS', 'Co-Authors Plus plugin not found. Install and activate it before using this function.' );
+		$validate_cap = self::validate_co_authors_plus();
+		if ( true !== $validate_cap ) {
+			return $validate_cap;
 		}
 
 		global $coauthors_plus;
@@ -516,5 +532,98 @@ class UsersHelper {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Reassign authorship of post from one author to another. Makes sure that additional coauthors are preserved.
+	 *
+	 * @param int $post_id      Post ID.
+	 * @param int $from_user_id User ID to reassign from.
+	 * @param int $to_user_id   User ID to reassign to.
+	 *
+	 * @return bool|null|WP_Error True if reassignment was successful. Null if $from_user_id is not one of post's coauthors.
+	 *                            WP_Error no coauthors are found for post or assignment fails.
+	 */
+	public static function reassign_author( int $post_id, int $from_user_id, int $to_user_id ): bool|null|WP_Error {
+
+		$validate_cap = self::validate_co_authors_plus();
+		if ( true !== $validate_cap ) {
+			return $validate_cap;
+		}
+
+		// Get current authors for the post using Co-Authors Plus plugin's function.
+		$current_authors = get_coauthors( $post_id );
+
+		// If no authors found (it might mean that author terms are missing on a legacy author setup, and that `wp co-authors-plus create-author-terms-for-posts` should be run first).
+		if ( empty( $current_authors ) ) {
+			return new WP_Error( 'ERROR_NO_AUTHORS', sprintf( 'No authors found for post ID %d.', $post_id ) );
+		}
+
+		// Get $new_author_ids.
+		$is_from_user_author = false;
+		$new_author_ids      = [];
+		foreach ( $current_authors as $author ) {
+			if ( $author->ID == $from_user_id ) {
+				$new_author_ids[]    = $to_user_id;
+				$is_from_user_author = true;
+			} else {
+				$new_author_ids[] = $author->ID;
+			}
+		}
+
+		// $from_user_id is not an author.
+		if ( false === $is_from_user_author ) {
+			return null;
+		}
+
+		// Assign new authors.
+		return self::assign_authors_to_post( $post_id, $new_author_ids );
+	}
+
+	/**
+	 * Validate Co-Authors Plus.
+	 * 
+	 * For some functions of this UsersHelper class, we need to first verify Co-Authors Plus is installed and active.
+	 *
+	 * @param bool $guest_authors Is the Guest Authors feature of CAP required. Default is not required.
+	 * 
+	 * @return bool|WP_Error True if active, WP_Error if not.
+	 */
+	public static function validate_co_authors_plus( $guest_authors = false ): bool|WP_Error {
+	
+		// Only run this function once, as long as argument(s) are the same.
+		static $validated = [];
+		$args_key         = $guest_authors ? '1' : '0';
+		if ( isset( $validated[ $args_key ] ) ) {
+			return $validated[ $args_key ];
+		}
+
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		if ( ! is_plugin_active( 'co-authors-plus/co-authors-plus.php' ) ) {
+			return new WP_Error( 'ERROR_COAUTHORS_PLUS', 'Co-Authors Plus plugin not found. Install and activate it before using this function.' );
+		}
+		
+		if ( ! isset( $GLOBALS['coauthors_plus'] ) ) {
+			return new WP_Error( 'ERROR_COAUTHORS_PLUS_OBJ', 'Co-Authors Plus global is not set.' );
+		}
+		
+		if ( ! method_exists( $GLOBALS['coauthors_plus'], 'add_coauthors' ) ) {
+			return new WP_Error( 'ERROR_COAUTHORS_PLUS_ADD', 'Co-Authors Plus method add_coauthors does not exist.' );
+		}
+
+		if ( ! function_exists( '\get_coauthors' ) ) {
+			return new WP_Error( 'ERROR_COAUTHORS_PLUS_GET', 'Co-Authors Plus function get_coauthors does not exist.' );
+		}
+
+		if ( $guest_authors && empty( $GLOBALS['coauthors_plus']->guest_authors ) ) {
+			return new WP_Error( 'ERROR_COAUTHORS_PLUS_GAS', 'Co-Authors Plus Guest Authors not set.' );
+		}
+
+		$validated[ $args_key ] = true;
+		
+		return $validated[ $args_key ];
 	}
 }

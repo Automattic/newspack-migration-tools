@@ -102,6 +102,8 @@ install_contrib_plugins() {
   unzip -q -o $TMPDIR/co-authors-plus.zip -d $WP_CORE_DIR/wp-content/plugins/
   wget -nv -O $TMPDIR/newspack-plugin.zip https://github.com/Automattic/newspack-plugin/releases/latest/download/newspack-plugin.zip
   unzip -q -o $TMPDIR/newspack-plugin.zip -d $WP_CORE_DIR/wp-content/plugins/
+  wget -nv -O $TMPDIR/simple-local-avatars.zip https://downloads.wordpress.org/plugin/simple-local-avatars.zip
+  unzip -q -o $TMPDIR/simple-local-avatars.zip -d $WP_CORE_DIR/wp-content/plugins/
 }
 
 install_test_suite() {
