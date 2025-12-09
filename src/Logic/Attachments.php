@@ -304,24 +304,20 @@ class Attachments {
 			'tmp_name' => $tmpfname,
 		];
 
+		$file_type                   = wp_check_filetype( $path );
+		$file_has_extension          = pathinfo( $path, PATHINFO_EXTENSION );
+		$file_extension_is_supported = ! empty( $file_type['ext'] ) && ! empty( $file_type['type'] );
+
 		if ( ! empty( $desired_filename ) ) {
 			$file_array['name'] = $desired_filename;
-		} elseif (
-			! pathinfo( $path, PATHINFO_EXTENSION )
-			|| ( false === array_search( pathinfo( $path, PATHINFO_EXTENSION ), wp_get_mime_types() ) )
-		) {
+		} elseif ( ! $file_has_extension || ! $file_extension_is_supported ) {
 			// If the path does not have a file extension, let's try to find one for it.
 			// Without the extension, the upload will fail because WP will not allow that "file type".
-			$mimetype           = mime_content_type( $tmpfname );
-			$probably_extension = array_search( $mimetype, wp_get_mime_types() );
+			$mimetype          = mime_content_type( $tmpfname );
+			$default_extension = wp_get_default_extension_for_mime_type( $mimetype );
 
-			// Sometimes the extension is in the format `jpg|jpeg|jpe`. In that case, we need to get the first one.
-			if ( str_contains( $probably_extension, '|' ) ) {
-				$probably_extension = explode( '|', $probably_extension )[0];
-			}
-
-			if ( ! empty( $probably_extension ) ) {
-				$file_array['name'] .= '.' . $probably_extension;
+			if ( ! empty( $default_extension ) ) {
+				$file_array['name'] .= '.' . $default_extension;
 			}
 		}
 

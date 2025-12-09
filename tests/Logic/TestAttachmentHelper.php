@@ -97,4 +97,24 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 		$this->assertFileExists( $file_path );
 		$this->assertStringEndsWith( $desired_file_name, $file_path );
 	}
+
+	/**
+	 * Test downloading an image.
+	 */
+	public function test_download_image() {
+		$result = Attachments::download_file( 'tests/fixtures/koi.jpg' );
+
+		$this->assertEquals( $result['name'], 'koi.jpg' );
+		$this->assertFileExists( $result['tmp_name'] );
+	}
+
+	/**
+	 * Test downloading an image.
+	 */
+	public function test_download_image_without_extension() {
+		$result = Attachments::download_file( 'tests/fixtures/koi' );
+
+		$this->assertEquals( $result['name'], 'koi.jpg' );
+		$this->assertFileExists( $result['tmp_name'] );
+	}
 }
