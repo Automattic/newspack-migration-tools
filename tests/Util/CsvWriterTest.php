@@ -31,6 +31,7 @@ class CsvWriterTest extends TestCase {
 	protected function tearDown(): void {
 		if ( file_exists( $this->test_file ) ) {
 			unlink( $this->test_file );
+			rmdir( dirname( $this->test_file ) );
 		}
 	}
 
