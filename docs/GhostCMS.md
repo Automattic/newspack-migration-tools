@@ -33,9 +33,8 @@ Note: the JSON export file could be very large. In most cases, the GhostCMS Migr
 
 ### Step 2: Verify requirements
 
-To run the migrator, you'll need:
+The following plugins must also be installed and activated:
 
-Following plugins must also be installed and activated
 - [Co-Authors Plus](https://wordpress.org/plugins/co-authors-plus/)
 - [Simple Local Avatars](https://wordpress.org/plugins/simple-local-avatars/)
 
