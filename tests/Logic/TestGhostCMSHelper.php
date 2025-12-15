@@ -4,25 +4,9 @@ namespace Newspack\MigrationTools\Tests\Logic;
 
 use Newspack\Guest_Contributor_Role;
 use Newspack\MigrationTools\Logic\GhostCMSHelper;
-use ReflectionClass;
 use WP_UnitTestCase;
 
 class TestGhostCMSHelper extends WP_UnitTestCase {
-
-	/**
-	 * Helper to invoke the private get_json_data_from_path method.
-	 *
-	 * @param GhostCMSHelper $helper The helper instance with JSON set.
-	 * @param string         $path   The jq-style path to resolve.
-	 * @return object|null The resolved data node or null.
-	 */
-	private function invoke_get_json_data_from_path( GhostCMSHelper $helper, string $path ): ?object {
-		$reflection = new ReflectionClass( $helper );
-		$method     = $reflection->getMethod( 'get_json_data_from_path' );
-		$method->setAccessible( true );
-
-		return $method->invoke( $helper, $path );
-	}
 
 	/**
 	 * Test empty path returns the root JSON object.
@@ -33,9 +17,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$json = json_decode( '{"db": [{"data": {"posts": []}}]}' );
 
 		$helper = new GhostCMSHelper();
-		$helper->set_json( $json );
 
-		$result = $this->invoke_get_json_data_from_path( $helper, '' );
+		$result = $helper->get_json_data_from_path( '', $json );
 
 		$this->assertSame( $json, $result );
 	}
@@ -49,9 +32,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$json = json_decode( '{"db": [{"data": {"posts": []}}]}' );
 
 		$helper = new GhostCMSHelper();
-		$helper->set_json( $json );
 
-		$result = $this->invoke_get_json_data_from_path( $helper, '.db[0].data' );
+		$result = $helper->get_json_data_from_path( '.db[0].data', $json );
 
 		$this->assertIsObject( $result );
 		$this->assertTrue( property_exists( $result, 'posts' ) );
@@ -66,9 +48,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$json = json_decode( '{"settings": {"theme": "dark"}}' );
 
 		$helper = new GhostCMSHelper();
-		$helper->set_json( $json );
 
-		$result = $this->invoke_get_json_data_from_path( $helper, 'settings' );
+		$result = $helper->get_json_data_from_path( 'settings', $json );
 
 		$this->assertIsObject( $result );
 		$this->assertEquals( 'dark', $result->theme );
@@ -83,9 +64,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$json = json_decode( '{"level1": {"level2": {"level3": {"value": "deep"}}}}' );
 
 		$helper = new GhostCMSHelper();
-		$helper->set_json( $json );
 
-		$result = $this->invoke_get_json_data_from_path( $helper, 'level1.level2.level3' );
+		$result = $helper->get_json_data_from_path( 'level1.level2.level3', $json );
 
 		$this->assertIsObject( $result );
 		$this->assertEquals( 'deep', $result->value );
@@ -100,20 +80,19 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$json = json_decode( '{"db": [{"name": "first"}, {"name": "second"}, {"name": "third"}]}' );
 
 		$helper = new GhostCMSHelper();
-		$helper->set_json( $json );
 
 		// Access first element.
-		$result = $this->invoke_get_json_data_from_path( $helper, 'db[0]' );
+		$result = $helper->get_json_data_from_path( 'db[0]', $json );
 		$this->assertIsObject( $result );
 		$this->assertEquals( 'first', $result->name );
 
 		// Access second element.
-		$result = $this->invoke_get_json_data_from_path( $helper, 'db[1]' );
+		$result = $helper->get_json_data_from_path( 'db[1]', $json );
 		$this->assertIsObject( $result );
 		$this->assertEquals( 'second', $result->name );
 
 		// Access third element.
-		$result = $this->invoke_get_json_data_from_path( $helper, 'db[2]' );
+		$result = $helper->get_json_data_from_path( 'db[2]', $json );
 		$this->assertIsObject( $result );
 		$this->assertEquals( 'third', $result->name );
 	}
@@ -138,9 +117,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		);
 
 		$helper = new GhostCMSHelper();
-		$helper->set_json( $json );
 
-		$result = $this->invoke_get_json_data_from_path( $helper, 'db[0].data' );
+		$result = $helper->get_json_data_from_path( 'db[0].data', $json );
 
 		$this->assertIsObject( $result );
 		$this->assertTrue( property_exists( $result, 'posts' ) );
@@ -165,9 +143,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		);
 
 		$helper = new GhostCMSHelper();
-		$helper->set_json( $json );
 
-		$result = $this->invoke_get_json_data_from_path( $helper, 'databases[0].tables[0]' );
+		$result = $helper->get_json_data_from_path( 'databases[0].tables[0]', $json );
 
 		$this->assertIsObject( $result );
 		$this->assertTrue( property_exists( $result, 'rows' ) );
@@ -182,9 +159,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$json = json_decode( '{"existing": {"value": 1}}' );
 
 		$helper = new GhostCMSHelper();
-		$helper->set_json( $json );
 
-		$result = $this->invoke_get_json_data_from_path( $helper, 'nonexistent' );
+		$result = $helper->get_json_data_from_path( 'nonexistent', $json );
 
 		$this->assertNull( $result );
 	}
@@ -198,9 +174,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$json = json_decode( '{"level1": {"level2": {}}}' );
 
 		$helper = new GhostCMSHelper();
-		$helper->set_json( $json );
 
-		$result = $this->invoke_get_json_data_from_path( $helper, 'level1.level2.level3' );
+		$result = $helper->get_json_data_from_path( 'level1.level2.level3', $json );
 
 		$this->assertNull( $result );
 	}
@@ -214,9 +189,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$json = json_decode( '{"items": [{"id": 1}, {"id": 2}]}' );
 
 		$helper = new GhostCMSHelper();
-		$helper->set_json( $json );
 
-		$result = $this->invoke_get_json_data_from_path( $helper, 'items[99]' );
+		$result = $helper->get_json_data_from_path( 'items[99]', $json );
 
 		$this->assertNull( $result );
 	}
@@ -230,9 +204,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$json = json_decode( '{"notArray": {"key": "value"}}' );
 
 		$helper = new GhostCMSHelper();
-		$helper->set_json( $json );
 
-		$result = $this->invoke_get_json_data_from_path( $helper, 'notArray[0]' );
+		$result = $helper->get_json_data_from_path( 'notArray[0]', $json );
 
 		$this->assertNull( $result );
 	}
@@ -246,9 +219,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$json = json_decode( '{"db": [{"data": {}}]}' );
 
 		$helper = new GhostCMSHelper();
-		$helper->set_json( $json );
 
-		$result = $this->invoke_get_json_data_from_path( $helper, 'db[0].invalid.something' );
+		$result = $helper->get_json_data_from_path( 'db[0].invalid.something', $json );
 
 		$this->assertNull( $result );
 	}
@@ -264,10 +236,9 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$json = json_decode( '{"config": {"name": "test"}}' );
 
 		$helper = new GhostCMSHelper();
-		$helper->set_json( $json );
 
 		// "name" is a string, not an object.
-		$result = $this->invoke_get_json_data_from_path( $helper, 'config.name' );
+		$result = $helper->get_json_data_from_path( 'config.name', $json );
 
 		$this->assertNull( $result );
 	}
