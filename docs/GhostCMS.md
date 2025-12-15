@@ -92,6 +92,12 @@ The following output logs will be created:
 * `GhostCMSMigrator_cmd_ghostcms_import.log` - This log file will list all content that was imported along with any warning or errors encountered.
 * `GhostCMSMigrator_cmd_ghostcms_import.log-skips.log` - If a post was already imported, it will not be imported again. A list of "skipped" posts will be written to this file.
 
+### Step 7: Download files from external host
+
+The content has now been imported, but the images are still hosted on the external host. You will need to download the images to your local WordPress installation.
+
+Recommended to use the [Newspack Post Image Downloader](https://github.com/Automattic/newspack-post-image-downloader) plugin to download the images. Follow the [README.md](https://github.com/Automattic/newspack-post-image-downloader) file in plugin repo for usage and best workflow.
+
 ## Common Errors and Fixes
 
 Error:
