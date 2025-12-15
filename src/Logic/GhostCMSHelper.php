@@ -596,11 +596,11 @@ class GhostCMSHelper {
 			return is_object( $this->json ) ? $this->json : null;
 		}
 
-		// Parse jq-style path: split by dots and brackets.
-		// e.g., "db[0].data" becomes ["db", "[0]", "data"].
-		$tokens  = preg_split( '/\.(?![^\[]*\])/', $path );
+		// $current is the current object we are working on, it's like a bookmark that tracks where we are as we walk through a nested JSON structure.
 		$current = $this->json;
 
+		// Split jq-style path by dots: "db[0].data" becomes ["db[0]", "data"].
+		$tokens = explode( '.', $path );
 		foreach ( $tokens as $token ) {
 			if ( empty( $token ) ) {
 				continue;
