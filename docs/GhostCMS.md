@@ -65,7 +65,7 @@ Standard `jq`-style path notation to node in JSON where posts (and other objects
 
 Default value path (to posts and other data) is `.db[0].data`.
 To test for path, you can use `jq` from CLI like:
-- count posts: `jq '.db[0].data.posts' | length export.json`
+- count posts: `jq '.db[0].data.posts | length' export.json`
 - list posts:  `jq '.db[0].data.posts' export.json`
 ```
 

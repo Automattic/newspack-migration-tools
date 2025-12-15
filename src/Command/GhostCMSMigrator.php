@@ -69,7 +69,7 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 							'description' => 'Standard jq-style path notation to node in JSON where posts (and other objects) are stored (e.g., `.db[0].data` or `.data`). ' . 
 											'To test for path, use jq commands like: ' .
 											" - list posts:  `jq '.db[0].data.posts' export.json` " .
-											" - count posts: `jq '.db[0].data.posts' | length export.json` " .
+											" - count posts: `jq '.db[0].data.posts | length' export.json` " .
 											'Default value (path to posts) is `.db[0].data`.',
 							'optional'    => true,
 							'repeating'   => false,
