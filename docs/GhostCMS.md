@@ -95,7 +95,7 @@ The following output logs will be created:
 
 The content has now been imported, but the images are still hosted on the external host. You will need to download the images to your local WordPress installation.
 
-Recommended to use the [Newspack Post Image Downloader](https://github.com/Automattic/newspack-post-image-downloader) plugin to download the images. Follow the [README.md](https://github.com/Automattic/newspack-post-image-downloader)) file in plugin repo for usage and best workflow.
+Recommended to use the [Newspack Post Image Downloader](https://github.com/Automattic/newspack-post-image-downloader) plugin to download the images. Follow the [README.md](https://github.com/Automattic/newspack-post-image-downloader) file in plugin repo for usage and best workflow.
 
 ## Common Errors and Fixes
 
