@@ -89,6 +89,18 @@ class GhostCMSHelper {
 	}
 
 	/**
+	 * Set the JSON data object.
+	 *
+	 * Primarily used for unit testing to inject test data.
+	 *
+	 * @param object $json The JSON data object.
+	 * @return void
+	 */
+	public function set_json( object $json ): void {
+		$this->json = $json;
+	}
+
+	/**
 	 * Import GhostCMS Content from JSON file.
 	 * 
 	 * @param array  $pos_args Positional arguments.
@@ -342,7 +354,7 @@ class GhostCMSHelper {
 	 * @param int    $post_id Post ID (optional).
 	 * @return int|WP_Error $attachment_id
 	 */
-	private function get_or_import_url( string $path, string $title, string $caption = null, string $description = null, string $alt = null, int $post_id = 0 ): int|WP_Error {
+	private function get_or_import_url( string $path, string $title, ?string $caption = null, ?string $description = null, ?string $alt = null, int $post_id = 0 ): int|WP_Error {
 
 		global $wpdb;
 
