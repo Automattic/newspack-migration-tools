@@ -165,7 +165,7 @@ class GhostCMSHelper {
 		}
 
 		if ( empty( $this->data->posts ) ) {
-			$this->log( 'JSON file contained no posts.', LogLevel::ERROR, true );
+			$this->log( sprintf( 'JSON file contained no posts at data path: %s', $json_data_path ), LogLevel::ERROR, true );
 		}
 
 		// Start processing.
@@ -579,9 +579,7 @@ class GhostCMSHelper {
 	 * Get JSON data node from a jq-style path.
 	 *
 	 * @param string $path jq-style path (e.g., ".db[0].data" or "data").
-	 * 
-	 * 
-	 * 
+	 * @param object $json JSON object.
 	 * 
 	 * @return object|null The resolved data node or null if path is invalid.
 	 */
@@ -590,6 +588,7 @@ class GhostCMSHelper {
 		$path = ltrim( $path, '.' );
 
 		if ( empty( $path ) ) {
+			// path was either blank or dot - which means the "root" object.
 			return $json;
 		}
 
