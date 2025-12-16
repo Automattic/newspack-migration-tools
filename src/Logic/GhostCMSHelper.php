@@ -52,13 +52,6 @@ class GhostCMSHelper {
 	private ?object $data = null;
 
 	/**
-	 * JSON from file
-	 *
-	 * @var object $json
-	 */
-	private ?object $json = null;
-
-	/**
 	 * Log slug.
 	 *
 	 * @var string $log_slug
@@ -86,18 +79,6 @@ class GhostCMSHelper {
 	 */
 	public function __construct() {
 		// Nothing for now.
-	}
-
-	/**
-	 * Set the JSON data object.
-	 *
-	 * Primarily used for unit testing to inject test data.
-	 *
-	 * @param object $json The JSON data object.
-	 * @return void
-	 */
-	public function set_json( object $json ): void {
-		$this->json = $json;
 	}
 
 	/**
@@ -168,23 +149,23 @@ class GhostCMSHelper {
 			$this->log( 'JSON file not found.', LogLevel::ERROR, true );
 		}
 
-		$this->json = json_decode( file_get_contents( $assoc_args['json-file'] ), null, 2147483647 );
+		$json = json_decode( file_get_contents( $assoc_args['json-file'] ), null, 2147483647 );
 
-		if ( ! is_object( $this->json ) || 0 != json_last_error() || 'No error' != json_last_error_msg() ) {
+		if ( ! is_object( $json ) || 0 != json_last_error() || 'No error' != json_last_error_msg() ) {
 			$this->log( 'JSON file could not be parsed.', LogLevel::ERROR, true );
 		}
 
 		// --json-data-path (optional, defaults to .db[0].data).
 
 		$json_data_path = $assoc_args['json-data-path'] ?? '.db[0].data';
-		$this->data     = $this->get_json_data_from_path( $json_data_path );
+		$this->data     = $this->get_json_data_from_path( $json_data_path, $json );
 
 		if ( null === $this->data ) {
 			$this->log( sprintf( 'JSON data path "%s" could not be resolved.', $json_data_path ), LogLevel::ERROR, true );
 		}
 
 		if ( empty( $this->data->posts ) ) {
-			$this->log( 'JSON file contained no posts.', LogLevel::ERROR, true );
+			$this->log( sprintf( 'JSON file contained no posts at data path: %s', $json_data_path ), LogLevel::ERROR, true );
 		}
 
 		// Start processing.
@@ -598,18 +579,21 @@ class GhostCMSHelper {
 	 * Get JSON data node from a jq-style path.
 	 *
 	 * @param string $path jq-style path (e.g., ".db[0].data" or "data").
+	 * @param object $json JSON object.
+	 * 
 	 * @return object|null The resolved data node or null if path is invalid.
 	 */
-	private function get_json_data_from_path( string $path ): ?object {
+	public function get_json_data_from_path( string $path, object $json ): ?object {
 		// Strip leading dot if present.
 		$path = ltrim( $path, '.' );
 
 		if ( empty( $path ) ) {
-			return is_object( $this->json ) ? $this->json : null;
+			// path was either blank or dot - which means the "root" object.
+			return $json;
 		}
 
 		// $current is the current object we are working on, it's like a bookmark that tracks where we are as we walk through a nested JSON structure.
-		$current = $this->json;
+		$current = $json;
 
 		// Split jq-style path by dots: "db[0].data" becomes ["db[0]", "data"].
 		$tokens = explode( '.', $path );
