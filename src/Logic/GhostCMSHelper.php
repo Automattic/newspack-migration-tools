@@ -56,7 +56,7 @@ class GhostCMSHelper {
 	 *
 	 * @var object $json
 	 */
-	private object $json;
+	private ?object $json = null;
 
 	/**
 	 * Log slug.
@@ -170,7 +170,7 @@ class GhostCMSHelper {
 
 		$this->json = json_decode( file_get_contents( $assoc_args['json-file'] ), null, 2147483647 );
 
-		if ( 0 != json_last_error() || 'No error' != json_last_error_msg() ) {
+		if ( ! is_object( $this->json ) || 0 != json_last_error() || 'No error' != json_last_error_msg() ) {
 			$this->log( 'JSON file could not be parsed.', LogLevel::ERROR, true );
 		}
 
