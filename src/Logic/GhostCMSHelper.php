@@ -583,7 +583,7 @@ class GhostCMSHelper {
 	 * 
 	 * @return object|null The resolved data node or null if path is invalid.
 	 */
-	public function get_json_data_from_path( string $path, object $json ): ?object {
+	private function get_json_data_from_path( string $path, object $json ): ?object {
 		// Strip leading dot if present.
 		$path = ltrim( $path, '.' );
 
