@@ -60,6 +60,14 @@ Optional arguments:
 ```
 --created-after=<created-after>
 Datetime cut-off to only import posts AFTER this date. (Must be parseable by strtotime).
+
+--json-data-path=<json-data-path>
+Standard `jq`-style path notation to node in JSON where posts (and other objects) are stored (e.g., --json-data-path=".db[0].data" or --json-data-path=".data").
+
+Default value path (to posts and other data) is `.db[0].data`.
+To test for path, you can use `jq` from CLI like:
+- count posts: `jq '.db[0].data.posts | length' export.json`
+- list posts:  `jq '.db[0].data.posts' export.json`
 ```
 
 ### Step 4: Run a test
@@ -76,7 +84,7 @@ For testing, you can use these test values (with the included `json` test file):
 
 Command (_be sure to replace your values_):
 ```
-wp newspack-migration-tools ghostcms-import --default-user-id=<default-user-id> --ghost-url=<ghost-url> --json-file=<json-file> [--created-after=<created-after>]
+wp newspack-migration-tools ghostcms-import --default-user-id=<default-user-id> --ghost-url=<ghost-url> --json-file=<json-file> [--created-after=<created-after>] [--json-data-path=<json-data-path>]
 ```
 
 If the migrator command is stopped mid-migration, it is OK to simply re-run the command.

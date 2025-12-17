@@ -45,11 +45,11 @@ class GhostCMSHelper {
 	private string $ghost_url;
 
 	/**
-	 * JSON from file
+	 * JSON data node (resolved from json-data-path).
 	 *
-	 * @var object $json
+	 * @var object $data
 	 */
-	private object $json;
+	private ?object $data = null;
 
 	/**
 	 * Log slug.
@@ -149,19 +149,29 @@ class GhostCMSHelper {
 			$this->log( 'JSON file not found.', LogLevel::ERROR, true );
 		}
 
-		$this->json = json_decode( file_get_contents( $assoc_args['json-file'] ), null, 2147483647 );
-		
-		if ( 0 != json_last_error() || 'No error' != json_last_error_msg() ) {
+		$json = json_decode( file_get_contents( $assoc_args['json-file'] ), null, 2147483647 );
+
+		if ( ! is_object( $json ) || 0 != json_last_error() || 'No error' != json_last_error_msg() ) {
 			$this->log( 'JSON file could not be parsed.', LogLevel::ERROR, true );
 		}
-		
-		if ( empty( $this->json->db[0]->data->posts ) ) {
-			$this->log( 'JSON file contained no posts.', LogLevel::ERROR, true );
+
+		// --json-data-path (optional, defaults to .db[0].data).
+
+		$json_data_path = $assoc_args['json-data-path'] ?? '.db[0].data';
+		$this->data     = $this->get_json_data_from_path( $json_data_path, $json );
+
+		if ( null === $this->data ) {
+			$this->log( sprintf( 'JSON data path "%s" could not be resolved.', $json_data_path ), LogLevel::ERROR, true );
+		}
+
+		if ( empty( $this->data->posts ) ) {
+			$this->log( sprintf( 'JSON file contained no posts at data path: %s', $json_data_path ), LogLevel::ERROR, true );
 		}
 
 		// Start processing.
 		$this->log( 'Doing migration.' );
 		$this->log( '--json-file: ' . $assoc_args['json-file'] );
+		$this->log( '--json-data-path: ' . $json_data_path );
 		$this->log( '--ghost-url: ' . $this->ghost_url );
 		$this->log( '--default-user-id: ' . $default_user->ID );
 		
@@ -171,7 +181,7 @@ class GhostCMSHelper {
 		}
 		
 		// Insert posts.
-		foreach ( $this->json->db[0]->data->posts as $json_post ) {
+		foreach ( $this->data->posts as $json_post ) {
 
 			$this->log( '---- json id: ' . $json_post->id );
 			$this->log( 'Title/Slug: ' . $json_post->title . ' / ' . $json_post->slug );
@@ -256,11 +266,11 @@ class GhostCMSHelper {
 	 */
 	private function get_json_author_user_by_id( string $json_author_user_id ): ?object {
 
-		if ( empty( $this->json->db[0]->data->users ) ) {
+		if ( empty( $this->data->users ) ) {
 			return null;
 		}
 
-		foreach ( $this->json->db[0]->data->users as $json_author_user ) {
+		foreach ( $this->data->users as $json_author_user ) {
 
 			if ( $json_author_user->id == $json_author_user_id ) {
 				return $json_author_user;
@@ -278,11 +288,11 @@ class GhostCMSHelper {
 	 */
 	private function get_json_post_meta( string $json_post_id ): ?object {
 
-		if ( empty( $this->json->db[0]->data->posts_meta ) ) {
+		if ( empty( $this->data->posts_meta ) ) {
 			return null;
 		}
 
-		foreach ( $this->json->db[0]->data->posts_meta as $json_post_meta ) {
+		foreach ( $this->data->posts_meta as $json_post_meta ) {
 
 			if ( $json_post_meta->post_id == $json_post_id ) {
 				return $json_post_meta;
@@ -300,11 +310,11 @@ class GhostCMSHelper {
 	 */
 	private function get_json_tag_by_id( string $json_tag_id ): ?object {
 
-		if ( empty( $this->json->db[0]->data->tags ) ) {
+		if ( empty( $this->data->tags ) ) {
 			return null;
 		}
 
-		foreach ( $this->json->db[0]->data->tags as $json_tag ) {
+		foreach ( $this->data->tags as $json_tag ) {
 
 			if ( $json_tag->id == $json_tag_id ) {
 				return $json_tag;
@@ -566,6 +576,81 @@ class GhostCMSHelper {
 	}
 
 	/**
+	 * Get JSON data node from a jq-style path.
+	 *
+	 * @param string $path jq-style path (e.g., ".db[0].data" or "data").
+	 * @param object $json JSON object.
+	 * 
+	 * @return object|null The resolved data node or null if path is invalid.
+	 */
+	private function get_json_data_from_path( string $path, object $json ): ?object {
+		// Strip leading dot if present.
+		$path = ltrim( $path, '.' );
+
+		if ( empty( $path ) ) {
+			// path was either blank or dot - which means the "root" object.
+			return $json;
+		}
+
+		// $current is the current object we are working on, it's like a bookmark that tracks where we are as we walk through a nested JSON structure.
+		$current = $json;
+
+		// Split jq-style path by dots: "db[0].data" becomes ["db[0]", "data"].
+		$tokens = explode( '.', $path );
+		foreach ( $tokens as $token ) {
+			if ( empty( $token ) ) {
+				continue;
+			}
+
+			/**
+			 * Pattern to match bracket notation: property[index] or just [index].
+			 *
+			 * ^           - Start of string
+			 * ([^\[]*)    - Capture group 1 -- zero or more characters that are NOT "[".
+			 *              This captures the property name (e.g., "db" in "db[0]").
+			 *              Can be empty for standalone indices like "[0]".
+			 * \[          - Literal "["
+			 * (\d+)       - Capture group 2 -- one or more digits (the array index)
+			 * \]          - Literal "]"
+			 * $           - End of string
+			 *
+			 * Examples:
+			 *   "db[0]"  => matches, $matches[1] = "db",  $matches[2] = "0"
+			 *   "[0]"    => matches, $matches[1] = "",    $matches[2] = "0"
+			 *   "data"   => no match (no brackets)
+			 */
+			$pattern = '/^([^\[]*)\[(\d+)\]$/';
+			if ( preg_match( $pattern, $token, $matches ) ) {
+				$property = $matches[1];
+				$index    = (int) $matches[2];
+
+				// Access property first if present.
+				if ( ! empty( $property ) ) {
+					if ( is_object( $current ) && isset( $current->{$property} ) ) {
+						$current = $current->{$property};
+					} else {
+						return null;
+					}
+				}
+
+				// Then access array index.
+				if ( is_array( $current ) && isset( $current[ $index ] ) ) {
+					$current = $current[ $index ];
+				} else {
+					return null;
+				}
+			} elseif ( is_object( $current ) && isset( $current->{$token} ) ) {
+				// Simple property access.
+				$current = $current->{$token};
+			} else {
+				return null;
+			}
+		}
+
+		return is_object( $current ) ? $current : null;
+	}
+
+	/**
 	 * Log wrapper function incase logging needs to be updated in future it can be changed here.
 	 *
 	 * @param string  $message The message to log.
@@ -605,7 +690,7 @@ class GhostCMSHelper {
 	 */
 	private function set_post_authors( int $wp_post_id, string $json_post_id ): void {
 
-		if ( empty( $this->json->db[0]->data->posts_authors ) ) {
+		if ( empty( $this->data->posts_authors ) ) {
 			$this->log( 'JSON has no post author relationships.', LogLevel::WARNING );
 			return;
 		}
@@ -613,7 +698,7 @@ class GhostCMSHelper {
 		$wp_user_ids = [];
 
 		// Each posts_authors relationship.
-		foreach ( $this->json->db[0]->data->posts_authors as $json_post_author ) {
+		foreach ( $this->data->posts_authors as $json_post_author ) {
 			// Skip if post id does not match relationship.
 			if ( $json_post_author->post_id != $json_post_id ) {
 				continue;
@@ -713,7 +798,7 @@ class GhostCMSHelper {
 	 */
 	private function set_post_tags_to_categories( int $wp_post_id, string $json_post_id ): void {
 
-		if ( empty( $this->json->db[0]->data->posts_tags ) ) {
+		if ( empty( $this->data->posts_tags ) ) {
 			
 			$this->log( 'JSON has no post tags (category) relationships.', LogLevel::WARNING );
 
@@ -724,7 +809,7 @@ class GhostCMSHelper {
 		$category_ids = [];
 
 		// Each posts_tags relationship.
-		foreach ( $this->json->db[0]->data->posts_tags as $json_post_tag ) {
+		foreach ( $this->data->posts_tags as $json_post_tag ) {
 			
 			// Skip if post id does not match relationship.
 			if ( $json_post_tag->post_id != $json_post_id ) {
