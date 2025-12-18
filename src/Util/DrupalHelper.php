@@ -7,6 +7,7 @@
 
 namespace Newspack\MigrationTools\Util;
 
+use Newspack\MigrationTools\NMT;
 use Newspack\MigrationTools\Util\Log\CliLog;
 
 class DrupalHelper extends FgHelper {
@@ -58,7 +59,7 @@ class DrupalHelper extends FgHelper {
 			CliLog::get_logger( 'DrupalHelper' )->alert(
 				sprintf(
 					'This function likely only going to work for Drupal 7. Your Drupal version is %d. Proceed at your own risk :)',
-					$this->drupal_version 
+					$this->drupal_version
 				)
 			);
 		}
@@ -105,7 +106,7 @@ class DrupalHelper extends FgHelper {
 			CliLog::get_logger( 'DrupalHelper' )->alert(
 				sprintf(
 					'This function likely only going to work for Drupal 7. Your Drupal version is %d. Proceed at your own risk :)',
-					$this->drupal_version 
+					$this->drupal_version
 				)
 			);
 		}
@@ -119,7 +120,7 @@ class DrupalHelper extends FgHelper {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$results = $wpdb->get_results(
 				$wpdb->prepare(
-					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					"SELECT source, alias FROM {$prefix}url_alias 
                      WHERE source LIKE %s",
 					$wpdb->esc_like( 'taxonomy/term/' ) . '%'
@@ -136,5 +137,42 @@ class DrupalHelper extends FgHelper {
 		}
 
 		return $this->tid_to_url_map[ $tid ] ?? '';
+	}
+
+	/**
+	 * Given a Drupal file URI, return the file path according to the download protocol.
+	 *
+	 * @param string $uri Drupal file URI.
+	 *
+	 * @return string Image path according to the download protocol.
+	 */
+	public function get_file_path_from_uri( string $uri ): string {
+		$download_protocol = $this->get_fg_option( 'download_protocol' );
+		if ( 'ftp' === $download_protocol ) {
+			NMT::exit_with_message( 'FTP download protocol is not supported for file path retrieval in this helper. But you could implement it!' );
+		}
+
+		$public  = $this->get_fg_option( 'file_public_path' ) ?? 'sites/default/files';
+		$private = $this->get_fg_option( 'file_private_path' ) ?? 'sites/default/private/files';
+
+		if ( 'http' === $download_protocol ) {
+			// Otherwise, return URL.
+			$url = $this->get_fg_option( 'url' );
+			$uri = str_replace( 'public://', trailingslashit( $url ) . $public, $uri );
+			$uri = str_replace( 'private://', trailingslashit( $url ) . $private, $uri );
+		}
+
+		if ( 'file_system' === $download_protocol ) {
+			$base_dir = $this->get_fg_option( 'base_dir' );
+			if ( empty( $base_dir ) ) {
+				NMT::exit_with_message( 'The "base_dir" FG option is not set. Cannot resolve file paths.' );
+			}
+
+			$uri = str_replace( 'public://', trailingslashit( $public ), $uri );
+			$uri = str_replace( 'private://', trailingslashit( $private ), $uri );
+			$uri = trailingslashit( $base_dir ) . $uri;
+		}
+
+		return apply_filters( 'fgd2wp_get_path_from_uri', $uri );
 	}
 }
