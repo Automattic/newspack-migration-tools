@@ -117,4 +117,89 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 		$this->assertEquals( $result['name'], 'koi.jpg' );
 		$this->assertFileExists( $result['tmp_name'] );
 	}
+
+	/**
+	 * Test downloading an image with different mime types and extensions.
+	 */
+	public function test_download_mimes_and_exts() {
+
+		
+	// maybe:
+	// use files from here: /tmp/wordpress-tests-lib/data/images/
+	// https://github.com/WordPress/wordpress-develop/tree/trunk/tests/phpunit/data/images
+
+
+		// When `$path` has allowed extension (`.jpg`), with matching allowed binary mime (`image/jpeg`): do not modify filename.
+		$test_file_name = 'image-jpeg.jpg';
+		// 	["ext"]=> "jpg"
+		// 	["type"]=> "image/jpeg"
+		// 	["proper_filename"]=> bool(false)
+		//   string(63) "http://example.org/wp-content/uploads/2025/12/image-jpeg-14.jpg"
+		$result = Attachments::download_file( 'tests/fixtures/mimes-and-exts/' . $test_file_name );
+		// $this->assertEquals( $result['name'], $test_file_name );
+		// $this->assertFileExists( $result['tmp_name'] );
+		
+		// When `$path` has allowed extension (`.jpg`), with different allowed binary mime (`image/png`): append correct extension (`.png`).
+		$test_file_name = 'image-jpeg-ext-allowed.png';
+		//   ["ext"]=>"jpg"
+		//   ["type"]=>"image/jpeg"
+		//   ["proper_filename"]=>"image-jpeg-ext-allowed.jpg"
+		// string(74) "http://example.org/wp-content/uploads/2025/12/image-jpeg-ext-allowed-6.jpg"
+		$result = Attachments::download_file( 'tests/fixtures/mimes-and-exts/' . $test_file_name );
+
+		// When `$path` has unallowed extension (`.exe`), with different allowed binary mime (`image/png`): append correct extension (`.png`).
+		$test_file_name = 'image-jpeg-ext-not-allowed.swf';
+		// wp_check_filetype_and_ext all false, sorry
+		$result = Attachments::download_file( 'tests/fixtures/mimes-and-exts/' . $test_file_name );
+
+		// When `$path` has unknown extension (`.unknown`), with allowed binary mime (`image/png`): append correct extension (`.png`).
+		$test_file_name = 'image-jpeg-ext-unknown.unknown';
+		// wp_check_filetype_and_ext all false, sorry
+		$result = Attachments::download_file( 'tests/fixtures/mimes-and-exts/' . $test_file_name );
+
+		// When `$path` has no extension, with allowed binary mime (`image/png`): append correct extension (`.png`).
+		$test_file_name = 'image-jpeg-ext-none';
+		// wp_check_filetype_and_ext all false, sorry
+		$result = Attachments::download_file( 'tests/fixtures/mimes-and-exts/' . $test_file_name );
+
+
+		// ---- these are all wp_check_filetype_and_ext all false and sorry can't upload ----
+
+		// When `$path` has allowed extension (`.jpg`), with different unallowed binary mime (`application/x-msdownload`): ??
+		$test_file_name = 'application-x-dosexec-ext-allowed.png';
+		$result = Attachments::download_file( 'tests/fixtures/mimes-and-exts/' . $test_file_name );
+
+		// When `$path` has allowed extension (`.jpg`), with unknown binary mime (`unknown`): ??
+		$test_file_name = 'unknown-mime-ext-allowed.png';
+		$result = Attachments::download_file( 'tests/fixtures/mimes-and-exts/' . $test_file_name );
+
+		// When `$path` has unallowed extension (`.exe`), with matching unallowed binary mime (`application/x-msdownload`): ??
+		$test_file_name = 'application-x-dosexec.exe';
+		$result = Attachments::download_file( 'tests/fixtures/mimes-and-exts/' . $test_file_name );
+
+		// When `$path` has unallowed extension (`.exe`), with different unallowed binary mime (`application/x-shockwave-flash`): ??
+		$test_file_name = 'application-x-dosexec-ext-not-allowed.swf';
+		$result = Attachments::download_file( 'tests/fixtures/mimes-and-exts/' . $test_file_name );
+
+		// When `$path` has unallowed extension (`.exe`), with unknown binary mime (`unknown`): ??
+		$test_file_name = 'unknown-mime-ext-not-allowed.swf';
+		$result = Attachments::download_file( 'tests/fixtures/mimes-and-exts/' . $test_file_name );
+
+		// When `$path` has unknown extension (`.unknown`), with non allowed binary mime (`application/x-msdownload`): ??
+		$test_file_name = 'application-x-dosexec-ext-unknown.unknown';
+		$result = Attachments::download_file( 'tests/fixtures/mimes-and-exts/' . $test_file_name );
+
+		// When `$path` has unknown extension (`.unknown`), with unknown binary mime (`unknown`): ??
+		$test_file_name = 'unknown-mime.unknown';
+		$result = Attachments::download_file( 'tests/fixtures/mimes-and-exts/' . $test_file_name );
+
+		// When `$path` has no extension, with unallowed binary mime (`application/x-msdownload`): ??
+		$test_file_name = 'application-x-dosexec-ext-none';
+		$result = Attachments::download_file( 'tests/fixtures/mimes-and-exts/' . $test_file_name );
+
+		// When `$path` has no extension, with unknown binary mime (`unknown`): ??
+		$test_file_name = 'unknown-mime-ext-none';
+		$result = Attachments::download_file( 'tests/fixtures/mimes-and-exts/' . $test_file_name );
+
+	}
 }
