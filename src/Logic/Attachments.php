@@ -306,10 +306,7 @@ class Attachments {
 
 		if ( ! empty( $desired_filename ) ) {
 			$file_array['name'] = $desired_filename;
-		} elseif (
-			! pathinfo( $path, PATHINFO_EXTENSION )
-			|| ( false === array_search( pathinfo( $path, PATHINFO_EXTENSION ), wp_get_mime_types() ) )
-		) {
+		} elseif ( ! self::has_valid_extension( $path ) ) {
 			// If the path does not have a file extension, let's try to find one for it.
 			// Without the extension, the upload will fail because WP will not allow that "file type".
 			$mimetype           = mime_content_type( $tmpfname );
@@ -326,6 +323,26 @@ class Attachments {
 		}
 
 		return $file_array;
+	}
+
+	/**
+	 * Check if a file path has a valid, recognized extension.
+	 *
+	 * @param string $path File path or URL.
+	 *
+	 * @return bool True if the extension is valid and recognized by WordPress.
+	 */
+	private static function has_valid_extension( string $path ): bool {
+		$extension = pathinfo( $path, PATHINFO_EXTENSION );
+
+		if ( empty( $extension ) ) {
+			return false;
+		}
+
+		// Use wp_check_filetype which properly checks extensions against allowed mime types.
+		$filetype = wp_check_filetype( '.' . $extension );
+
+		return ! empty( $filetype['ext'] );
 	}
 
 	/**
