@@ -63,4 +63,29 @@ class JsonWriterTest extends TestCase {
 			$content
 		);
 	}
+
+	public function testItWorksWithExistingFile() {
+		$existing_item = [ 'a' => 'b' ];
+		$item          = [ 'x' => 'y' ];
+		$filename      = $this->test_file;
+
+		// Create a file with an existing JSON array containing one item
+		file_put_contents( $filename, wp_json_encode( [ $existing_item ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
+
+		// Use a closure to force __destruct
+		$create_and_write = function() use ( $filename, $item ) {
+			$writer = new JsonWriter( $filename );
+			$writer->put( $item );
+			// No explicit close
+		};
+		$create_and_write();
+
+        // phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+		$content = file_get_contents( $filename );
+
+		$this->assertJsonStringEqualsJsonString(
+			wp_json_encode( [ $existing_item, $item ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ),
+			$content
+		);
+	}
 }

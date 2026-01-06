@@ -25,10 +25,17 @@ class JsonWriter {
 	private $is_first_item = true;
 
 	/**
+	 * A flag to indicate if we're appending to an existing file and need to remove the closing bracket.
+	 * 
+	 * @var bool
+	 */
+	private $should_truncate_closing_bracket = false;
+
+	/**
 	 * Constructor.
 	 * 
 	 * @param string $filename The name of the JSON file to write to.
-	 * @throws Exception If the file cannot be opened.
+	 * @throws Exception If the file cannot be opened or contains invalid JSON.
 	 */
 	public function __construct(
 		private string $filename,
@@ -40,6 +47,25 @@ class JsonWriter {
 		if ( false === $this->file_pointer ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			throw new Exception( "Could not open file: {$this->filename}" );
+		}
+
+		// Check if file has existing content and validate JSON
+		fseek( $this->file_pointer, 0, SEEK_END );
+		$file_size = ftell( $this->file_pointer );
+		
+		if ( $file_size > 0 ) {
+			rewind( $this->file_pointer );
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread
+			$content = fread( $this->file_pointer, $file_size );
+			
+			if ( null === json_decode( $content ) && JSON_ERROR_NONE !== json_last_error() ) {
+				// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+				throw new Exception( "File contains invalid JSON: {$this->filename}" );
+			}
+			
+			$this->is_first_item                   = false;
+			$this->should_truncate_closing_bracket = true;
+			fseek( $this->file_pointer, 0, SEEK_END );
 		}
 	}
 
@@ -54,7 +80,16 @@ class JsonWriter {
 		if ( $this->is_first_item ) {
 			// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fwrite
 			fwrite( $this->file_pointer, "[\n" );
+		} elseif ( $this->should_truncate_closing_bracket ) {
+			// Remove the closing bracket before appending to existing file
+			$current_position = ftell( $this->file_pointer );
+			// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_ftruncate
+			ftruncate( $this->file_pointer, max( 0, $current_position - 2 ) );
+			// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fwrite
+			fwrite( $this->file_pointer, ",\n" );
+			$this->should_truncate_closing_bracket = false;
 		} else {
+			// Subsequent items in same session
 			// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fwrite
 			fwrite( $this->file_pointer, ",\n" );
 		}
