@@ -72,6 +72,11 @@ class JsonWriter {
 	/**
 	 * Writes an object to the JSON file.
 	 * 
+	 * Handles three scenarios:
+	 * 1. First item in a new file: writes opening bracket and item
+	 * 2. First item when appending to existing file: removes closing bracket, adds comma, writes item
+	 * 3. Subsequent items: adds comma and writes item
+	 * 
 	 * @param  array $item The object data to write.
 	 * @return void
 	 * @throws Exception If the object cannot be written to the file.
@@ -103,7 +108,10 @@ class JsonWriter {
 	}
 
 	/**
-	 * Closes the file pointer.
+	 * Closes the file pointer and finalizes the JSON array.
+	 * 
+	 * Writes the closing bracket and newline to complete the JSON array structure,
+	 * then closes the file pointer. This method is called automatically via __destruct().
 	 * 
 	 * @return void
 	 * @throws Exception If the file cannot be closed.
