@@ -10,7 +10,78 @@ use ReflectionException;
 use WP_CLI;
 
 /**
- * Custom shortcodes functionality.
+ * Reusble shortcodes replacement command.
+ *
+ * This class provides shortcode replacement functionality. It handles the core logic of finding shortcodes in posts content,
+ * and replacing shortcodes with your custom replacement logic.
+ * 
+ * TL;DR of how to use:
+ *   - Create a custom class, with a `replace_shortcode` method which has the logic how to replace a specific shortcode string
+ *   - In your class, create a classic WP-CLI command which will call this here class' command with your custom replacement callback
+ *
+ * @see `EnviraGalleryMigrator` for a complete working example, which converts Envira Gallery shortcodes to Jetpack tiled
+ * gallery blocks.
+ * 
+ * 
+ * ## Step-by-step guide how to use
+ *
+ * ### Step 1: Get a custom class to contain one shortcode replacement logic method, and a WP-CLI command to call it.
+ * 
+ * That can be your publisher-specific class where you'll add a custom shortcode replacement command, or a reusable class
+ * like `EnviraGalleryMigrator` which converts Envira Gallery shortcodes to Jetpack tiled gallery blocks.
+ * 
+ * ### Step 2: In your class:
+ *   - Implement the `ShortcodeReplacementInterface` interface
+ *   - Write the `public function replace_shortcode( string $shortcode, int $post_id ): string|false` method from the interface.
+ *     This method gets the full shortcode text string, and the post ID where that shortcode is being replaced, and returns its
+ *     replacement HTML (or an empty string to delete the shortcode).
+ *
+ * E.g.:
+ * ```php
+ *     public function replace_shortcode( string $shortcode, int $post_id ): string|false {
+ *         // Your custom replacement logic here...
+ *         // E.g. parse the shortcode string, extract attributes, generate replacement...
+ *         return $replacement_html;
+ *     }
+ * ```
+ * 
+ * ### Step 3: Create the shortcode replacement WP-CLI command
+ *  Register a WP-CLI command, and have it call this class' reusable `replace-shortcodes-in-post-body` command with its own arguments:
+ *    - name of the shortcode to replace
+ *    - your custom `replace_shortcode` method
+ *    [- optional dry-run flag]
+ *    [- optional post-ids CSV]
+ *    [- optional post-types CSV]
+ * 
+ * The reusable `replace-shortcodes-in-post-body` command which your command will be calling, will handle the core logic of:
+ *    - Finding shortcodes in all posts
+ *    - Calling your replacement callback for each found shortcode
+ *    - Updating posts content with your replacements
+ *    - Do QA checks if all shortcodes were replaced
+ *
+ * E.g.:
+ * ```php
+ *     public function cmd_migrate_my_shortcode( $pos_args, $assoc_args ) {
+ *         $dry_run      = isset( $assoc_args['dry-run'] ) ? '--dry-run' : '';
+ *         $post_ids_csv = isset( $assoc_args['post-ids'] ) ? '--post-ids=' . $assoc_args['post-ids'] : '';
+ * 
+ *         $shortcode_name = 'hardcoded-shortcode-name';
+ *
+ *         WP_CLI::runcommand(
+ *             sprintf(
+ *                 'newspack-content-migrator replace-shortcodes-in-post-body --shortcode=%s --replace-callback=Newspack\MigrationTools\Command\MyShortcodeMigrator::replace_shortcode %s %s',
+ *                 $shortcode_name,
+ *                 $dry_run,
+ *                 $post_ids_csv
+ *             ),
+ *             [
+ *                 'return'     => false,
+ *                 'launch'     => false,
+ *                 'exit_error' => true,
+ *             ]
+ *         );
+ *     }
+ * ```
  */
 class ShortcodesMigrator implements WpCliCommandInterface {
 
