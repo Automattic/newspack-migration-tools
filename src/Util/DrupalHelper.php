@@ -175,4 +175,50 @@ class DrupalHelper extends FgHelper {
 
 		return apply_filters( 'fgd2wp_get_path_from_uri', $uri );
 	}
+
+
+	/**
+	 * Given a Drupal node ID, return the WordPress post ID.
+	 *
+	 * @param int $nid Drupal node ID.
+	 *
+	 * @return int WordPress post ID, or 0 if not found.
+	 */
+	public static function get_post_id_from_nid( int $nid ): int {
+		$maybe_nid = self::get_post_ids_from_nids( [ (string) $nid ] );
+		return empty( $maybe_nid[ $nid ] ) ? 0 : $maybe_nid[ $nid ];
+	}
+
+	/**
+	 * Given an array of Drupal node IDs, return a map of NIDs to WordPress post IDs.
+	 *
+	 * @param array $nids Array of Drupal node IDs (as strings or integers).
+	 *
+	 * @return array Associative array mapping NIDs to WordPress post IDs. Missing NIDs are not included in the result.
+	 */
+	public static function get_post_ids_from_nids( array $nids ): array {
+		if ( empty( $nids ) ) {
+			return [];
+		}
+
+		global $wpdb;
+
+		$placeholders = implode( ',', array_fill( 0, count( $nids ), '%s' ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$results = $wpdb->get_results(
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+			$wpdb->prepare(
+				"SELECT meta_value as nid, post_id
+				FROM {$wpdb->postmeta}
+				WHERE meta_key = '_fgd2wp_old_node_id'
+				AND meta_value IN ($placeholders)",
+				...$nids
+			),
+			// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			ARRAY_A
+		);
+
+		return array_map( 'intval', array_column( $results, 'post_id', 'nid' ) );
+	}
 }
