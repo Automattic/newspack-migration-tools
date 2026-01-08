@@ -102,8 +102,9 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 	 * Test downloading an image.
 	 * @dataProvider download_image_provider
 	 */
-	public function test_download_image( $path, $expected_download, $expected_sideload ) {
-		$result = Attachments::download_file( $path );
+	public function test_download_image( $file_name, $expected_download, $expected_sideload ) {
+
+		$result = Attachments::download_file( 'tests/fixtures/mimes-and-exts/' . $file_name );
 		
 		// Check for Download error just incase.
 		if ( is_wp_error( $expected_download ) ) {
@@ -123,11 +124,17 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 			return;
 		} 
 
+		// Verify created attachment name matches from the sideload.
+		$sideloaded_path = wp_attachment_is_image( $sideload_id ) ? 
+			wp_get_original_image_path( $sideload_id, true ) : 
+			get_post_meta( $sideload_id, '_wp_attached_file', true );
+
+		// Verify
 		$this->assertSame( $expected_sideload, preg_replace(
-			'/-\d+(?=\.[^.]+$)/',
+			'/-\d+(?=\.[^.]+$)/', // remove any -2 duplicates just in case.
 			'',
-			wp_basename( wp_get_original_image_path( $sideload_id, true ) )
-		) );
+			wp_basename( $sideloaded_path )
+		));
 
 	}
 
@@ -142,39 +149,81 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 			// old August code:
 
 			'image jpeg with correct extension (jpeg)' => [
-				'tests/fixtures/mimes-and-exts/image-jpeg.jpeg',
+				'image-jpeg.jpeg',
 				'image-jpeg.jpeg', // download - no change.
 				'image-jpeg.jpeg', // sideload - no change.
 			],
 			'image jpeg with correct extension (jpg)' => [
-				'tests/fixtures/mimes-and-exts/image-jpeg.jpg',
+				'image-jpeg.jpg',
 				'image-jpeg.jpg', // download - no change.
 				'image-jpeg.jpg', // sideload - no change.
 			],
 			'image jpeg without extension' => [
-				'tests/fixtures/mimes-and-exts/image-jpeg-without-extension',
+				'image-jpeg-without-extension',
 				'image-jpeg-without-extension.jpg', // download - will add extension.
 				'image-jpeg-without-extension.jpg', // sideload - no additional changes.
 			],
 			'image jpeg with unknown extension' => [
-				'tests/fixtures/mimes-and-exts/image-jpeg-unknown-extension.unknown',
+				'image-jpeg-unknown-extension.unknown',
 				'image-jpeg-unknown-extension.unknown', // download - no change.
 				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
 			],
 			'image jpeg with wrong extension but allowed' => [
-				'tests/fixtures/mimes-and-exts/image-jpeg-wrong-extension-is-allowed.png',
+				'image-jpeg-wrong-extension-is-allowed.png',
 				'image-jpeg-wrong-extension-is-allowed.png', // download - no change.
 				'image-jpeg-wrong-extension-is-allowed.jpg', // sideload - will fix extension.
 			],
 			'image jpeg with wrong not allowed extension' => [
-				'tests/fixtures/mimes-and-exts/image-jpeg-wrong-extension-not-allowed.swf',
+				'image-jpeg-wrong-extension-not-allowed.swf',
 				'image-jpeg-wrong-extension-not-allowed.swf', // download - no change.
 				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
 			],
 
-
-
-
+			'non allowed mime with correct extension (exe)' => [
+				'application-x-dosexec.exe',
+				'application-x-dosexec.exe',
+				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			],
+			'non allowed mime without extension' => [
+				'application-x-dosexec-without-extension',
+				'application-x-dosexec-without-extension', // dowload - probably extention false - no change.
+				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			],
+			'non allowed mime with uknown extension' => [
+				'application-x-dosexec-unknown-extension.unknown',
+				'application-x-dosexec-unknown-extension.unknown',
+				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			],
+			'non allowed mime with wrong extension but allowed' => [
+				'application-x-dosexec-wrong-extension-is-allowed.png',
+				'application-x-dosexec-wrong-extension-is-allowed.png',
+				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			],
+			'non allowed mime with wrong not allowed extension' => [
+				'application-x-dosexec-wrong-extension-not-allowed.swf',
+				'application-x-dosexec-wrong-extension-not-allowed.swf',
+				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			],
+			'unknown mime with unknown extension' => [
+				'unknown-mime-unknown-extension.unknown',
+				'unknown-mime-unknown-extension.unknown',
+				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			],
+			'unknown mime without extension' => [
+				'unknown-mime-without-extension',
+				'unknown-mime-without-extension.psd', // download - detected 'application/octet-stream' => 'psd' first one in WP list.
+				'unknown-mime-without-extension.psd', // sideload - will assume psd.
+			],
+			'unknown mime with wrong extension but allowed' => [
+				'unknown-mime-wrong-extension-is-allowed.png',
+				'unknown-mime-wrong-extension-is-allowed.png', // download - no change.
+				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			],
+			'unknown mime with wrong not allowed extension' => [
+				'unknown-mime-wrong-extension-not-allowed.swf',
+				'unknown-mime-wrong-extension-not-allowed.swf', // download - no change.
+				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			],
 
 
 
