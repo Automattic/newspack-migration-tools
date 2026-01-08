@@ -143,34 +143,40 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 
 			'image jpeg with correct extension (jpeg)' => [
 				'tests/fixtures/mimes-and-exts/image-jpeg.jpeg',
-				'image-jpeg.jpeg', // no change.
-				'image-jpeg.jpeg',// no change.
+				'image-jpeg.jpeg', // download - no change.
+				'image-jpeg.jpeg', // sideload - no change.
 			],
 			'image jpeg with correct extension (jpg)' => [
 				'tests/fixtures/mimes-and-exts/image-jpeg.jpg',
-				'image-jpeg.jpg', // no change.
-				'image-jpeg.jpg', // no change.
+				'image-jpeg.jpg', // download - no change.
+				'image-jpeg.jpg', // sideload - no change.
 			],
 			'image jpeg without extension' => [
 				'tests/fixtures/mimes-and-exts/image-jpeg-without-extension',
-				'image-jpeg-without-extension.jpg', // download will add extension.
-				'image-jpeg-without-extension.jpg', // no change.
+				'image-jpeg-without-extension.jpg', // download - will add extension.
+				'image-jpeg-without-extension.jpg', // sideload - no additional changes.
 			],
 			'image jpeg with unknown extension' => [
 				'tests/fixtures/mimes-and-exts/image-jpeg-unknown-extension.unknown',
-				'image-jpeg-unknown-extension.unknown', // no change.
-				'Sorry, you are not allowed to upload this file type.', // sideload not allowed
+				'image-jpeg-unknown-extension.unknown', // download - no change.
+				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
 			],
 			'image jpeg with wrong extension but allowed' => [
 				'tests/fixtures/mimes-and-exts/image-jpeg-wrong-extension-is-allowed.png',
-				'image-jpeg-wrong-extension-is-allowed.png', // no change.
-				'image-jpeg-wrong-extension-is-allowed.jpg', // sideload will rename.
+				'image-jpeg-wrong-extension-is-allowed.png', // download - no change.
+				'image-jpeg-wrong-extension-is-allowed.jpg', // sideload - will fix extension.
 			],
 			'image jpeg with wrong not allowed extension' => [
 				'tests/fixtures/mimes-and-exts/image-jpeg-wrong-extension-not-allowed.swf',
-				'image-jpeg-wrong-extension-not-allowed.swf', // no change.
-				'Sorry, you are not allowed to upload this file type.', // sideload not allowed
+				'image-jpeg-wrong-extension-not-allowed.swf', // download - no change.
+				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
 			],
+
+
+
+
+
+
 
 			// NEW PR:
 
