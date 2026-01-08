@@ -100,21 +100,89 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 
 	/**
 	 * Test downloading an image.
+	 * @dataProvider download_image_provider
 	 */
-	public function test_download_image() {
-		$result = Attachments::download_file( 'tests/fixtures/koi.jpg' );
+	public function test_download_image( $path, $expected_download, $expected_sideload ) {
+		$result = Attachments::download_file( $path );
+		
+		// Check for Download error just incase.
+		if ( is_wp_error( $expected_download ) ) {
+			$this->assertSame( $expected_download, $result->get_error_code() );
+			return;
+		} 
 
-		$this->assertEquals( $result['name'], 'koi.jpg' );
+		// Check values:
+		$this->assertEquals( $expected_download, $result['name'] );
 		$this->assertFileExists( $result['tmp_name'] );
+
+		// Verify result works as expecpted with sideload.
+		$sideload_id = media_handle_sideload( $result );
+		
+		if ( is_wp_error( $sideload_id ) ) {
+			$this->assertSame( $expected_sideload, $sideload_id->get_error_message() );
+			return;
+		} 
+
+		$this->assertSame( $expected_sideload, preg_replace(
+			'/-\d+(?=\.[^.]+$)/',
+			'',
+			wp_basename( wp_get_original_image_path( $sideload_id, true ) )
+		) );
+
 	}
 
 	/**
-	 * Test downloading an image.
+	 * Data provider for test_download_image
+	 *
+	 * @return array[]
 	 */
-	public function test_download_image_without_extension() {
-		$result = Attachments::download_file( 'tests/fixtures/koi' );
+	public function download_image_provider(): array {
+		return [
 
-		$this->assertEquals( $result['name'], 'koi.jpg' );
-		$this->assertFileExists( $result['tmp_name'] );
+			// old August code:
+
+			'image jpeg with correct extension (jpeg)' => [
+				'tests/fixtures/mimes-and-exts/image-jpeg.jpeg',
+				'image-jpeg.jpeg', // no change.
+				'image-jpeg.jpeg',// no change.
+			],
+			'image jpeg with correct extension (jpg)' => [
+				'tests/fixtures/mimes-and-exts/image-jpeg.jpg',
+				'image-jpeg.jpg', // no change.
+				'image-jpeg.jpg', // no change.
+			],
+			'image jpeg without extension' => [
+				'tests/fixtures/mimes-and-exts/image-jpeg-without-extension',
+				'image-jpeg-without-extension.jpg', // download will add extension.
+				'image-jpeg-without-extension.jpg', // no change.
+			],
+			'image jpeg with unknown extension' => [
+				'tests/fixtures/mimes-and-exts/image-jpeg-unknown-extension.unknown',
+				'image-jpeg-unknown-extension.unknown', // no change.
+				'Sorry, you are not allowed to upload this file type.', // sideload not allowed
+			],
+			'image jpeg with wrong extension but allowed' => [
+				'tests/fixtures/mimes-and-exts/image-jpeg-wrong-extension-is-allowed.png',
+				'image-jpeg-wrong-extension-is-allowed.png', // no change.
+				'image-jpeg-wrong-extension-is-allowed.jpg', // sideload will rename.
+			],
+			'image jpeg with wrong not allowed extension' => [
+				'tests/fixtures/mimes-and-exts/image-jpeg-wrong-extension-not-allowed.swf',
+				'image-jpeg-wrong-extension-not-allowed.swf', // no change.
+				'Sorry, you are not allowed to upload this file type.', // sideload not allowed
+			],
+
+			// NEW PR:
+
+
+
+
+
+
+
+
+
+
+		];
 	}
 }
