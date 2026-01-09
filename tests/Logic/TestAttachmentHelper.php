@@ -146,106 +146,260 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 	 * @return array[]
 	 */
 	public function download_image_provider(): array {
-		return [
 
-			'no file' => [
+		// old August code:
+
+		return [
+			[
 				'no-file.nope',
 				'File ' . self::MIMES_AND_EXTS_FOLDER .'no-file.nope was not found',
 				'',
 			],
-
-			// old August code:
-
-			'image jpeg with correct extension (jpeg)' => [
+			[ 
+				'image-jpeg-douple-and-bad-extension.jpg.exe',
+				'',
+				'',
+			],
+			[ 
+				'image-jpeg-douple-and-wrong-extension.jpg.png',
+				'',
+				'',
+			],
+			[ 
+				'image-jpeg-douple-extension.jpg.jpg',
+				'',
+				'',
+			],
+			[ 
 				'image-jpeg.jpeg',
-				'image-jpeg.jpeg', // download - no change.
-				'image-jpeg.jpeg', // sideload - no change.
+				'image-jpeg.jpeg',
+				'image-jpeg.jpeg',
 			],
-			'image jpeg with correct extension (jpg)' => [
+			[ 
 				'image-jpeg.jpg',
-				'image-jpeg.jpg', // download - no change.
-				'image-jpeg.jpg', // sideload - no change.
+				'image-jpeg.jpg',
+				'image-jpeg.jpg',
 			],
-			'image jpeg without extension' => [
-				'image-jpeg-without-extension',
-				'image-jpeg-without-extension.jpg', // download - will add extension.
-				'image-jpeg-without-extension.jpg', // sideload - no additional changes.
+			[ 
+				'image-jpeg-no-extension',
+				'image-jpeg-no-extension.jpg',
+				'image-jpeg-no-extension.jpg',
 			],
-			'image jpeg with unknown extension' => [
+			[ 
 				'image-jpeg-unknown-extension.unknown',
-				'image-jpeg-unknown-extension.unknown', // download - no change.
-				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+				'image-jpeg-unknown-extension.unknown',
+				'image-jpeg-unknown-extension.unknown',
 			],
-			'image jpeg with wrong extension but allowed' => [
-				'image-jpeg-wrong-extension-is-allowed.png',
-				'image-jpeg-wrong-extension-is-allowed.png', // download - no change.
-				'image-jpeg-wrong-extension-is-allowed.jpg', // sideload - will fix extension.
+			[ 
+				'image-jpeg-wrong-bad-extension.exe',
+				'',
+				'Sorry, you are not allowed to upload this file type.',
 			],
-			'image jpeg with wrong not allowed extension' => [
-				'image-jpeg-wrong-extension-not-allowed.swf',
-				'image-jpeg-wrong-extension-not-allowed.swf', // download - no change.
-				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			[ 
+				'image-jpeg-wrong-extension.png',
+				'',
+				'Sorry, you are not allowed to upload this file type.',
 			],
+			[ 
+				'image-sgi-no-extension',
+				'',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'image-sgi.sgi',
+				'',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'image-sgi-uknown-extension.unknown',
+				'',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'image-sgi-wrong-bad-extension.exe',
+				'',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'image-sgi-wrong-extension.png',
+				'',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'photoshop-no-extension',
+				'photoshop-no-extension',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'photoshop.psd',
+				'photoshop.psd',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'photoshop-uknown-extension.unknown',
+				'photoshop-uknown-extension.unknown',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'photoshop-wrong-bad-extension.exe',
+				'photoshop-wrong-bad-extension.exe',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'photoshop-wrong-extension.png',
+				'photoshop-wrong-extension.png',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'shockwave-flash-no-extension',
+				'shockwave-flash-no-extension.swf',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'shockwave-flash.swf',
+				'shockwave-flash.swf',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'shockwave-flash-unknown-extension.unknown',
+				'shockwave-flash-unknown-extension.unknown',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'shockwave-flash-wrong-bad-extension.exe',
+				'shockwave-flash-wrong-bad-extension.exe',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'shockwave-flash-wrong-extension.png',
+				'shockwave-flash-wrong-extension.png',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'truevision-no-extension',
+				'truevision-no-extension',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'truevision.tga',
+				'truevision.tga',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'truevision-unknown-extension.unknown',
+				'truevision-unknown-extension.unknown',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'truevision-wrong-bad-extension.exe',
+				'truevision-wrong-bad-extension.exe',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'truevision-wrong-extension.png',
+				'truevision-wrong-extension.png',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'word.docx',
+				'word.docx',
+				'word.docx',
+			],
+			[ 
+				'word-no-extension',
+				'word-no-extension.docx',
+				'word-no-extension.docx',
+			],
+			[ 
+				'word-unknown-extension.unknown',
+				'word-unknown-extension.unknown',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'word-wrong-bad-extension.exe',
+				'word-wrong-bad-extension.exe',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+			[ 
+				'word-wrong-extension.png',
+				'word-wrong-extension.png',
+				'Sorry, you are not allowed to upload this file type.',
+			],
+		];
 
-			'non allowed mime with correct extension (exe)' => [
-				'application-x-dosexec.exe',
-				'application-x-dosexec.exe',
-				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
-			],
-			'non allowed mime without extension' => [
-				'application-x-dosexec-without-extension',
-				'application-x-dosexec-without-extension', // dowload - probably extention false - no change.
-				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
-			],
-			'non allowed mime with uknown extension' => [
-				'application-x-dosexec-unknown-extension.unknown',
-				'application-x-dosexec-unknown-extension.unknown',
-				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
-			],
-			'non allowed mime with wrong extension but allowed' => [
-				'application-x-dosexec-wrong-extension-is-allowed.png',
-				'application-x-dosexec-wrong-extension-is-allowed.png',
-				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
-			],
-			'non allowed mime with wrong not allowed extension' => [
-				'application-x-dosexec-wrong-extension-not-allowed.swf',
-				'application-x-dosexec-wrong-extension-not-allowed.swf',
-				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
-			],
-			'unknown mime with unknown extension' => [
-				'unknown-mime-unknown-extension.unknown',
-				'unknown-mime-unknown-extension.unknown',
-				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
-			],
-			'unknown mime without extension' => [
-				'unknown-mime-without-extension',
-				'unknown-mime-without-extension.psd', // download - detected 'application/octet-stream' => 'psd' first one in WP list.
-				'unknown-mime-without-extension.psd', // sideload - will assume psd.
-			],
-			'unknown mime with wrong extension but allowed' => [
-				'unknown-mime-wrong-extension-is-allowed.png',
-				'unknown-mime-wrong-extension-is-allowed.png', // download - no change.
-				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
-			],
-			'unknown mime with wrong not allowed extension' => [
-				'unknown-mime-wrong-extension-not-allowed.swf',
-				'unknown-mime-wrong-extension-not-allowed.swf', // download - no change.
-				'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
-			],
+		// return [
+
+
+			// 'image jpeg without extension' => [
+			// 	'image-jpeg-without-extension',
+			// 	'image-jpeg-without-extension.jpg', // download - will add extension.
+			// 	'image-jpeg-without-extension.jpg', // sideload - no additional changes.
+			// ],
+			// 'image jpeg with unknown extension' => [
+			// 	'image-jpeg-unknown-extension.unknown',
+			// 	'image-jpeg-unknown-extension.unknown', // download - no change.
+			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			// ],
+			// 'image jpeg with wrong extension but allowed' => [
+			// 	'image-jpeg-wrong-extension-is-allowed.png',
+			// 	'image-jpeg-wrong-extension-is-allowed.png', // download - no change.
+			// 	'image-jpeg-wrong-extension-is-allowed.jpg', // sideload - will fix extension.
+			// ],
+			// 'image jpeg with wrong not allowed extension' => [
+			// 	'image-jpeg-wrong-extension-not-allowed.swf',
+			// 	'image-jpeg-wrong-extension-not-allowed.swf', // download - no change.
+			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			// ],
+
+			// 'non allowed mime with correct extension (exe)' => [
+			// 	'application-x-dosexec.exe',
+			// 	'application-x-dosexec.exe',
+			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			// ],
+			// 'non allowed mime without extension' => [
+			// 	'application-x-dosexec-without-extension',
+			// 	'application-x-dosexec-without-extension', // dowload - probably extention false - no change.
+			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			// ],
+			// 'non allowed mime with uknown extension' => [
+			// 	'application-x-dosexec-unknown-extension.unknown',
+			// 	'application-x-dosexec-unknown-extension.unknown',
+			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			// ],
+			// 'non allowed mime with wrong extension but allowed' => [
+			// 	'application-x-dosexec-wrong-extension-is-allowed.png',
+			// 	'application-x-dosexec-wrong-extension-is-allowed.png',
+			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			// ],
+			// 'non allowed mime with wrong not allowed extension' => [
+			// 	'application-x-dosexec-wrong-extension-not-allowed.swf',
+			// 	'application-x-dosexec-wrong-extension-not-allowed.swf',
+			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			// ],
+			// 'unknown mime with unknown extension' => [
+			// 	'unknown-mime-unknown-extension.unknown',
+			// 	'unknown-mime-unknown-extension.unknown',
+			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			// ],
+			// 'unknown mime without extension' => [
+			// 	'unknown-mime-without-extension',
+			// 	'unknown-mime-without-extension.psd', // download - detected 'application/octet-stream' => 'psd' first one in WP list.
+			// 	'unknown-mime-without-extension.psd', // sideload - will assume psd.
+			// ],
+			// 'unknown mime with wrong extension but allowed' => [
+			// 	'unknown-mime-wrong-extension-is-allowed.png',
+			// 	'unknown-mime-wrong-extension-is-allowed.png', // download - no change.
+			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			// ],
+			// 'unknown mime with wrong not allowed extension' => [
+			// 	'unknown-mime-wrong-extension-not-allowed.swf',
+			// 	'unknown-mime-wrong-extension-not-allowed.swf', // download - no change.
+			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
+			// ],
 
 
 
 			// NEW PR:
 
-
-
-
-
-
-
-
-
-
-		];
 	}
 }
