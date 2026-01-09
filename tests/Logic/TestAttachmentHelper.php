@@ -213,11 +213,11 @@ function: _wp_handle_upload
 			],
 			[ 
 				'image-jpeg-no-extension',
-				'image-jpeg-no-extension',
-				'Sorry, you are not allowed to upload this file type.',
+				'image-jpeg-no-extension.jpg', // fixed by download.
+				'image-jpeg-no-extension.jpg', // fixed by download.
 				'image/jpeg',
 				'jpg',
-				',,',
+				'jpg,image/jpeg,', // fixed by download.
 			],
 			[ 
 				'image-jpeg-unknown-extension.unknown',
@@ -245,11 +245,11 @@ function: _wp_handle_upload
 			],
 			[ 
 				'image-sgi-no-extension',
-				'image-sgi-no-extension',
-				'Sorry, you are not allowed to upload this file type.',
+				'image-sgi-no-extension.psd', // "fixed" by download - same "psd" (application/octet-stream) bug...
+				'image-sgi-no-extension.psd', // "fixed" by download - same "psd" (application/octet-stream) bug...
 				'application/octet-stream',
 				'psd', // bug??
-				',,',
+				'psd,application/octet-stream,', // "fixed" by download - same "psd" (application/octet-stream) bug...
 			],
 			[ 
 				'image-sgi.sgi',
@@ -361,7 +361,7 @@ function: _wp_handle_upload
 			// verified: php -r 'echo finfo_file( finfo_open( FILEINFO_MIME_TYPE ), "test.swf" ) . "\n";'
 			[ 
 				'shockwave-flash-no-extension',
-				'shockwave-flash-no-extension',
+				'shockwave-flash-no-extension.swf', // fixed by download.
 				'Sorry, you are not allowed to upload this file type.',
 				'application/x-shockwave-flash',
 				'swf',
@@ -449,11 +449,11 @@ function: _wp_handle_upload
 			],
 			[ 
 				'word-no-extension',
-				'word-no-extension',
-				'Sorry, you are not allowed to upload this file type.',
+				'word-no-extension.docx', // fix by download.
+				'word-no-extension.docx', // fix by download.
 				'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 				'docx',
-				',,',
+				'docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,', // fix by download.
 			],
 			[ 
 				'word-unknown-extension.unknown',
