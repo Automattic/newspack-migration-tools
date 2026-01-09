@@ -221,19 +221,19 @@ function: _wp_handle_upload
 			],
 			[ 
 				'image-jpeg-unknown-extension.unknown',
-				'image-jpeg-unknown-extension.unknown',
-				'Sorry, you are not allowed to upload this file type.',
+				'image-jpeg-unknown-extension.unknown.jpg', // fixed with new PR
+				'image-jpeg-unknown-extension.unknown.jpg', // fixed with new PR
 				'image/jpeg',
 				'jpg',
-				',,',
+				'jpg,image/jpeg,', // fixed with new PR
 			],
 			[ 
 				'image-jpeg-wrong-bad-extension.exe',
-				'image-jpeg-wrong-bad-extension.exe',
-				'Sorry, you are not allowed to upload this file type.',
+				'image-jpeg-wrong-bad-extension.exe.jpg', // fixed with new PR
+				'image-jpeg-wrong-bad-extension.exe_.jpg', // fixed with new PR, what is _?
 				'image/jpeg',
 				'jpg',
-				',,',
+				'jpg,image/jpeg,', // fixed with new PR
 			],
 			[ 
 				'image-jpeg-wrong-extension.png',
@@ -253,27 +253,27 @@ function: _wp_handle_upload
 			],
 			[ 
 				'image-sgi.sgi',
-				'image-sgi.sgi',
-				'Sorry, you are not allowed to upload this file type.',
+				'image-sgi.sgi.psd', // new PR: same psd bug....
+				'image-sgi.sgi_.psd', // new PR: same psd bug....
 				'application/octet-stream',
 				'psd', // bug??
-				',,',
+				'psd,application/octet-stream,', // new PR: same psd bug....
 			],
 			[ 
 				'image-sgi-uknown-extension.unknown',
-				'image-sgi-uknown-extension.unknown',
-				'Sorry, you are not allowed to upload this file type.',
+				'image-sgi-uknown-extension.unknown.psd', // new PR: same psd bug....
+				'image-sgi-uknown-extension.unknown.psd', // new PR: same psd bug....
 				'application/octet-stream',
 				'psd', // bug??
-				',,',
+				'psd,application/octet-stream,', // new PR: same psd bug....
 			],
 			[ 
 				'image-sgi-wrong-bad-extension.exe',
-				'image-sgi-wrong-bad-extension.exe',
-				'Sorry, you are not allowed to upload this file type.',
+				'image-sgi-wrong-bad-extension.exe.psd', // new PR: same psd bug....
+				'image-sgi-wrong-bad-extension.exe_.psd', // new PR: same psd bug....
 				'application/octet-stream',
 				'psd', // bug??
-				',,',
+				'psd,application/octet-stream,', // new PR: same psd bug....
 			],
 			[ 
 				'image-sgi-wrong-extension.png',
@@ -369,7 +369,7 @@ function: _wp_handle_upload
 			],
 			[ 
 				'shockwave-flash.swf',
-				'shockwave-flash.swf',
+				'shockwave-flash.swf.swf', // new PR 
 				'Sorry, you are not allowed to upload this file type.',
 				'application/x-shockwave-flash',
 				'swf',
@@ -377,7 +377,7 @@ function: _wp_handle_upload
 			],
 			[ 
 				'shockwave-flash-unknown-extension.unknown',
-				'shockwave-flash-unknown-extension.unknown',
+				'shockwave-flash-unknown-extension.unknown.swf', // new PR 
 				'Sorry, you are not allowed to upload this file type.',
 				'application/x-shockwave-flash',
 				'swf',
@@ -385,7 +385,7 @@ function: _wp_handle_upload
 			],
 			[ 
 				'shockwave-flash-wrong-bad-extension.exe',
-				'shockwave-flash-wrong-bad-extension.exe',
+				'shockwave-flash-wrong-bad-extension.exe.swf', // new PR 
 				'Sorry, you are not allowed to upload this file type.',
 				'application/x-shockwave-flash',
 				'swf',
@@ -457,19 +457,19 @@ function: _wp_handle_upload
 			],
 			[ 
 				'word-unknown-extension.unknown',
-				'word-unknown-extension.unknown',
-				'Sorry, you are not allowed to upload this file type.',
+				'word-unknown-extension.unknown.docx', // new PR 
+				'word-unknown-extension.unknown.docx', // new PR 
 				'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 				'docx',
-				',,',
+				'docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,', // new PR 
 			],
 			[ 
 				'word-wrong-bad-extension.exe',
-				'word-wrong-bad-extension.exe',
-				'Sorry, you are not allowed to upload this file type.',
+				'word-wrong-bad-extension.exe.docx', // new PR 
+				'word-wrong-bad-extension.exe_.docx', // ? what is _ ? // new PR 
 				'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 				'docx',
-				',,',
+				'docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,', // new PR 
 			],
 			[ 
 				'word-wrong-extension.png',
