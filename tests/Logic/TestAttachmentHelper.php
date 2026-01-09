@@ -104,7 +104,8 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 	 * Test downloading an image.
 	 * @dataProvider download_image_provider
 	 */
-	public function test_download_image( $file_name, $expected_download, $expected_sideload ) {
+	public function test_download_image( $file_name, $expected_download, $expected_sideload,
+		$expected_mime, $expected_default_ext, $expected_wp_check ) {
 
 		$result = Attachments::download_file( self::MIMES_AND_EXTS_FOLDER . $file_name );
 		
@@ -115,9 +116,15 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 		} 
 
 		// Check values:
-		$this->assertEquals( $expected_download, $result['name'] );
+		$this->assertSame( $expected_download, $result['name'] );
 		$this->assertFileExists( $result['tmp_name'] );
 
+		// Verify mime, then, verify it's default ext.
+		$this->assertSame( $expected_mime, mime_content_type( $result['tmp_name'] ) );
+		$this->assertSame( $expected_mime, finfo_file( finfo_open( FILEINFO_MIME_TYPE ), $result['tmp_name'] ) );
+		$this->assertSame( $expected_default_ext, wp_get_default_extension_for_mime_type( $expected_mime ) );
+		$this->assertSame( $expected_wp_check, implode( ',', wp_check_filetype_and_ext( $result['tmp_name'], $result['name'] ) ) );
+		
 		// Verify result works as expecpted with sideload.
 		$sideload_id = media_handle_sideload( $result );
 		
@@ -147,6 +154,36 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 	 */
 	public function download_image_provider(): array {
 
+		
+		/*
+media: media_sideload_image - no tests - thin function
+ ==> media: media_handle_sideload - no tests - thin function
+        file: wp_handle_sideload - no tests - thin function
+            file: _wp_handle_upload - no tests - thin function
+
+
+media: media_handle_upload > tests/media.php - since this is tested, that means _wp_handle_upload is actually tested. Very limited tests!
+    file: wp_handle_upload
+        file: _wp_handle_upload
+    
+function: _wp_handle_upload
+
+    $wp_filetype     = wp_check_filetype_and_ext( $file['tmp_name'], $file['name'], $mimes );
+
+        calls: $wp_filetype = wp_check_filetype( $filename, $mimes );
+            uses: get_allowed_mime_types();
+                runs:
+                    - wp_get_mime_types() -- this is ALL MIMES
+                sets:
+                - unset( $t['swf'], $t['exe'] );
+                - if...$unfiltered...unset( $t['htm|html'], $t['js'] )
+        runs:
+            $finfo     = finfo_open( FILEINFO_MIME_TYPE );
+            $real_mime = finfo_file( $finfo, $file );
+
+
+*/
+
 		// old August code:
 
 		return [
@@ -154,19 +191,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 				'no-file.nope',
 				'File ' . self::MIMES_AND_EXTS_FOLDER .'no-file.nope was not found',
 				'',
-			],
-			[ 
-				'image-jpeg-douple-and-bad-extension.jpg.exe',
 				'',
-				'',
-			],
-			[ 
-				'image-jpeg-douple-and-wrong-extension.jpg.png',
-				'',
-				'',
-			],
-			[ 
-				'image-jpeg-douple-extension.jpg.jpg',
 				'',
 				'',
 			],
@@ -174,232 +199,287 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 				'image-jpeg.jpeg',
 				'image-jpeg.jpeg',
 				'image-jpeg.jpeg',
+				'image/jpeg',
+				'jpg',
+				'jpeg,image/jpeg,',
 			],
 			[ 
 				'image-jpeg.jpg',
 				'image-jpeg.jpg',
 				'image-jpeg.jpg',
+				'image/jpeg',
+				'jpg',
+				'jpg,image/jpeg,',
 			],
 			[ 
 				'image-jpeg-no-extension',
-				'image-jpeg-no-extension.jpg',
-				'image-jpeg-no-extension.jpg',
+				'image-jpeg-no-extension',
+				'Sorry, you are not allowed to upload this file type.',
+				'image/jpeg',
+				'jpg',
+				',,',
 			],
 			[ 
 				'image-jpeg-unknown-extension.unknown',
 				'image-jpeg-unknown-extension.unknown',
-				'image-jpeg-unknown-extension.unknown',
+				'Sorry, you are not allowed to upload this file type.',
+				'image/jpeg',
+				'jpg',
+				',,',
 			],
 			[ 
 				'image-jpeg-wrong-bad-extension.exe',
-				'',
+				'image-jpeg-wrong-bad-extension.exe',
 				'Sorry, you are not allowed to upload this file type.',
+				'image/jpeg',
+				'jpg',
+				',,',
 			],
 			[ 
 				'image-jpeg-wrong-extension.png',
-				'',
-				'Sorry, you are not allowed to upload this file type.',
+				'image-jpeg-wrong-extension.png',
+				'image-jpeg-wrong-extension.jpg',
+				'image/jpeg',
+				'jpg',
+				'jpg,image/jpeg,image-jpeg-wrong-extension.jpg',
 			],
 			[ 
 				'image-sgi-no-extension',
-				'',
+				'image-sgi-no-extension',
 				'Sorry, you are not allowed to upload this file type.',
+				'application/octet-stream',
+				'psd', // bug??
+				',,',
 			],
 			[ 
 				'image-sgi.sgi',
-				'',
+				'image-sgi.sgi',
 				'Sorry, you are not allowed to upload this file type.',
+				'application/octet-stream',
+				'psd', // bug??
+				',,',
 			],
 			[ 
 				'image-sgi-uknown-extension.unknown',
-				'',
+				'image-sgi-uknown-extension.unknown',
 				'Sorry, you are not allowed to upload this file type.',
+				'application/octet-stream',
+				'psd', // bug??
+				',,',
 			],
 			[ 
 				'image-sgi-wrong-bad-extension.exe',
-				'',
+				'image-sgi-wrong-bad-extension.exe',
 				'Sorry, you are not allowed to upload this file type.',
+				'application/octet-stream',
+				'psd', // bug??
+				',,',
 			],
 			[ 
 				'image-sgi-wrong-extension.png',
-				'',
+				'image-sgi-wrong-extension.png',
 				'Sorry, you are not allowed to upload this file type.',
+				'application/octet-stream',
+				'psd', // bug??
+				',,',
+			],
+			[ 
+				// see functions.php => wp_check_filetype_and_ext => $nonspecific_types 
+				// does this allow the possiblity of uploading any octet-stream as a different
+				// $nonspecific_types ?
+				// 1) try to get application/x-dosexec uploaded this way?
+				// 2) try to bypass this: file.php: _wp_handle_upload: if ( ( ! $type || ! $ext ) && ! current_user_can( 'unfiltered_upload' ) ) {
+				'image-sgi-wrong-extension-non-specific.zip',
+				'image-sgi-wrong-extension-non-specific.zip',
+				'image-sgi-wrong-extension-non-specific.zip',
+				'application/octet-stream',
+				'psd', // bug??
+				'zip,application/zip,',
+			],
+			[ 
+				// see functions.php => wp_check_filetype_and_ext => $nonspecific_types 
+				// does this allow the possiblity of uploading any octet-stream as a different
+				// $nonspecific_types ?
+				'image-sgi-wrong-extension-non-specific-video.mov',
+				'image-sgi-wrong-extension-non-specific-video.mov',
+				'image-sgi-wrong-extension-non-specific-video.mov',
+				'application/octet-stream',
+				'psd', // bug??
+				'mov,video/quicktime,',
 			],
 			[ 
 				'photoshop-no-extension',
 				'photoshop-no-extension',
 				'Sorry, you are not allowed to upload this file type.',
+				'image/vnd.adobe.photoshop',
+				false, // bug?
+				',,',
 			],
 			[ 
 				'photoshop.psd',
 				'photoshop.psd',
 				'Sorry, you are not allowed to upload this file type.',
+				'image/vnd.adobe.photoshop',
+				false, // bug?
+				',,',
 			],
 			[ 
 				'photoshop-uknown-extension.unknown',
 				'photoshop-uknown-extension.unknown',
 				'Sorry, you are not allowed to upload this file type.',
+				'image/vnd.adobe.photoshop',
+				false, // bug?
+				',,',
 			],
 			[ 
 				'photoshop-wrong-bad-extension.exe',
 				'photoshop-wrong-bad-extension.exe',
 				'Sorry, you are not allowed to upload this file type.',
+				'image/vnd.adobe.photoshop',
+				false, // bug?
+				',,',
+			],
+			[ 
+				'photoshop-wrong-extension-non-specific.zip',
+				'photoshop-wrong-extension-non-specific.zip',
+				'Sorry, you are not allowed to upload this file type.',
+				'image/vnd.adobe.photoshop',
+				false, // bug?
+				',,',
 			],
 			[ 
 				'photoshop-wrong-extension.png',
 				'photoshop-wrong-extension.png',
 				'Sorry, you are not allowed to upload this file type.',
+				'image/vnd.adobe.photoshop',
+				false, // bug?
+				',,',
 			],
+			// Shockwave Flash
+			// created via: echo 'RldTBxAAAAAIAAAMAQAAAA==' | base64 --decode > test.swf
+			// verified: file --mime-type test.swf
+			// verified: php -r 'echo finfo_file( finfo_open( FILEINFO_MIME_TYPE ), "test.swf" ) . "\n";'
 			[ 
 				'shockwave-flash-no-extension',
-				'shockwave-flash-no-extension.swf',
+				'shockwave-flash-no-extension',
 				'Sorry, you are not allowed to upload this file type.',
+				'application/x-shockwave-flash',
+				'swf',
+				',,',
 			],
 			[ 
 				'shockwave-flash.swf',
 				'shockwave-flash.swf',
 				'Sorry, you are not allowed to upload this file type.',
+				'application/x-shockwave-flash',
+				'swf',
+				',,',
 			],
 			[ 
 				'shockwave-flash-unknown-extension.unknown',
 				'shockwave-flash-unknown-extension.unknown',
 				'Sorry, you are not allowed to upload this file type.',
+				'application/x-shockwave-flash',
+				'swf',
+				',,',
 			],
 			[ 
 				'shockwave-flash-wrong-bad-extension.exe',
 				'shockwave-flash-wrong-bad-extension.exe',
 				'Sorry, you are not allowed to upload this file type.',
+				'application/x-shockwave-flash',
+				'swf',
+				',,',
 			],
 			[ 
 				'shockwave-flash-wrong-extension.png',
 				'shockwave-flash-wrong-extension.png',
 				'Sorry, you are not allowed to upload this file type.',
+				'application/x-shockwave-flash',
+				'swf',
+				',,',
 			],
 			[ 
 				'truevision-no-extension',
 				'truevision-no-extension',
 				'Sorry, you are not allowed to upload this file type.',
+				'image/x-tga',
+				false,
+				',,',
 			],
 			[ 
 				'truevision.tga',
 				'truevision.tga',
 				'Sorry, you are not allowed to upload this file type.',
+				'image/x-tga',
+				false,
+				',,',
 			],
 			[ 
 				'truevision-unknown-extension.unknown',
 				'truevision-unknown-extension.unknown',
 				'Sorry, you are not allowed to upload this file type.',
+				'image/x-tga',
+				false,
+				',,',
 			],
 			[ 
 				'truevision-wrong-bad-extension.exe',
 				'truevision-wrong-bad-extension.exe',
 				'Sorry, you are not allowed to upload this file type.',
+				'image/x-tga',
+				false,
+				',,',
 			],
 			[ 
 				'truevision-wrong-extension.png',
 				'truevision-wrong-extension.png',
 				'Sorry, you are not allowed to upload this file type.',
+				'image/x-tga',
+				false,
+				',,',
 			],
 			[ 
 				'word.docx',
 				'word.docx',
 				'word.docx',
+				'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+				'docx',
+				'docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,',
 			],
 			[ 
 				'word-no-extension',
-				'word-no-extension.docx',
-				'word-no-extension.docx',
+				'word-no-extension',
+				'Sorry, you are not allowed to upload this file type.',
+				'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+				'docx',
+				',,',
 			],
 			[ 
 				'word-unknown-extension.unknown',
 				'word-unknown-extension.unknown',
 				'Sorry, you are not allowed to upload this file type.',
+				'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+				'docx',
+				',,',
 			],
 			[ 
 				'word-wrong-bad-extension.exe',
 				'word-wrong-bad-extension.exe',
 				'Sorry, you are not allowed to upload this file type.',
+				'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+				'docx',
+				',,',
 			],
 			[ 
 				'word-wrong-extension.png',
 				'word-wrong-extension.png',
 				'Sorry, you are not allowed to upload this file type.',
+				'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+				'docx',
+				',,',
 			],
 		];
-
-		// return [
-
-
-			// 'image jpeg without extension' => [
-			// 	'image-jpeg-without-extension',
-			// 	'image-jpeg-without-extension.jpg', // download - will add extension.
-			// 	'image-jpeg-without-extension.jpg', // sideload - no additional changes.
-			// ],
-			// 'image jpeg with unknown extension' => [
-			// 	'image-jpeg-unknown-extension.unknown',
-			// 	'image-jpeg-unknown-extension.unknown', // download - no change.
-			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
-			// ],
-			// 'image jpeg with wrong extension but allowed' => [
-			// 	'image-jpeg-wrong-extension-is-allowed.png',
-			// 	'image-jpeg-wrong-extension-is-allowed.png', // download - no change.
-			// 	'image-jpeg-wrong-extension-is-allowed.jpg', // sideload - will fix extension.
-			// ],
-			// 'image jpeg with wrong not allowed extension' => [
-			// 	'image-jpeg-wrong-extension-not-allowed.swf',
-			// 	'image-jpeg-wrong-extension-not-allowed.swf', // download - no change.
-			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
-			// ],
-
-			// 'non allowed mime with correct extension (exe)' => [
-			// 	'application-x-dosexec.exe',
-			// 	'application-x-dosexec.exe',
-			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
-			// ],
-			// 'non allowed mime without extension' => [
-			// 	'application-x-dosexec-without-extension',
-			// 	'application-x-dosexec-without-extension', // dowload - probably extention false - no change.
-			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
-			// ],
-			// 'non allowed mime with uknown extension' => [
-			// 	'application-x-dosexec-unknown-extension.unknown',
-			// 	'application-x-dosexec-unknown-extension.unknown',
-			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
-			// ],
-			// 'non allowed mime with wrong extension but allowed' => [
-			// 	'application-x-dosexec-wrong-extension-is-allowed.png',
-			// 	'application-x-dosexec-wrong-extension-is-allowed.png',
-			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
-			// ],
-			// 'non allowed mime with wrong not allowed extension' => [
-			// 	'application-x-dosexec-wrong-extension-not-allowed.swf',
-			// 	'application-x-dosexec-wrong-extension-not-allowed.swf',
-			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
-			// ],
-			// 'unknown mime with unknown extension' => [
-			// 	'unknown-mime-unknown-extension.unknown',
-			// 	'unknown-mime-unknown-extension.unknown',
-			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
-			// ],
-			// 'unknown mime without extension' => [
-			// 	'unknown-mime-without-extension',
-			// 	'unknown-mime-without-extension.psd', // download - detected 'application/octet-stream' => 'psd' first one in WP list.
-			// 	'unknown-mime-without-extension.psd', // sideload - will assume psd.
-			// ],
-			// 'unknown mime with wrong extension but allowed' => [
-			// 	'unknown-mime-wrong-extension-is-allowed.png',
-			// 	'unknown-mime-wrong-extension-is-allowed.png', // download - no change.
-			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
-			// ],
-			// 'unknown mime with wrong not allowed extension' => [
-			// 	'unknown-mime-wrong-extension-not-allowed.swf',
-			// 	'unknown-mime-wrong-extension-not-allowed.swf', // download - no change.
-			// 	'Sorry, you are not allowed to upload this file type.', // sideload - not allowed.
-			// ],
-
-
-
-			// NEW PR:
 
 	}
 }
