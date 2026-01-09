@@ -10,6 +10,8 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 
 	use AttachmentUnitTestTrait;
 
+	const MIMES_AND_EXTS_FOLDER = 'tests/fixtures/mimes-and-exts/';
+
 	private int $post_id;
 
 	/**
@@ -104,10 +106,10 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 	 */
 	public function test_download_image( $file_name, $expected_download, $expected_sideload ) {
 
-		$result = Attachments::download_file( 'tests/fixtures/mimes-and-exts/' . $file_name );
+		$result = Attachments::download_file( self::MIMES_AND_EXTS_FOLDER . $file_name );
 		
 		// Check for Download error just incase.
-		if ( is_wp_error( $expected_download ) ) {
+		if ( is_wp_error( $result ) ) {
 			$this->assertSame( $expected_download, $result->get_error_code() );
 			return;
 		} 
@@ -145,6 +147,12 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 	 */
 	public function download_image_provider(): array {
 		return [
+
+			'no file' => [
+				'no-file.nope',
+				'File ' . self::MIMES_AND_EXTS_FOLDER .'no-file.nope was not found',
+				'',
+			],
 
 			// old August code:
 
