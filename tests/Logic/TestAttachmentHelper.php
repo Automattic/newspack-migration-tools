@@ -103,38 +103,26 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 	/**
 	 * Test media_handle_sideload.
 	 * 
-	 * WordPress core doesn't have much test coverage for sideloading. 
+	 * WordPress core doesn't have much test coverage for sideloading. We should have some of our tests since we're doing
+	 * filename manipulation in our `download_file` function in order to fix some of sideload's problems. We need to
+	 * have tests of the core sideload function so we'll have a baseline of data to compare to our manipulations to make
+	 * sure they are having the intended effects.
 	 * 
-	 * 
-	 * 
-* 	 media: media_sideload_image - no tests - thin function
-*  ==> media: media_handle_sideload - no tests - thin function
-*         file: wp_handle_sideload - no tests - thin function
-*             file: _wp_handle_upload - no tests - thin function
-* 
-* 
-* media: media_handle_upload > tests/media.php - since this is tested, that means _wp_handle_upload is actually tested. Very limited tests!
-*     file: wp_handle_upload
-*         file: _wp_handle_upload
-*     
-* function: _wp_handle_upload
-* 
-*     $wp_filetype     = wp_check_filetype_and_ext( $file['tmp_name'], $file['name'], $mimes );
-* 
-*         calls: $wp_filetype = wp_check_filetype( $filename, $mimes );
-*             uses: get_allowed_mime_types();
-*                 runs:
-*                     - wp_get_mime_types() -- this is ALL MIMES
-*                 sets:
-*                 - unset( $t['swf'], $t['exe'] );
-*                 - if...$unfiltered...unset( $t['htm|html'], $t['js'] )
-*         runs:
-*             $finfo     = finfo_open( FILEINFO_MIME_TYPE );
-*             $real_mime = finfo_file( $finfo, $file );
-* 
+	 * WP Core function calls: 
+	 *   `media_handle_sideload` calls
+	 * 		`wp_handle_sideload` which calls
+	 * 			`_wp_handle_upload` (this is where magic happens) - which uses
+	 * 				`wp_check_filetype_and_ext` which uses
+	 *     				`wp_check_filetype` which uses:
+	 * 						`get_allowed_mime_types` which uses:
+	 * 							`wp_get_mime_types` -- this is ALL MIMES
+	 * 							`unset( $t['swf'], $t['exe'] );`
+	 * 							`if...$unfiltered...unset( $t['htm|html'], $t['js'] )`
+	 * 				`wp_check_filetype_and_ext` which uses
+	 * 					$finfo     = finfo_open( FILEINFO_MIME_TYPE );
+	 * 					$real_mime = finfo_file( $finfo, $file );
 	 * 
 	 * @dataProvider provider_mimes_and_exts_fixtures
-	 * 
 	 */	
 	public function test_media_handle_sideload( array $provider ) {
 
@@ -182,7 +170,8 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test downloading an image.
+	 * Test downloading a file.
+	 * 
 	 * @dataProvider provider_mimes_and_exts_fixtures
 	 */
 	public function test_download_file( array $provider ) {
