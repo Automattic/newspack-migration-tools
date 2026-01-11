@@ -191,7 +191,6 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 		// Verify mime, then, verify it's default ext.
 		$this->assertSame( $provider['file-binary-mime'], mime_content_type( $downloaded_file_array['tmp_name'] ) );
 		$this->assertSame( $provider['file-binary-mime'], finfo_file( finfo_open( FILEINFO_MIME_TYPE ), $downloaded_file_array['tmp_name'] ) );
-		$this->assertSame( $provider['file-extension'], wp_get_default_extension_for_mime_type( mime_content_type( $downloaded_file_array['tmp_name'] ) ) );
 		$this->assertSame( $provider['file-extension'], wp_get_default_extension_for_mime_type( $provider['file-binary-mime'] ) );
 		$this->assertSame( $provider['wp-check'], implode( ',', wp_check_filetype_and_ext( $downloaded_file_array['tmp_name'], $downloaded_file_array['name'] ) ) );
 		
