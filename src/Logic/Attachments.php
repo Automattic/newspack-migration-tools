@@ -273,11 +273,13 @@ class Attachments {
 	/**
 	 * Download a file from a URL or a local path.
 	 *
-	 * @param string $path The path to the file.
+	 * @param string $path             The path to the file.
+	 * @param string $desired_filename The desired filename.
+	 * @param bool   $fix_extension    Fix missing extensions, wrong extensions, etc. (Does not apply to $desired_filename).
 	 *
 	 * @return array|WP_Error The file array.
 	 */
-	public static function download_file( $path, $desired_filename = '' ) {
+	public static function download_file( $path, $desired_filename = '', $fix_extension = true ) {
 		// Fetch remote or local file.
 		$is_http = 'http' == substr( $path, 0, 4 );
 		if ( $is_http ) {
@@ -304,13 +306,21 @@ class Attachments {
 			'tmp_name' => $tmpfname,
 		];
 
+		if ( ! empty( $desired_filename ) ) {
+			$file_array['name'] = $desired_filename;
+			return $file_array;
+		}
+
+		// If not fix extension, return now.
+		if( ! $fix_extension ) {
+			return $file_array;
+		}
+
 		$file_type                   = wp_check_filetype( $path );
 		$file_has_extension          = pathinfo( $path, PATHINFO_EXTENSION );
 		$file_extension_is_supported = ! empty( $file_type['ext'] ) && ! empty( $file_type['type'] );
 
-		if ( ! empty( $desired_filename ) ) {
-			$file_array['name'] = $desired_filename;
-		} elseif ( ! $file_has_extension || ! $file_extension_is_supported ) {
+		if ( ! $file_has_extension || ! $file_extension_is_supported ) {
 			// If the path does not have a file extension, let's try to find one for it.
 			// Without the extension, the upload will fail because WP will not allow that "file type".
 			$mimetype          = mime_content_type( $tmpfname );
