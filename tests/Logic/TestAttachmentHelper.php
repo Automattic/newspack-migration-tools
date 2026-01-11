@@ -126,26 +126,14 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 	 */	
 	public function test_media_handle_sideload( array $provider ) {
 
-		$path = self::MIMES_AND_EXTS_FOLDER . $provider['test-file'];
-
-		// The `media_handle_sideload()` function deletes the local file after import, so to preserve the local path, we're
-		// first saving it to a temp location, in exactly the same way the WP's own `\download_url()` function above does.
-		if ( ! file_exists( $path ) ) {
-			$this->assertSame( $provider['sideloaded-wp-core'], sprintf( 'File %s was not found', $path ) );
+		// Don't fix file extension during download.
+		$downloaded_file_array = Attachments::download_file( self::MIMES_AND_EXTS_FOLDER . $provider['test-file'], '', false );
+		
+		// Check for Download error just incase.
+		if ( is_wp_error( $downloaded_file_array ) ) {
+			$this->assertSame( $provider['sideloaded-wp-core'], $downloaded_file_array->get_error_code() );
 			return;
-		}
-		$tmpfname = wp_tempnam( $path );
-		// todo test: $tmpfname was writable...
-		copy( $path, $tmpfname );
-		if ( filesize( $tmpfname ) < 1 ) {
-			$this->assertSame( $provider['sideloaded-wp-core'], sprintf( 'File %s was empty', $path ) );
-			return;
-		}
-
-		$downloaded_file_array = [
-			'name'     => wp_basename( $path ),
-			'tmp_name' => $tmpfname,
-		];
+		} 
 
 		// Verify result works as expecpted with sideload.
 		$sideload_id = media_handle_sideload( $downloaded_file_array );
