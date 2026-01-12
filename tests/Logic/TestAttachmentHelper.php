@@ -587,22 +587,22 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 			// URL with querystring, but extension is followed by / and ? with querystring having bad extension
 			[[
 				'path' => 'https://dummyimage.com/600x400.jpg?text=hello.swf',
-				'downloaded-file-name' => '600x400.jpg?text=hello.gif',
-				'sideloaded-file-name' => '600x400.jpgtexthello.jpg',
-				'sideloaded-wp-core' => '600x400.jpgtexthello.jpg',
+				'downloaded-file-name' => '600x400.jpg?text=hello.swf.jpg',
+				'sideloaded-file-name' => '600x400.jpgtexthello.swf_.jpg',
+				'sideloaded-wp-core' => 'Sorry, you are not allowed to upload this file type.',
 				'file-binary-mime' => 'image/jpeg',
 				'file-extension' => 'jpg',
-				'wp-check' => 'jpg,image/jpeg,600x400.jpg?text=hello.jpg',
+				'wp-check' => 'jpg,image/jpeg,',
 			]],
 			// URL with querystring, but extension is followed by / and ? with querystring having unknown extension
 			[[
 				'path' => 'https://dummyimage.com/600x400.jpg?text=hello.unknown',
-				'downloaded-file-name' => '600x400.jpg?text=hello.gif',
-				'sideloaded-file-name' => '600x400.jpgtexthello.jpg',
-				'sideloaded-wp-core' => '600x400.jpgtexthello.jpg',
+				'downloaded-file-name' => '600x400.jpg?text=hello.unknown.jpg',
+				'sideloaded-file-name' => '600x400.jpgtexthello.unknown.jpg',
+				'sideloaded-wp-core' => 'Sorry, you are not allowed to upload this file type.',
 				'file-binary-mime' => 'image/jpeg',
 				'file-extension' => 'jpg',
-				'wp-check' => 'jpg,image/jpeg,600x400.jpg?text=hello.jpg',
+				'wp-check' => 'jpg,image/jpeg,',
 			]],
 		];
 	}
