@@ -534,17 +534,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 				'file-extension' => 'png',
 				'wp-check' => 'png,image/png,',
 			]],
-			// URL with querystring, but extension is followed by another /path/ and querystring.
-			[[
-				'path' => 'https://dummyimage.com/600x400.jpg/000/fff&text=Iz+test',
-				'downloaded-file-name' => 'fff&text=Iz+test.jpg',
-				'sideloaded-file-name' => 'ffftextIztest.jpg',
-				'sideloaded-wp-core' => 'Sorry, you are not allowed to upload this file type.',
-				'file-binary-mime' => 'image/jpeg',
-				'file-extension' => 'jpg',
-				'wp-check' => 'jpg,image/jpeg,',
-			]],
-			// URL with querystring, but extension is followed by just a /
+			// URL with querystring, but extension is followed by slash /
 			[[
 				'path' => 'https://dummyimage.com/600x400.jpg/',
 				'downloaded-file-name' => '600x400.jpg.jpg',
@@ -564,7 +554,17 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 				'file-extension' => 'jpg',
 				'wp-check' => 'jpg,image/jpeg,',
 			]],
-			// URL with querystring, but extension is followed by /?
+			// URL with querystring, but extension is followed by another /path/ and querystring.
+			[[
+				'path' => 'https://dummyimage.com/600x400.jpg/000/fff&text=Iz+test',
+				'downloaded-file-name' => 'fff&text=Iz+test.jpg',
+				'sideloaded-file-name' => 'ffftextIztest.jpg',
+				'sideloaded-wp-core' => 'Sorry, you are not allowed to upload this file type.',
+				'file-binary-mime' => 'image/jpeg',
+				'file-extension' => 'jpg',
+				'wp-check' => 'jpg,image/jpeg,',
+			]],
+			// URL with querystring, but extension is followed by / and ?
 			[[
 				'path' => 'https://dummyimage.com/600x400.jpg/?text=hello',
 				'downloaded-file-name' => '?text=hello.jpg',
@@ -574,9 +574,29 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 				'file-extension' => 'jpg',
 				'wp-check' => 'jpg,image/jpeg,',
 			]],
-			// URL with querystring, but extension is followed by /? WITH DIFFERENCE EXT IN THE QUERYSTRING
+			// URL with querystring, but extension is followed by / and ? with querystring having the extension
 			[[
 				'path' => 'https://dummyimage.com/600x400.jpg?text=hello.gif',
+				'downloaded-file-name' => '600x400.jpg?text=hello.gif',
+				'sideloaded-file-name' => '600x400.jpgtexthello.jpg',
+				'sideloaded-wp-core' => '600x400.jpgtexthello.jpg',
+				'file-binary-mime' => 'image/jpeg',
+				'file-extension' => 'jpg',
+				'wp-check' => 'jpg,image/jpeg,600x400.jpg?text=hello.jpg',
+			]],
+			// URL with querystring, but extension is followed by / and ? with querystring having bad extension
+			[[
+				'path' => 'https://dummyimage.com/600x400.jpg?text=hello.swf',
+				'downloaded-file-name' => '600x400.jpg?text=hello.gif',
+				'sideloaded-file-name' => '600x400.jpgtexthello.jpg',
+				'sideloaded-wp-core' => '600x400.jpgtexthello.jpg',
+				'file-binary-mime' => 'image/jpeg',
+				'file-extension' => 'jpg',
+				'wp-check' => 'jpg,image/jpeg,600x400.jpg?text=hello.jpg',
+			]],
+			// URL with querystring, but extension is followed by / and ? with querystring having unknown extension
+			[[
+				'path' => 'https://dummyimage.com/600x400.jpg?text=hello.unknown',
 				'downloaded-file-name' => '600x400.jpg?text=hello.gif',
 				'sideloaded-file-name' => '600x400.jpgtexthello.jpg',
 				'sideloaded-wp-core' => '600x400.jpgtexthello.jpg',
