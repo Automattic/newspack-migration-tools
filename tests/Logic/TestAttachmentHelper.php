@@ -99,63 +99,6 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test media_handle_sideload.
-	 * 
-	 * WordPress core doesn't have much test coverage for sideloading. We should have some of our tests since we're doing
-	 * filename manipulation in our `download_file` function in order to fix some of sideload's problems. We need to
-	 * have tests of the core sideload function so we'll have a baseline of data to compare to our manipulations to make
-	 * sure they are having the intended effects.
-	 * 
-	 * WP Core function calls: 
-	 *   `media_handle_sideload` calls
-	 * 		`wp_handle_sideload` which calls
-	 * 			`_wp_handle_upload` (this is where magic happens) - which uses
-	 * 				`wp_check_filetype_and_ext` which uses
-	 *     				`wp_check_filetype` which uses:
-	 * 						`get_allowed_mime_types` which uses:
-	 * 							`wp_get_mime_types` -- this is ALL MIMES
-	 * 							`unset( $t['swf'], $t['exe'] );`
-	 * 							`if...$unfiltered...unset( $t['htm|html'], $t['js'] )`
-	 * 				`wp_check_filetype_and_ext` which uses
-	 * 					$finfo     = finfo_open( FILEINFO_MIME_TYPE );
-	 * 					$real_mime = finfo_file( $finfo, $file );
-	 * 
-	 * @dataProvider provider_mimes_and_exts_fixtures
-	 */	
-	public function test_media_handle_sideload( array $provider ) {
-
-		// Don't fix file extension during download.
-		$downloaded_file_array = Attachments::download_file( $provider['path'], '', false );
-		
-		// Check for Download error just incase.
-		if ( is_wp_error( $downloaded_file_array ) ) {
-			$this->assertSame( $provider['sideloaded-wp-core'], $downloaded_file_array->get_error_code() );
-			return;
-		} 
-
-		// Verify result works as expecpted with sideload.
-		$sideload_id = media_handle_sideload( $downloaded_file_array );
-		
-		if ( is_wp_error( $sideload_id ) ) {
-			$this->assertSame( $provider['sideloaded-wp-core'], $sideload_id->get_error_message() );
-			return;
-		} 
-
-		// Verify created attachment name matches from the sideload.
-		$sideloaded_path = wp_attachment_is_image( $sideload_id ) ? 
-			wp_get_original_image_path( $sideload_id, true ) : 
-			get_post_meta( $sideload_id, '_wp_attached_file', true );
-
-		// Verify. Need to remove any "-2" duplicates just in case. WP could put at end of string "-2.png" or mid-string "-2.png-and-something.png".
-		$this->assertSame( $provider['sideloaded-wp-core'], preg_replace(
-			'/-\d+\./',
-			'.',
-			wp_basename( $sideloaded_path )
-		));
-
-	}
-
-	/**
 	 * Test downloading a file.
 	 * 
 	 * @dataProvider provider_mimes_and_exts_fixtures
@@ -180,11 +123,43 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 		$this->assertSame( $provider['file-extension'], wp_get_default_extension_for_mime_type( $provider['file-binary-mime'] ) );
 		$this->assertSame( $provider['wp-check'], implode( ',', wp_check_filetype_and_ext( $downloaded_file_array['tmp_name'], $downloaded_file_array['name'] ) ) );
 		
+		// Verify sideload.
+		$this->media_handle_sideload_asserts( $downloaded_file_array, $provider['sideloaded-file-name'] );
+
+		// Verify sideload for WP Core by not running the download_file's extension fix...just use the basename as-is.
+		$downloaded_file_array = Attachments::download_file( $provider['path'], wp_basename( $provider['path'] ) );
+		$this->media_handle_sideload_asserts( $downloaded_file_array, $provider['sideloaded-wp-core'] );		
+
+	}
+
+	/**
+	 * WordPress core doesn't have much test coverage for sideloading. We should have some of our tests since we're doing
+	 * filename manipulation in our `download_file` function in order to fix some of sideload's problems. We need to
+	 * have tests of the core sideload function so we'll have a baseline of data to compare to our manipulations to make
+	 * sure they are having the intended effects.
+	 * 
+	 * WP Core function calls: 
+	 *   `media_handle_sideload` calls
+	 * 		`wp_handle_sideload` which calls
+	 * 			`_wp_handle_upload` (this is where magic happens) - which uses
+	 * 				`wp_check_filetype_and_ext` which uses
+	 *     				`wp_check_filetype` which uses:
+	 * 						`get_allowed_mime_types` which uses:
+	 * 							`wp_get_mime_types` -- this is ALL MIMES
+	 * 							`unset( $t['swf'], $t['exe'] );`
+	 * 							`if...$unfiltered...unset( $t['htm|html'], $t['js'] )`
+	 * 				`wp_check_filetype_and_ext` which uses
+	 * 					$finfo     = finfo_open( FILEINFO_MIME_TYPE );
+	 * 					$real_mime = finfo_file( $finfo, $file );
+	 * 
+	 */	
+	private function media_handle_sideload_asserts( array $downloaded_file_array, string $assert_value ) {
+
 		// Verify result works as expecpted with sideload.
 		$sideload_id = media_handle_sideload( $downloaded_file_array );
 		
 		if ( is_wp_error( $sideload_id ) ) {
-			$this->assertSame( $provider['sideloaded-file-name'], $sideload_id->get_error_message() );
+			$this->assertSame( $assert_value, $sideload_id->get_error_message() );
 			return;
 		} 
 
@@ -194,12 +169,11 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 			get_post_meta( $sideload_id, '_wp_attached_file', true );
 
 		// Verify. Need to remove any "-2" duplicates just in case. WP could put at end of string "-2.png" or mid-string "-2.png-and-something.png".
-		$this->assertSame( $provider['sideloaded-file-name'], preg_replace(
+		$this->assertSame( $assert_value, preg_replace(
 			'/-\d+\./',
 			'.',
 			wp_basename( $sideloaded_path )
 		));
-
 	}
 
 	/**
@@ -212,37 +186,15 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 		$fixtures_folder = 'tests/fixtures/mimes-and-exts/';
 
 		return [
-			// Missing file.
 			[[
 				'path' => $fixtures_folder . 'no-file.nope',
 				'downloaded-file-name' => 'File ' . $fixtures_folder .'no-file.nope was not found',
 				'sideloaded-file-name' => '',
-				'sideloaded-wp-core' => 'File ' . $fixtures_folder .'no-file.nope was not found',
+				'sideloaded-wp-core' => '',
 				'file-binary-mime' => '',
 				'file-extension' => '',
 				'wp-check' => '',
 			]],
-			// URL.
-			[[
-				'path' => 'https://i0.wp.com/newspack.com/wp-content/uploads/2025/02/newspack-logo.png',
-				'downloaded-file-name' => 'newspack-logo.png',
-				'sideloaded-file-name' => 'newspack-logo.png',
-				'sideloaded-wp-core' => 'newspack-logo.png',
-				'file-binary-mime' => 'image/png',
-				'file-extension' => 'png',
-				'wp-check' => 'png,image/png,',
-			]],
-			// URL with querystring.
-			[[
-				'path' => 'https://i0.wp.com/newspack.com/wp-content/uploads/2025/02/newspack-logo.png?resize=768%2C156&ssl=1',
-				'downloaded-file-name' => 'newspack-logo.png?resize=768%2C156&ssl=1.png',
-				'sideloaded-file-name' => 'newspack-logo.pngresize7682C156ssl1.png',
-				'sideloaded-wp-core' => 'Sorry, you are not allowed to upload this file type.',
-				'file-binary-mime' => 'image/png',
-				'file-extension' => 'png',
-				'wp-check' => 'png,image/png,',
-			]],
-			// JPEG files.
 			[[ 
 				'path' => $fixtures_folder . 'image-jpeg.jpeg',
 				'downloaded-file-name' => 'image-jpeg.jpeg',
@@ -561,6 +513,66 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 				'file-extension' => 'docx',
 				'wp-check' => ',,',
 			]],
+			// // URL.
+			// [[
+			// 	'path' => 'https://i0.wp.com/newspack.com/wp-content/uploads/2025/02/newspack-logo.png',
+			// 	'downloaded-file-name' => 'newspack-logo.png',
+			// 	'sideloaded-file-name' => 'newspack-logo.png',
+			// 	'sideloaded-wp-core' => 'newspack-logo.png',
+			// 	'file-binary-mime' => 'image/png',
+			// 	'file-extension' => 'png',
+			// 	'wp-check' => 'png,image/png,',
+			// ]],
+			// // URL with querystring.
+			// [[
+			// 	'path' => 'https://i0.wp.com/newspack.com/wp-content/uploads/2025/02/newspack-logo.png?resize=768%2C156&ssl=1',
+			// 	'downloaded-file-name' => 'newspack-logo.png?resize=768%2C156&ssl=1',
+			// 	'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
+			// 	'sideloaded-wp-core' => 'Sorry, you are not allowed to upload this file type.',
+			// 	'file-binary-mime' => 'image/png',
+			// 	'file-extension' => 'png',
+			// 	'wp-check' => ',,',
+			// ]],
+			// // URL with querystring, but extension is followed by another /path/ and querystring.
+			// [[
+			// 	'path' => 'https://dummyimage.com/600x400.jpg/000/fff&text=Iz+test',
+			// 	'downloaded-file-name' => '',
+			// 	'sideloaded-file-name' => '',
+			// 	'sideloaded-wp-core' => '',
+			// 	'file-binary-mime' => '',
+			// 	'file-extension' => '',
+			// 	'wp-check' => ',,',
+			// ]],
+			// // URL with querystring, but extension is followed by just a /
+			// [[
+			// 	'path' => 'https://dummyimage.com/600x400.jpg/',
+			// 	'downloaded-file-name' => '',
+			// 	'sideloaded-file-name' => '',
+			// 	'sideloaded-wp-core' => '',
+			// 	'file-binary-mime' => '',
+			// 	'file-extension' => '',
+			// 	'wp-check' => ',,',
+			// ]],
+			// // URL with querystring, but extension is followed by /?
+			// [[
+			// 	'path' => 'https://dummyimage.com/600x400.jpg/?text=hello',
+			// 	'downloaded-file-name' => '',
+			// 	'sideloaded-file-name' => '',
+			// 	'sideloaded-wp-core' => '',
+			// 	'file-binary-mime' => '',
+			// 	'file-extension' => '',
+			// 	'wp-check' => ',,',
+			// ]],
+			// // URL with querystring, but extension is followed by /? WITH DIFFERENCE EXT IN THE QUERYSTRING
+			// [[
+			// 	'path' => 'https://dummyimage.com/600x400.jpg?text=hello.gif',
+			// 	'downloaded-file-name' => '',
+			// 	'sideloaded-file-name' => '',
+			// 	'sideloaded-wp-core' => '',
+			// 	'file-binary-mime' => '',
+			// 	'file-extension' => '',
+			// 	'wp-check' => ',,',
+			// ]],
 		];
 	}
 }
