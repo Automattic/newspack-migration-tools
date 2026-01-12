@@ -615,7 +615,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'path'                 => 'https://dummyimage.com/600x400.jpg/',
 					'downloaded-file-name' => '600x400.jpg.jpg',
 					'sideloaded-file-name' => '600x400.jpg.jpg',
-					'sideloaded-wp-core'   => '600x400.jpg', // wp_basename( $provider['path'] ) => 600x400.jpg
+					'sideloaded-wp-core'   => '600x400.jpg', // basename => 600x400.jpg
 					'file-binary-mime'     => 'image/jpeg',
 					'file-extension'       => 'jpg',
 					'wp-check'             => 'jpg,image/jpeg,',
