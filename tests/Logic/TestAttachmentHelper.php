@@ -127,6 +127,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 		$this->media_handle_sideload_asserts( $downloaded_file_array, $provider['sideloaded-file-name'] );
 
 		// Verify sideload for WP Core by not running the download_file's extension fix...just use the basename as-is.
+		// using wp_basename( $path ) is the same logic download_file would do if we had a "skip fix extension" argument.
 		$downloaded_file_array = Attachments::download_file( $provider['path'], wp_basename( $provider['path'] ) );
 		$this->media_handle_sideload_asserts( $downloaded_file_array, $provider['sideloaded-wp-core'] );		
 
@@ -513,66 +514,76 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 				'file-extension' => 'docx',
 				'wp-check' => ',,',
 			]],
-			// // URL.
-			// [[
-			// 	'path' => 'https://i0.wp.com/newspack.com/wp-content/uploads/2025/02/newspack-logo.png',
-			// 	'downloaded-file-name' => 'newspack-logo.png',
-			// 	'sideloaded-file-name' => 'newspack-logo.png',
-			// 	'sideloaded-wp-core' => 'newspack-logo.png',
-			// 	'file-binary-mime' => 'image/png',
-			// 	'file-extension' => 'png',
-			// 	'wp-check' => 'png,image/png,',
-			// ]],
-			// // URL with querystring.
-			// [[
-			// 	'path' => 'https://i0.wp.com/newspack.com/wp-content/uploads/2025/02/newspack-logo.png?resize=768%2C156&ssl=1',
-			// 	'downloaded-file-name' => 'newspack-logo.png?resize=768%2C156&ssl=1',
-			// 	'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
-			// 	'sideloaded-wp-core' => 'Sorry, you are not allowed to upload this file type.',
-			// 	'file-binary-mime' => 'image/png',
-			// 	'file-extension' => 'png',
-			// 	'wp-check' => ',,',
-			// ]],
-			// // URL with querystring, but extension is followed by another /path/ and querystring.
-			// [[
-			// 	'path' => 'https://dummyimage.com/600x400.jpg/000/fff&text=Iz+test',
-			// 	'downloaded-file-name' => '',
-			// 	'sideloaded-file-name' => '',
-			// 	'sideloaded-wp-core' => '',
-			// 	'file-binary-mime' => '',
-			// 	'file-extension' => '',
-			// 	'wp-check' => ',,',
-			// ]],
-			// // URL with querystring, but extension is followed by just a /
-			// [[
-			// 	'path' => 'https://dummyimage.com/600x400.jpg/',
-			// 	'downloaded-file-name' => '',
-			// 	'sideloaded-file-name' => '',
-			// 	'sideloaded-wp-core' => '',
-			// 	'file-binary-mime' => '',
-			// 	'file-extension' => '',
-			// 	'wp-check' => ',,',
-			// ]],
-			// // URL with querystring, but extension is followed by /?
-			// [[
-			// 	'path' => 'https://dummyimage.com/600x400.jpg/?text=hello',
-			// 	'downloaded-file-name' => '',
-			// 	'sideloaded-file-name' => '',
-			// 	'sideloaded-wp-core' => '',
-			// 	'file-binary-mime' => '',
-			// 	'file-extension' => '',
-			// 	'wp-check' => ',,',
-			// ]],
-			// // URL with querystring, but extension is followed by /? WITH DIFFERENCE EXT IN THE QUERYSTRING
-			// [[
-			// 	'path' => 'https://dummyimage.com/600x400.jpg?text=hello.gif',
-			// 	'downloaded-file-name' => '',
-			// 	'sideloaded-file-name' => '',
-			// 	'sideloaded-wp-core' => '',
-			// 	'file-binary-mime' => '',
-			// 	'file-extension' => '',
-			// 	'wp-check' => ',,',
-			// ]],
+			// URL.
+			[[
+				'path' => 'https://i0.wp.com/newspack.com/wp-content/uploads/2025/02/newspack-logo.png',
+				'downloaded-file-name' => 'newspack-logo.png',
+				'sideloaded-file-name' => 'newspack-logo.png',
+				'sideloaded-wp-core' => 'newspack-logo.png',
+				'file-binary-mime' => 'image/png',
+				'file-extension' => 'png',
+				'wp-check' => 'png,image/png,',
+			]],
+			// URL with querystring.
+			[[
+				'path' => 'https://i0.wp.com/newspack.com/wp-content/uploads/2025/02/newspack-logo.png?resize=768%2C156&ssl=1',
+				'downloaded-file-name' => 'newspack-logo.png?resize=768%2C156&ssl=1.png',
+				'sideloaded-file-name' => 'newspack-logo.pngresize7682C156ssl1.png',
+				'sideloaded-wp-core' => 'Sorry, you are not allowed to upload this file type.',
+				'file-binary-mime' => 'image/png',
+				'file-extension' => 'png',
+				'wp-check' => 'png,image/png,',
+			]],
+			// URL with querystring, but extension is followed by another /path/ and querystring.
+			[[
+				'path' => 'https://dummyimage.com/600x400.jpg/000/fff&text=Iz+test',
+				'downloaded-file-name' => 'fff&text=Iz+test.jpg',
+				'sideloaded-file-name' => 'ffftextIztest.jpg',
+				'sideloaded-wp-core' => 'Sorry, you are not allowed to upload this file type.',
+				'file-binary-mime' => 'image/jpeg',
+				'file-extension' => 'jpg',
+				'wp-check' => 'jpg,image/jpeg,',
+			]],
+			// URL with querystring, but extension is followed by just a /
+			[[
+				'path' => 'https://dummyimage.com/600x400.jpg/',
+				'downloaded-file-name' => '600x400.jpg.jpg',
+				'sideloaded-file-name' => '600x400.jpg.jpg',
+				'sideloaded-wp-core' => '600x400.jpg', // wp_basename( $provider['path'] ) => 600x400.jpg
+				'file-binary-mime' => 'image/jpeg',
+				'file-extension' => 'jpg',
+				'wp-check' => 'jpg,image/jpeg,',
+			]],
+			// URL with querystring, but extension is followed by another /path/.
+			[[
+				'path' => 'https://dummyimage.com/600x400.jpg/000/',
+				'downloaded-file-name' => '000.jpg',
+				'sideloaded-file-name' => '000.jpg',
+				'sideloaded-wp-core' => 'Sorry, you are not allowed to upload this file type.',
+				'file-binary-mime' => 'image/jpeg',
+				'file-extension' => 'jpg',
+				'wp-check' => 'jpg,image/jpeg,',
+			]],
+			// URL with querystring, but extension is followed by /?
+			[[
+				'path' => 'https://dummyimage.com/600x400.jpg/?text=hello',
+				'downloaded-file-name' => '?text=hello.jpg',
+				'sideloaded-file-name' => 'texthello.jpg',
+				'sideloaded-wp-core' => 'Sorry, you are not allowed to upload this file type.',
+				'file-binary-mime' => 'image/jpeg',
+				'file-extension' => 'jpg',
+				'wp-check' => 'jpg,image/jpeg,',
+			]],
+			// URL with querystring, but extension is followed by /? WITH DIFFERENCE EXT IN THE QUERYSTRING
+			[[
+				'path' => 'https://dummyimage.com/600x400.jpg?text=hello.gif',
+				'downloaded-file-name' => '600x400.jpg?text=hello.gif',
+				'sideloaded-file-name' => '600x400.jpgtexthello.jpg',
+				'sideloaded-wp-core' => '600x400.jpgtexthello.jpg',
+				'file-binary-mime' => 'image/jpeg',
+				'file-extension' => 'jpg',
+				'wp-check' => 'jpg,image/jpeg,600x400.jpg?text=hello.jpg',
+			]],
 		];
 	}
 }
