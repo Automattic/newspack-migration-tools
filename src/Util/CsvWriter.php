@@ -27,7 +27,7 @@ class CsvWriter {
 		private string $filename
 	) {
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
-		$this->file_pointer = fopen( getcwd() . '/' . $this->filename, 'a+' );
+		$this->file_pointer = fopen( $this->filename, 'a+' );
 
 		if ( false === $this->file_pointer ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
