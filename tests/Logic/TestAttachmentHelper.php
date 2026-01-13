@@ -192,7 +192,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 		$fixtures_folder = 'tests/fixtures/mimes-and-exts/';
 
 		return [
-			'missing file' => [
+			'missing file'                               => [
 				[
 					'path'                 => $fixtures_folder . 'no-file.nope',
 					'downloaded-file-name' => 'File ' . $fixtures_folder . 'no-file.nope was not found',
@@ -202,7 +202,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => '',
 				],
 			],
-			'unallowed file' => [
+			'unallowed file'                             => [
 				[ 
 					// file created by hand.
 					'path'                 => $fixtures_folder . 'html.html',
@@ -213,7 +213,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'htm',
 				],
 			],
-			'filename is just the extension'=> [
+			'filename is just the extension'             => [
 				[ 
 					// file created by hand.
 					'path'                 => $fixtures_folder . 'html', 
@@ -224,7 +224,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'htm',
 				],
 			],
-			'image (jpeg)' => [
+			'image (jpeg)'                               => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-jpeg.jpeg',
 					'downloaded-file-name' => 'image-jpeg.jpeg',
@@ -234,7 +234,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'jpg',
 				],
 			],
-			'image (jpg)' => [
+			'image (jpg)'                                => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-jpeg.jpg',
 					'downloaded-file-name' => 'image-jpeg.jpg',
@@ -244,7 +244,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'jpg',
 				],
 			],
-			'image no ext' => [
+			'image no ext'                               => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-jpeg-no-extension',
 					'downloaded-file-name' => 'image-jpeg-no-extension.jpg',
@@ -254,7 +254,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'jpg',
 				],
 			],
-			'image unknown ext' => [
+			'image unknown ext'                          => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-jpeg-unknown-extension.unknown',
 					'downloaded-file-name' => 'image-jpeg-unknown-extension.unknown.jpg',
@@ -264,7 +264,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'jpg',
 				],
 			],
-			'image unallowed extension' => [
+			'image unallowed extension'                  => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-jpeg-wrong-bad-extension.exe',
 					'downloaded-file-name' => 'image-jpeg-wrong-bad-extension.exe',
@@ -274,7 +274,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'jpg',
 				],
 			],
-			'image other extension' => [
+			'image other extension'                      => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-jpeg-wrong-extension.png',
 					'downloaded-file-name' => 'image-jpeg-wrong-extension.png',
@@ -284,7 +284,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'jpg',
 				],
 			],
-			'application-octet bug?' => [
+			'application-octet bug?'                     => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-sgi-no-extension',
 					'downloaded-file-name' => 'image-sgi-no-extension.psd', // core bug?
@@ -294,7 +294,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'psd', // core bug?
 				],
 			],
-			'application-octet bug? again' => [
+			'application-octet bug? again'               => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-sgi.sgi',
 					'downloaded-file-name' => 'image-sgi.sgi.psd', // core bug?
@@ -304,7 +304,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'psd',  // core bug?
 				],
 			],
-			'application-octet bug? again again' => [
+			'application-octet bug? again again'         => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-sgi-uknown-extension.unknown',
 					'downloaded-file-name' => 'image-sgi-uknown-extension.unknown.psd', // core bug?
@@ -314,7 +314,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'psd', // core bug?
 				],
 			],
-			'application-octet unallowed extension' => [
+			'application-octet unallowed extension'      => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-sgi-wrong-bad-extension.exe',
 					'downloaded-file-name' => 'image-sgi-wrong-bad-extension.exe',
@@ -324,7 +324,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'psd', // core bug?
 				],
 			],
-			'application-octet bug? allowed ext' => [
+			'application-octet bug? allowed ext'         => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-sgi-wrong-extension.png',
 					'downloaded-file-name' => 'image-sgi-wrong-extension.png',
@@ -334,7 +334,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'psd', // core bug?
 				],
 			],
-			'application-octet bug? other ext' => [
+			'application-octet bug? other ext'           => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-sgi-wrong-extension-non-specific.zip',
 					'downloaded-file-name' => 'image-sgi-wrong-extension-non-specific.zip',
@@ -344,7 +344,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'psd', // core bug?
 				],
 			],
-			'application-octet bug? other ext (again)' => [
+			'application-octet bug? other ext (again)'   => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-sgi-wrong-extension-non-specific-video.mov',
 					'downloaded-file-name' => 'image-sgi-wrong-extension-non-specific-video.mov',
@@ -354,7 +354,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'psd', // core bug?
 				],
 			],
-			'photoshop (unknown mime)' => [
+			'photoshop (unknown mime)'                   => [
 				[ 
 					'path'                 => $fixtures_folder . 'photoshop.psd',
 					'downloaded-file-name' => 'photoshop.psd',
@@ -364,7 +364,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => false,
 				],
 			],
-			'photoshop (unknown mime) no extension' => [
+			'photoshop (unknown mime) no extension'      => [
 				[ 
 					'path'                 => $fixtures_folder . 'photoshop-no-extension',
 					'downloaded-file-name' => 'photoshop-no-extension',
@@ -374,7 +374,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => false,
 				],
 			],
-			'photoshop (unknown mime) unknown ext' => [
+			'photoshop (unknown mime) unknown ext'       => [
 				[ 
 					'path'                 => $fixtures_folder . 'photoshop-uknown-extension.unknown',
 					'downloaded-file-name' => 'photoshop-uknown-extension.unknown',
@@ -384,7 +384,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => false,
 				],
 			],
-			'photoshop (unknown mime) bad ext' => [
+			'photoshop (unknown mime) bad ext'           => [
 				[ 
 					'path'                 => $fixtures_folder . 'photoshop-wrong-bad-extension.exe',
 					'downloaded-file-name' => 'photoshop-wrong-bad-extension.exe',
@@ -394,7 +394,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => false,
 				],
 			],
-			'photoshop (unknown mime) other ext' => [
+			'photoshop (unknown mime) other ext'         => [
 				[ 
 					'path'                 => $fixtures_folder . 'photoshop-wrong-extension-non-specific.zip',
 					'downloaded-file-name' => 'photoshop-wrong-extension-non-specific.zip',
@@ -417,7 +417,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 			// Shockwave Flash files created by: echo 'RldTBxAAAAAIAAAMAQAAAA==' | base64 --decode > test.swf
 			// verified: file --mime-type test.swf
 			// verified: php -r 'echo finfo_file( finfo_open( FILEINFO_MIME_TYPE ), "test.swf" ) . "\n";'
-			'flash swf' => [
+			'flash swf'                                  => [
 				[ 
 					'path'                 => $fixtures_folder . 'shockwave-flash.swf',
 					'downloaded-file-name' => 'shockwave-flash.swf',
@@ -427,7 +427,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'swf',
 				],
 			],
-			'flash no ext' => [
+			'flash no ext'                               => [
 				[ 
 					'path'                 => $fixtures_folder . 'shockwave-flash-no-extension',
 					'downloaded-file-name' => 'shockwave-flash-no-extension.swf',
@@ -437,7 +437,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'swf',
 				],
 			],
-			'flash unknown ext' => [
+			'flash unknown ext'                          => [
 				[ 
 					'path'                 => $fixtures_folder . 'shockwave-flash-unknown-extension.unknown',
 					'downloaded-file-name' => 'shockwave-flash-unknown-extension.unknown.swf',
@@ -447,7 +447,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'swf',
 				],
 			],
-			'flash unallowed ext' => [
+			'flash unallowed ext'                        => [
 				[ 
 					'path'                 => $fixtures_folder . 'shockwave-flash-wrong-bad-extension.exe',
 					'downloaded-file-name' => 'shockwave-flash-wrong-bad-extension.exe',
@@ -457,7 +457,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'swf',
 				],
 			],
-			'flash wrong allowed ext' => [
+			'flash wrong allowed ext'                    => [
 				[ 
 					'path'                 => $fixtures_folder . 'shockwave-flash-wrong-extension.png',
 					'downloaded-file-name' => 'shockwave-flash-wrong-extension.png',
@@ -467,7 +467,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'swf',
 				],
 			],
-			'true vision uknown mime undetected ext' => [
+			'true vision uknown mime undetected ext'     => [
 				[ 
 					'path'                 => $fixtures_folder . 'truevision.tga',
 					'downloaded-file-name' => 'truevision.tga',
@@ -477,7 +477,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => false,
 				],
 			],
-			'true vision uknown mime no ext' => [
+			'true vision uknown mime no ext'             => [
 				[ 
 					'path'                 => $fixtures_folder . 'truevision-no-extension',
 					'downloaded-file-name' => 'truevision-no-extension',
@@ -487,7 +487,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => false,
 				],
 			],
-			'true vision uknown mime unknown ext' => [
+			'true vision uknown mime unknown ext'        => [
 				[ 
 					'path'                 => $fixtures_folder . 'truevision-unknown-extension.unknown',
 					'downloaded-file-name' => 'truevision-unknown-extension.unknown',
@@ -497,7 +497,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => false,
 				],
 			],
-			'true vision uknown mime unallowed ext' => [
+			'true vision uknown mime unallowed ext'      => [
 				[ 
 					'path'                 => $fixtures_folder . 'truevision-wrong-bad-extension.exe',
 					'downloaded-file-name' => 'truevision-wrong-bad-extension.exe',
@@ -507,7 +507,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => false,
 				],
 			],
-			'true vision uknown mime wrong allowed ext' => [
+			'true vision uknown mime wrong allowed ext'  => [
 				[ 
 					'path'                 => $fixtures_folder . 'truevision-wrong-extension.png',
 					'downloaded-file-name' => 'truevision-wrong-extension.png',
@@ -517,7 +517,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => false,
 				],
 			],
-			'word' => [
+			'word'                                       => [
 				[ 
 					'path'                 => $fixtures_folder . 'word.docx',
 					'downloaded-file-name' => 'word.docx',
@@ -527,7 +527,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'docx',
 				],
 			],
-			'word no ext' => [
+			'word no ext'                                => [
 				[ 
 					'path'                 => $fixtures_folder . 'word-no-extension',
 					'downloaded-file-name' => 'word-no-extension.docx',
@@ -537,7 +537,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'docx',
 				],
 			],
-			'word unknown ext' => [
+			'word unknown ext'                           => [
 				[ 
 					'path'                 => $fixtures_folder . 'word-unknown-extension.unknown',
 					'downloaded-file-name' => 'word-unknown-extension.unknown.docx',
@@ -547,7 +547,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'docx',
 				],
 			],
-			'word unallowed ext' => [
+			'word unallowed ext'                         => [
 				[ 
 					'path'                 => $fixtures_folder . 'word-wrong-bad-extension.exe',
 					'downloaded-file-name' => 'word-wrong-bad-extension.exe',
@@ -557,7 +557,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'docx',
 				],
 			],
-			'word wrong allowed ext' => [
+			'word wrong allowed ext'                     => [
 				[ 
 					'path'                 => $fixtures_folder . 'word-wrong-extension.png',
 					'downloaded-file-name' => 'word-wrong-extension.png',
@@ -567,7 +567,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'docx',
 				],
 			],
-			'URL' => [
+			'URL'                                        => [
 				[
 					'path'                 => 'https://i0.wp.com/newspack.com/wp-content/uploads/2025/02/newspack-logo.png',
 					'downloaded-file-name' => 'newspack-logo.png',
@@ -577,7 +577,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 					'mime-default-ext'     => 'png',
 				],
 			],
-			'URL with querystring' => [
+			'URL with querystring'                       => [
 				[
 					'path'                 => 'https://i0.wp.com/newspack.com/wp-content/uploads/2025/02/newspack-logo.png?resize=768%2C156&ssl=1',
 					'downloaded-file-name' => 'newspack-logo.png?resize=768%2C156&ssl=1.png',
