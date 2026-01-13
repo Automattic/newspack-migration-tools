@@ -273,7 +273,8 @@ class Attachments {
 	/**
 	 * Download a file from a URL or a local path.
 	 *
-	 * @param string $path The path to the file.
+	 * @param string $path             The path to the file.
+	 * @param string $desired_filename (Optional) If set, file extension fixes will not be applied.
 	 *
 	 * @return array|WP_Error The file array.
 	 */
@@ -310,17 +311,15 @@ class Attachments {
 			return $file_array;
 		}
 
-
 		// If the path does not have a file extension or has an unknown extension, let's try to find one for it.
 		// Without the extension, the upload will fail because WP will not allow that "file type".
-		$file_type = wp_check_filetype( $path, wp_get_mime_types() ); // check against all known extensions ("mimes").
+		// Check against all known extensions ("wp_get_mime_types").
+		$file_type = wp_check_filetype( $path, wp_get_mime_types() );
 
-		// need both if ( ! pathinfo( $path, PATHINFO_EXTENSION ) || ! $file_type['ext'] ) {??
-		
-		if ( ! pathinfo( $path, PATHINFO_EXTENSION ) || ! $file_type['ext'] ) {
+		// Value $file_type['ext'] will be false for both missing and unknown cases.
+		if ( ! $file_type['ext'] ) {
 			$mimetype          = mime_content_type( $tmpfname );
 			$default_extension = wp_get_default_extension_for_mime_type( $mimetype );
-
 			if ( ! empty( $default_extension ) ) {
 				$file_array['name'] .= '.' . $default_extension;
 			}
