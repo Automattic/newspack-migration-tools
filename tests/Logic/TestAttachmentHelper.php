@@ -120,8 +120,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 		// Verify mime, then, verify it's default ext.
 		$this->assertSame( $provider['file-binary-mime'], mime_content_type( $downloaded_file_array['tmp_name'] ) );
 		$this->assertSame( $provider['file-binary-mime'], finfo_file( finfo_open( FILEINFO_MIME_TYPE ), $downloaded_file_array['tmp_name'] ) );
-		$this->assertSame( $provider['file-extension'], wp_get_default_extension_for_mime_type( $provider['file-binary-mime'] ) );
-		$this->assertSame( $provider['wp-check'], implode( ',', wp_check_filetype_and_ext( $downloaded_file_array['tmp_name'], $downloaded_file_array['name'] ) ) );
+		$this->assertSame( $provider['mime-default-ext'], wp_get_default_extension_for_mime_type( $provider['file-binary-mime'] ) );
 		
 		// Verify sideload.
 		$this->media_handle_sideload_asserts( $downloaded_file_array, $provider['sideloaded-file-name'] );
@@ -180,6 +179,11 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 
 	/**
 	 * Data provider for mimes and exts fixtures.
+	 * 
+	 * Most of these files were copied and renamed from existing WP Core test files (see link).
+	 * If a file was created a different way, it will be noted below.
+	 * 
+	 * @link https://github.com/WordPress/wordpress-develop/tree/ac6e7c904a39fabaa0f3d3770554f05373552db4/tests
 	 *
 	 * @return array[]
 	 */
@@ -188,509 +192,469 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 		$fixtures_folder = 'tests/fixtures/mimes-and-exts/';
 
 		return [
-			[
+			'missing file' => [
 				[
 					'path'                 => $fixtures_folder . 'no-file.nope',
 					'downloaded-file-name' => 'File ' . $fixtures_folder . 'no-file.nope was not found',
 					'sideloaded-file-name' => '',
 					'sideloaded-wp-core'   => '',
 					'file-binary-mime'     => '',
-					'file-extension'       => '',
-					'wp-check'             => '',
+					'mime-default-ext'     => '',
 				],
 			],
-			[
+			'unallowed file' => [
+				[ 
+					// file created by hand.
+					'path'                 => $fixtures_folder . 'html.html',
+					'downloaded-file-name' => 'html.html',
+					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
+					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
+					'file-binary-mime'     => 'text/html',
+					'mime-default-ext'     => 'htm',
+				],
+			],
+			'filename is just the extension'=> [
+				[ 
+					// file created by hand.
+					'path'                 => $fixtures_folder . 'html', 
+					'downloaded-file-name' => 'html.htm', // default ext for mime is added.
+					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
+					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
+					'file-binary-mime'     => 'text/html',
+					'mime-default-ext'     => 'htm',
+				],
+			],
+			'image (jpeg)' => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-jpeg.jpeg',
 					'downloaded-file-name' => 'image-jpeg.jpeg',
 					'sideloaded-file-name' => 'image-jpeg.jpeg',
 					'sideloaded-wp-core'   => 'image-jpeg.jpeg',
 					'file-binary-mime'     => 'image/jpeg',
-					'file-extension'       => 'jpg',
-					'wp-check'             => 'jpeg,image/jpeg,',
+					'mime-default-ext'     => 'jpg',
 				],
 			],
-			[
+			'image (jpg)' => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-jpeg.jpg',
 					'downloaded-file-name' => 'image-jpeg.jpg',
 					'sideloaded-file-name' => 'image-jpeg.jpg',
 					'sideloaded-wp-core'   => 'image-jpeg.jpg',
 					'file-binary-mime'     => 'image/jpeg',
-					'file-extension'       => 'jpg',
-					'wp-check'             => 'jpg,image/jpeg,',
+					'mime-default-ext'     => 'jpg',
 				],
 			],
-			[
+			'image no ext' => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-jpeg-no-extension',
-					'downloaded-file-name' => 'image-jpeg-no-extension.jpg', // fixed by download.
-					'sideloaded-file-name' => 'image-jpeg-no-extension.jpg', // fixed by download.
+					'downloaded-file-name' => 'image-jpeg-no-extension.jpg',
+					'sideloaded-file-name' => 'image-jpeg-no-extension.jpg',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'image/jpeg',
-					'file-extension'       => 'jpg',
-					'wp-check'             => 'jpg,image/jpeg,', // fixed by download.
+					'mime-default-ext'     => 'jpg',
 				],
 			],
-			[
+			'image unknown ext' => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-jpeg-unknown-extension.unknown',
-					'downloaded-file-name' => 'image-jpeg-unknown-extension.unknown.jpg', // fixed with new PR
-					'sideloaded-file-name' => 'image-jpeg-unknown-extension.unknown.jpg', // fixed with new PR
+					'downloaded-file-name' => 'image-jpeg-unknown-extension.unknown.jpg',
+					'sideloaded-file-name' => 'image-jpeg-unknown-extension.unknown.jpg',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'image/jpeg',
-					'file-extension'       => 'jpg',
-					'wp-check'             => 'jpg,image/jpeg,', // fixed with new PR
+					'mime-default-ext'     => 'jpg',
 				],
 			],
-			[
+			'image unallowed extension' => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-jpeg-wrong-bad-extension.exe',
-					'downloaded-file-name' => 'image-jpeg-wrong-bad-extension.exe.jpg', // fixed with new PR
-					'sideloaded-file-name' => 'image-jpeg-wrong-bad-extension.exe_.jpg', // fixed with new PR, what is _?
+					'downloaded-file-name' => 'image-jpeg-wrong-bad-extension.exe',
+					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'image/jpeg',
-					'file-extension'       => 'jpg',
-					'wp-check'             => 'jpg,image/jpeg,', // fixed with new PR
+					'mime-default-ext'     => 'jpg',
 				],
 			],
-			[
+			'image other extension' => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-jpeg-wrong-extension.png',
 					'downloaded-file-name' => 'image-jpeg-wrong-extension.png',
 					'sideloaded-file-name' => 'image-jpeg-wrong-extension.jpg',
 					'sideloaded-wp-core'   => 'image-jpeg-wrong-extension.jpg',
 					'file-binary-mime'     => 'image/jpeg',
-					'file-extension'       => 'jpg',
-					'wp-check'             => 'jpg,image/jpeg,image-jpeg-wrong-extension.jpg',
+					'mime-default-ext'     => 'jpg',
 				],
 			],
-			[
+			'application-octet bug?' => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-sgi-no-extension',
-					'downloaded-file-name' => 'image-sgi-no-extension.psd', // "fixed" by download - same "psd" (application/octet-stream) bug...
-					'sideloaded-file-name' => 'image-sgi-no-extension.psd', // "fixed" by download - same "psd" (application/octet-stream) bug...
-					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
+					'downloaded-file-name' => 'image-sgi-no-extension.psd', // core bug?
+					'sideloaded-file-name' => 'image-sgi-no-extension.psd', // core bug?
+					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.', // core does not sideload.
 					'file-binary-mime'     => 'application/octet-stream',
-					'file-extension'       => 'psd', // bug??
-					'wp-check'             => 'psd,application/octet-stream,', // "fixed" by download - same "psd" (application/octet-stream) bug...
+					'mime-default-ext'     => 'psd', // core bug?
 				],
 			],
-			[
+			'application-octet bug? again' => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-sgi.sgi',
-					'downloaded-file-name' => 'image-sgi.sgi.psd', // new PR: same psd bug....
-					'sideloaded-file-name' => 'image-sgi.sgi_.psd', // new PR: same psd bug....
-					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
+					'downloaded-file-name' => 'image-sgi.sgi.psd', // core bug?
+					'sideloaded-file-name' => 'image-sgi.sgi_.psd', // core bug?
+					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.', // core does not sideload.
 					'file-binary-mime'     => 'application/octet-stream',
-					'file-extension'       => 'psd', // bug??
-					'wp-check'             => 'psd,application/octet-stream,', // new PR: same psd bug....
+					'mime-default-ext'     => 'psd',  // core bug?
 				],
 			],
-			[
+			'application-octet bug? again again' => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-sgi-uknown-extension.unknown',
-					'downloaded-file-name' => 'image-sgi-uknown-extension.unknown.psd', // new PR: same psd bug....
-					'sideloaded-file-name' => 'image-sgi-uknown-extension.unknown.psd', // new PR: same psd bug....
-					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
+					'downloaded-file-name' => 'image-sgi-uknown-extension.unknown.psd', // core bug?
+					'sideloaded-file-name' => 'image-sgi-uknown-extension.unknown.psd', // core bug?
+					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.', // core does not sideload.
 					'file-binary-mime'     => 'application/octet-stream',
-					'file-extension'       => 'psd', // bug??
-					'wp-check'             => 'psd,application/octet-stream,', // new PR: same psd bug....
+					'mime-default-ext'     => 'psd', // core bug?
 				],
 			],
-			[
+			'application-octet unallowed extension' => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-sgi-wrong-bad-extension.exe',
-					'downloaded-file-name' => 'image-sgi-wrong-bad-extension.exe.psd', // new PR: same psd bug....
-					'sideloaded-file-name' => 'image-sgi-wrong-bad-extension.exe_.psd', // new PR: same psd bug....
+					'downloaded-file-name' => 'image-sgi-wrong-bad-extension.exe',
+					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'application/octet-stream',
-					'file-extension'       => 'psd', // bug??
-					'wp-check'             => 'psd,application/octet-stream,', // new PR: same psd bug....
+					'mime-default-ext'     => 'psd', // core bug?
 				],
 			],
-			[
+			'application-octet bug? allowed ext' => [
 				[ 
 					'path'                 => $fixtures_folder . 'image-sgi-wrong-extension.png',
 					'downloaded-file-name' => 'image-sgi-wrong-extension.png',
 					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'application/octet-stream',
-					'file-extension'       => 'psd', // bug??
-					'wp-check'             => ',,',
+					'mime-default-ext'     => 'psd', // core bug?
 				],
 			],
-			[
+			'application-octet bug? other ext' => [
 				[ 
-					// see functions.php => wp_check_filetype_and_ext => $nonspecific_types 
-					// does this allow the possiblity of uploading any octet-stream as a different
-					// $nonspecific_types ?
-					// 1) try to get application/x-dosexec uploaded this way?
-					// 2) try to bypass this: file.php: _wp_handle_upload: if ( ( ! $type || ! $ext ) && ! current_user_can( 'unfiltered_upload' ) ) {
 					'path'                 => $fixtures_folder . 'image-sgi-wrong-extension-non-specific.zip',
 					'downloaded-file-name' => 'image-sgi-wrong-extension-non-specific.zip',
 					'sideloaded-file-name' => 'image-sgi-wrong-extension-non-specific.zip',
 					'sideloaded-wp-core'   => 'image-sgi-wrong-extension-non-specific.zip',
 					'file-binary-mime'     => 'application/octet-stream',
-					'file-extension'       => 'psd', // bug??
-					'wp-check'             => 'zip,application/zip,',
+					'mime-default-ext'     => 'psd', // core bug?
 				],
 			],
-			[
+			'application-octet bug? other ext (again)' => [
 				[ 
-					// see functions.php => wp_check_filetype_and_ext => $nonspecific_types 
-					// does this allow the possiblity of uploading any octet-stream as a different
-					// $nonspecific_types ?
 					'path'                 => $fixtures_folder . 'image-sgi-wrong-extension-non-specific-video.mov',
 					'downloaded-file-name' => 'image-sgi-wrong-extension-non-specific-video.mov',
 					'sideloaded-file-name' => 'image-sgi-wrong-extension-non-specific-video.mov',
 					'sideloaded-wp-core'   => 'image-sgi-wrong-extension-non-specific-video.mov',
 					'file-binary-mime'     => 'application/octet-stream',
-					'file-extension'       => 'psd', // bug??
-					'wp-check'             => 'mov,video/quicktime,',
+					'mime-default-ext'     => 'psd', // core bug?
 				],
 			],
-			[
-				[ 
-					'path'                 => $fixtures_folder . 'photoshop-no-extension',
-					'downloaded-file-name' => 'photoshop-no-extension',
-					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
-					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
-					'file-binary-mime'     => 'image/vnd.adobe.photoshop',
-					'file-extension'       => false, // bug?
-					'wp-check'             => ',,',
-				],
-			],
-			[
+			'photoshop (unknown mime)' => [
 				[ 
 					'path'                 => $fixtures_folder . 'photoshop.psd',
 					'downloaded-file-name' => 'photoshop.psd',
 					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'image/vnd.adobe.photoshop',
-					'file-extension'       => false, // bug?
-					'wp-check'             => ',,',
+					'mime-default-ext'     => false,
 				],
 			],
-			[
+			'photoshop (unknown mime) no extension' => [
+				[ 
+					'path'                 => $fixtures_folder . 'photoshop-no-extension',
+					'downloaded-file-name' => 'photoshop-no-extension',
+					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
+					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
+					'file-binary-mime'     => 'image/vnd.adobe.photoshop',
+					'mime-default-ext'     => false,
+				],
+			],
+			'photoshop (unknown mime) unknown ext' => [
 				[ 
 					'path'                 => $fixtures_folder . 'photoshop-uknown-extension.unknown',
 					'downloaded-file-name' => 'photoshop-uknown-extension.unknown',
 					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'image/vnd.adobe.photoshop',
-					'file-extension'       => false, // bug?
-					'wp-check'             => ',,',
+					'mime-default-ext'     => false,
 				],
 			],
-			[
+			'photoshop (unknown mime) bad ext' => [
 				[ 
 					'path'                 => $fixtures_folder . 'photoshop-wrong-bad-extension.exe',
 					'downloaded-file-name' => 'photoshop-wrong-bad-extension.exe',
 					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'image/vnd.adobe.photoshop',
-					'file-extension'       => false, // bug?
-					'wp-check'             => ',,',
+					'mime-default-ext'     => false,
 				],
 			],
-			[
+			'photoshop (unknown mime) other ext' => [
 				[ 
 					'path'                 => $fixtures_folder . 'photoshop-wrong-extension-non-specific.zip',
 					'downloaded-file-name' => 'photoshop-wrong-extension-non-specific.zip',
 					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'image/vnd.adobe.photoshop',
-					'file-extension'       => false, // bug?
-					'wp-check'             => ',,',
+					'mime-default-ext'     => false,
 				],
 			],
-			[
+			'photoshop (unknown mime) other allowed ext' => [
 				[ 
 					'path'                 => $fixtures_folder . 'photoshop-wrong-extension.png',
 					'downloaded-file-name' => 'photoshop-wrong-extension.png',
 					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'image/vnd.adobe.photoshop',
-					'file-extension'       => false, // bug?
-					'wp-check'             => ',,',
+					'mime-default-ext'     => false,
 				],
 			],
-			// Shockwave Flash
-			// created via: echo 'RldTBxAAAAAIAAAMAQAAAA==' | base64 --decode > test.swf
+			// Shockwave Flash files created by: echo 'RldTBxAAAAAIAAAMAQAAAA==' | base64 --decode > test.swf
 			// verified: file --mime-type test.swf
 			// verified: php -r 'echo finfo_file( finfo_open( FILEINFO_MIME_TYPE ), "test.swf" ) . "\n";'
-			[
-				[ 
-					'path'                 => $fixtures_folder . 'shockwave-flash-no-extension',
-					'downloaded-file-name' => 'shockwave-flash-no-extension.swf', // fixed by download.
-					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
-					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
-					'file-binary-mime'     => 'application/x-shockwave-flash',
-					'file-extension'       => 'swf',
-					'wp-check'             => ',,',
-				],
-			],
-			[
+			'flash swf' => [
 				[ 
 					'path'                 => $fixtures_folder . 'shockwave-flash.swf',
-					'downloaded-file-name' => 'shockwave-flash.swf.swf', // new PR 
+					'downloaded-file-name' => 'shockwave-flash.swf',
 					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'application/x-shockwave-flash',
-					'file-extension'       => 'swf',
-					'wp-check'             => ',,',
+					'mime-default-ext'     => 'swf',
 				],
 			],
-			[
+			'flash no ext' => [
+				[ 
+					'path'                 => $fixtures_folder . 'shockwave-flash-no-extension',
+					'downloaded-file-name' => 'shockwave-flash-no-extension.swf',
+					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
+					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
+					'file-binary-mime'     => 'application/x-shockwave-flash',
+					'mime-default-ext'     => 'swf',
+				],
+			],
+			'flash unknown ext' => [
 				[ 
 					'path'                 => $fixtures_folder . 'shockwave-flash-unknown-extension.unknown',
-					'downloaded-file-name' => 'shockwave-flash-unknown-extension.unknown.swf', // new PR 
+					'downloaded-file-name' => 'shockwave-flash-unknown-extension.unknown.swf',
 					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'application/x-shockwave-flash',
-					'file-extension'       => 'swf',
-					'wp-check'             => ',,',
+					'mime-default-ext'     => 'swf',
 				],
 			],
-			[
+			'flash unallowed ext' => [
 				[ 
 					'path'                 => $fixtures_folder . 'shockwave-flash-wrong-bad-extension.exe',
-					'downloaded-file-name' => 'shockwave-flash-wrong-bad-extension.exe.swf', // new PR 
+					'downloaded-file-name' => 'shockwave-flash-wrong-bad-extension.exe',
 					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'application/x-shockwave-flash',
-					'file-extension'       => 'swf',
-					'wp-check'             => ',,',
+					'mime-default-ext'     => 'swf',
 				],
 			],
-			[
+			'flash wrong allowed ext' => [
 				[ 
 					'path'                 => $fixtures_folder . 'shockwave-flash-wrong-extension.png',
 					'downloaded-file-name' => 'shockwave-flash-wrong-extension.png',
 					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'application/x-shockwave-flash',
-					'file-extension'       => 'swf',
-					'wp-check'             => ',,',
+					'mime-default-ext'     => 'swf',
 				],
 			],
-			[
-				[ 
-					'path'                 => $fixtures_folder . 'truevision-no-extension',
-					'downloaded-file-name' => 'truevision-no-extension',
-					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
-					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
-					'file-binary-mime'     => 'image/x-tga',
-					'file-extension'       => false,
-					'wp-check'             => ',,',
-				],
-			],
-			[
+			'true vision uknown mime undetected ext' => [
 				[ 
 					'path'                 => $fixtures_folder . 'truevision.tga',
 					'downloaded-file-name' => 'truevision.tga',
 					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'image/x-tga',
-					'file-extension'       => false,
-					'wp-check'             => ',,',
+					'mime-default-ext'     => false,
 				],
 			],
-			[
+			'true vision uknown mime no ext' => [
+				[ 
+					'path'                 => $fixtures_folder . 'truevision-no-extension',
+					'downloaded-file-name' => 'truevision-no-extension',
+					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
+					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
+					'file-binary-mime'     => 'image/x-tga',
+					'mime-default-ext'     => false,
+				],
+			],
+			'true vision uknown mime unknown ext' => [
 				[ 
 					'path'                 => $fixtures_folder . 'truevision-unknown-extension.unknown',
 					'downloaded-file-name' => 'truevision-unknown-extension.unknown',
 					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'image/x-tga',
-					'file-extension'       => false,
-					'wp-check'             => ',,',
+					'mime-default-ext'     => false,
 				],
 			],
-			[
+			'true vision uknown mime unallowed ext' => [
 				[ 
 					'path'                 => $fixtures_folder . 'truevision-wrong-bad-extension.exe',
 					'downloaded-file-name' => 'truevision-wrong-bad-extension.exe',
 					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'image/x-tga',
-					'file-extension'       => false,
-					'wp-check'             => ',,',
+					'mime-default-ext'     => false,
 				],
 			],
-			[
+			'true vision uknown mime wrong allowed ext' => [
 				[ 
 					'path'                 => $fixtures_folder . 'truevision-wrong-extension.png',
 					'downloaded-file-name' => 'truevision-wrong-extension.png',
 					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'image/x-tga',
-					'file-extension'       => false,
-					'wp-check'             => ',,',
+					'mime-default-ext'     => false,
 				],
 			],
-			[
+			'word' => [
 				[ 
 					'path'                 => $fixtures_folder . 'word.docx',
 					'downloaded-file-name' => 'word.docx',
 					'sideloaded-file-name' => 'word.docx',
 					'sideloaded-wp-core'   => 'word.docx',
 					'file-binary-mime'     => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-					'file-extension'       => 'docx',
-					'wp-check'             => 'docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,',
+					'mime-default-ext'     => 'docx',
 				],
 			],
-			[
+			'word no ext' => [
 				[ 
 					'path'                 => $fixtures_folder . 'word-no-extension',
-					'downloaded-file-name' => 'word-no-extension.docx', // fix by download.
-					'sideloaded-file-name' => 'word-no-extension.docx', // fix by download.
+					'downloaded-file-name' => 'word-no-extension.docx',
+					'sideloaded-file-name' => 'word-no-extension.docx',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-					'file-extension'       => 'docx',
-					'wp-check'             => 'docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,', // fix by download.
+					'mime-default-ext'     => 'docx',
 				],
 			],
-			[
+			'word unknown ext' => [
 				[ 
 					'path'                 => $fixtures_folder . 'word-unknown-extension.unknown',
-					'downloaded-file-name' => 'word-unknown-extension.unknown.docx', // new PR 
-					'sideloaded-file-name' => 'word-unknown-extension.unknown.docx', // new PR 
+					'downloaded-file-name' => 'word-unknown-extension.unknown.docx',
+					'sideloaded-file-name' => 'word-unknown-extension.unknown.docx',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-					'file-extension'       => 'docx',
-					'wp-check'             => 'docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,', // new PR 
+					'mime-default-ext'     => 'docx',
 				],
 			],
-			[
+			'word unallowed ext' => [
 				[ 
 					'path'                 => $fixtures_folder . 'word-wrong-bad-extension.exe',
-					'downloaded-file-name' => 'word-wrong-bad-extension.exe.docx', // new PR 
-					'sideloaded-file-name' => 'word-wrong-bad-extension.exe_.docx', // ? what is _ ? // new PR 
+					'downloaded-file-name' => 'word-wrong-bad-extension.exe',
+					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-					'file-extension'       => 'docx',
-					'wp-check'             => 'docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,', // new PR 
+					'mime-default-ext'     => 'docx',
 				],
 			],
-			[
+			'word wrong allowed ext' => [
 				[ 
 					'path'                 => $fixtures_folder . 'word-wrong-extension.png',
 					'downloaded-file-name' => 'word-wrong-extension.png',
 					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-					'file-extension'       => 'docx',
-					'wp-check'             => ',,',
+					'mime-default-ext'     => 'docx',
 				],
 			],
-			// URL.
-			[
+			'URL' => [
 				[
 					'path'                 => 'https://i0.wp.com/newspack.com/wp-content/uploads/2025/02/newspack-logo.png',
 					'downloaded-file-name' => 'newspack-logo.png',
 					'sideloaded-file-name' => 'newspack-logo.png',
 					'sideloaded-wp-core'   => 'newspack-logo.png',
 					'file-binary-mime'     => 'image/png',
-					'file-extension'       => 'png',
-					'wp-check'             => 'png,image/png,',
+					'mime-default-ext'     => 'png',
 				],
 			],
-			// URL with querystring.
-			[
+			'URL with querystring' => [
 				[
 					'path'                 => 'https://i0.wp.com/newspack.com/wp-content/uploads/2025/02/newspack-logo.png?resize=768%2C156&ssl=1',
 					'downloaded-file-name' => 'newspack-logo.png?resize=768%2C156&ssl=1.png',
 					'sideloaded-file-name' => 'newspack-logo.pngresize7682C156ssl1.png',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'image/png',
-					'file-extension'       => 'png',
-					'wp-check'             => 'png,image/png,',
+					'mime-default-ext'     => 'png',
 				],
 			],
-			// URL with querystring, but extension is followed by slash /
-			[
+			'URL with querystring, but extension is followed by slash /' => [
 				[
 					'path'                 => 'https://dummyimage.com/600x400.jpg/',
 					'downloaded-file-name' => '600x400.jpg.jpg',
 					'sideloaded-file-name' => '600x400.jpg.jpg',
 					'sideloaded-wp-core'   => '600x400.jpg', // basename => 600x400.jpg
 					'file-binary-mime'     => 'image/jpeg',
-					'file-extension'       => 'jpg',
-					'wp-check'             => 'jpg,image/jpeg,',
+					'mime-default-ext'     => 'jpg',
 				],
 			],
-			// URL with querystring, but extension is followed by another /path/.
-			[
+			'URL with querystring, but extension is followed by another /path/.' => [
 				[
 					'path'                 => 'https://dummyimage.com/600x400.jpg/000/',
 					'downloaded-file-name' => '000.jpg',
 					'sideloaded-file-name' => '000.jpg',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'image/jpeg',
-					'file-extension'       => 'jpg',
-					'wp-check'             => 'jpg,image/jpeg,',
+					'mime-default-ext'     => 'jpg',
 				],
 			],
-			// URL with querystring, but extension is followed by another /path/ and querystring.
-			[
+			'URL with querystring, but extension is followed by another /path/ and querystring.' => [
 				[
 					'path'                 => 'https://dummyimage.com/600x400.jpg/000/fff&text=Iz+test',
 					'downloaded-file-name' => 'fff&text=Iz+test.jpg',
 					'sideloaded-file-name' => 'ffftextIztest.jpg',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'image/jpeg',
-					'file-extension'       => 'jpg',
-					'wp-check'             => 'jpg,image/jpeg,',
+					'mime-default-ext'     => 'jpg',
 				],
 			],
-			// URL with querystring, but extension is followed by / and ?
-			[
+			'URL with querystring, but extension is followed by / and ?' => [
 				[
 					'path'                 => 'https://dummyimage.com/600x400.jpg/?text=hello',
 					'downloaded-file-name' => '?text=hello.jpg',
 					'sideloaded-file-name' => 'texthello.jpg',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'image/jpeg',
-					'file-extension'       => 'jpg',
-					'wp-check'             => 'jpg,image/jpeg,',
+					'mime-default-ext'     => 'jpg',
 				],
 			],
-			// URL with querystring, but extension is followed by / and ? with querystring having the extension
-			[
+			'URL with querystring, but extension is followed by / and ? with querystring having the extension' => [
 				[
 					'path'                 => 'https://dummyimage.com/600x400.jpg?text=hello.gif',
 					'downloaded-file-name' => '600x400.jpg?text=hello.gif',
 					'sideloaded-file-name' => '600x400.jpgtexthello.jpg',
 					'sideloaded-wp-core'   => '600x400.jpgtexthello.jpg',
 					'file-binary-mime'     => 'image/jpeg',
-					'file-extension'       => 'jpg',
-					'wp-check'             => 'jpg,image/jpeg,600x400.jpg?text=hello.jpg',
+					'mime-default-ext'     => 'jpg',
 				],
 			],
-			// URL with querystring, but extension is followed by / and ? with querystring having bad extension
-			[
+			'URL with querystring, but extension is followed by / and ? with querystring having bad extension' => [
 				[
 					'path'                 => 'https://dummyimage.com/600x400.jpg?text=hello.swf',
-					'downloaded-file-name' => '600x400.jpg?text=hello.swf.jpg',
-					'sideloaded-file-name' => '600x400.jpgtexthello.swf_.jpg',
+					'downloaded-file-name' => '600x400.jpg?text=hello.swf',
+					'sideloaded-file-name' => 'Sorry, you are not allowed to upload this file type.',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'image/jpeg',
-					'file-extension'       => 'jpg',
-					'wp-check'             => 'jpg,image/jpeg,',
+					'mime-default-ext'     => 'jpg',
 				],
 			],
-			// URL with querystring, but extension is followed by / and ? with querystring having unknown extension
-			[
+			'URL with querystring, but extension is followed by / and ? with querystring having unknown extension' => [
 				[
 					'path'                 => 'https://dummyimage.com/600x400.jpg?text=hello.unknown',
 					'downloaded-file-name' => '600x400.jpg?text=hello.unknown.jpg',
 					'sideloaded-file-name' => '600x400.jpgtexthello.unknown.jpg',
 					'sideloaded-wp-core'   => 'Sorry, you are not allowed to upload this file type.',
 					'file-binary-mime'     => 'image/jpeg',
-					'file-extension'       => 'jpg',
-					'wp-check'             => 'jpg,image/jpeg,',
+					'mime-default-ext'     => 'jpg',
 				],
 			],
 		];

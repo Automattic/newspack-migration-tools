@@ -300,19 +300,24 @@ class Attachments {
 		}
 
 		$file_array = [
-			'name'     => wp_basename( $path ),
+			'name'     => wp_basename( $path ), // note: this could include "?querystring" if exists on path.
 			'tmp_name' => $tmpfname,
 		];
 
-		$file_type                   = wp_check_filetype( $path );
-		$file_has_extension          = pathinfo( $path, PATHINFO_EXTENSION );
-		$file_extension_is_supported = ! empty( $file_type['ext'] ) && ! empty( $file_type['type'] );
-
+		// If desired filename is set, return now.
 		if ( ! empty( $desired_filename ) ) {
 			$file_array['name'] = $desired_filename;
-		} elseif ( ! $file_has_extension || ! $file_extension_is_supported ) {
-			// If the path does not have a file extension, let's try to find one for it.
-			// Without the extension, the upload will fail because WP will not allow that "file type".
+			return $file_array;
+		}
+
+
+		// If the path does not have a file extension or has an unknown extension, let's try to find one for it.
+		// Without the extension, the upload will fail because WP will not allow that "file type".
+		$file_type = wp_check_filetype( $path, wp_get_mime_types() ); // check against all known extensions ("mimes").
+
+		// need both if ( ! pathinfo( $path, PATHINFO_EXTENSION ) || ! $file_type['ext'] ) {??
+		
+		if ( ! pathinfo( $path, PATHINFO_EXTENSION ) || ! $file_type['ext'] ) {
 			$mimetype          = mime_content_type( $tmpfname );
 			$default_extension = wp_get_default_extension_for_mime_type( $mimetype );
 
