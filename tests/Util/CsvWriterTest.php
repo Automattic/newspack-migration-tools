@@ -20,9 +20,10 @@ class CsvWriterTest extends TestCase {
 
 		$random_dir_name = wp_unique_filename( $temp_dir, uniqid( time() ) );
 
-		wp_mkdir_p( $random_dir_name );
+		wp_mkdir_p( $temp_dir . $random_dir_name );
 
-		$this->test_file = $random_dir_name . '/test.csv';
+		$this->test_file = $temp_dir . $random_dir_name . '/test.csv';
+
 		if ( file_exists( $this->test_file ) ) {
 			unlink( $this->test_file );
 		}
@@ -31,6 +32,8 @@ class CsvWriterTest extends TestCase {
 	protected function tearDown(): void {
 		if ( file_exists( $this->test_file ) ) {
 			unlink( $this->test_file );
+			// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.directory_rmdir
+			rmdir( dirname( $this->test_file ) );
 		}
 	}
 
