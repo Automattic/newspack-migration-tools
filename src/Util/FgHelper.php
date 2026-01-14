@@ -46,11 +46,15 @@ class FgHelper {
 				$this->function_prefix         = 'fgj2wp';
 				$this->db_import_tables_prefix = 'joomla_';
 				break;
+			// option 1:
+			// default:
+			// 	NMT::exit_with_message( sprintf( 'Invalid migration type "%s". Only %s are supported as of now.', $type, 'drupal, joomla' ) );
 		}
 
 		$supported_cms = [ 'drupal', 'joomla' ];
 		if ( empty( $this->type ) || ! in_array( $this->type, $supported_cms ) ) {
-			NMT::exit_with_message( sprintf( 'Invalid migration type "%s". Only %s are supported as of now.', $type, implode( $supported_cms ) ) );
+			// option 2: better spacing for implode, otherwise CLI shows: "Only drupaljoomla are supported as of now."
+			NMT::exit_with_message( sprintf( 'Invalid migration type "%s". Only %s are supported as of now.', $type, implode( ', ', $supported_cms ) ) );
 		}
 
 		// If a constant is defined, use it as the prefix for the import tables. (Blank prefix is OK).
@@ -117,8 +121,15 @@ class FgHelper {
 		$options['hostname'] = getenv( 'DB_HOST' );
 		$options['database'] = getenv( 'DB_NAME' );
 		$options['username'] = getenv( 'DB_USER' );
-		$options['password'] = getenv( 'DB_PASSWORD' );
-		if ( empty( $options['hostname'] ) || empty( $options['database'] ) || empty( $options['username'] ) || ! isset( $options['password'] ) ) {
+
+		// testing for: ! isset( $options['password'] )
+		// if env DB_PASSSORD does not exit, then getenv returns bool "false" which means the value is actually set so exit doesn't happen.
+		// if env DB_PASSSORD=(blank), then getenv returns "" which is also "set", so exit does not happen.
+		// if env DB_PASSSORD=false, then getenv returns string "false" which is also "set", so exit does not happen.
+		// if we want to support a blank value, then do this:
+		$options['password'] = getenv( 'DB_PASSWORD' ); // if env is not found, value will be "boolean false".
+		// check for boolean false. Or maybe check for ! is_string( $options['password'] ) possibly instead ...
+		if ( empty( $options['hostname'] ) || empty( $options['database'] ) || empty( $options['username'] ) || false === $options['password'] ) {
 			NMT::exit_with_message( 'Could not get database connection details from environment variables.' );
 		}
 
