@@ -56,6 +56,12 @@ class DrupalHelper extends FgHelper {
 	 */
 	public function get_alias_from_node_id( int $nid ): string {
 		if ( $this->drupal_version > 7 ) {
+			// It might be nice to copy the dynamic DB code from:
+			// fg-drupal-to-wp-premium/admin/class-fg-drupal-to-wp-admin.php : line 2094 : function get_node_slug
+			// it seems be creating a sql query based on different versions.
+			// fg-drupal-to-wp-premium/admin/class-fg-drupal-to-wp-urls.php : line 145 : function get_urls
+			// seems similar too.
+			// If possible, this warning might not be needed.
 			CliLog::get_logger( 'DrupalHelper' )->alert(
 				sprintf(
 					'This function likely only going to work for Drupal 7. Your Drupal version is %d. Proceed at your own risk :)',
@@ -63,7 +69,28 @@ class DrupalHelper extends FgHelper {
 				)
 			);
 		}
+		
+		// Possible alternative:
+		global $wpdb;
+		$prefix = $this->get_import_tables_prefix();
+		$result = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT alias
+				 FROM {$prefix}url_alias
+				 WHERE source LIKE %s
+				 AND alias IS NOT null
+				 AND alias <> ''
+				 ",
+				$wpdb->esc_like( 'node/' . $nid )  . '%'
+			)
+		);
+		return (string) $result;
 
+
+		// can this be replaced by the sql above?
+		// since $this->nid_to_url_map is just used by this function, and it's private, it seems to be creating a lookup
+		// array that works much like the DB table would.  
+		// If you keep this logic, please see further notes below.
 		if ( empty( $this->nid_to_url_map ) ) {
 			global $wpdb;
 
@@ -82,6 +109,7 @@ class DrupalHelper extends FgHelper {
 			);
 
 			foreach ( $results as $row ) {
+				// this changes the passed in argument $nid value - or atleast it does on the first call to function.
 				$nid = substr( $row['source'], 5 ); // Remove 'node/' prefix.
 				if ( ! empty( $row['alias'] ) ) {
 					$this->nid_to_url_map[ $nid ] = $row['alias'];
@@ -89,6 +117,9 @@ class DrupalHelper extends FgHelper {
 			}
 		}
 
+		// this return value might be based on the last $nid set in the foreach loop.
+		// the first call to this function will return the last db row.
+		// subsequent calls will return the proper row.
 		return $this->nid_to_url_map[ $nid ] ?? '';
 	}
 
@@ -102,6 +133,9 @@ class DrupalHelper extends FgHelper {
 	 * @return string URL alias from Drupal.
 	 */
 	public function get_alias_from_term_id( int $tid ): string {
+
+		// Please see same notes in function above.
+
 		if ( $this->drupal_version > 7 ) {
 			CliLog::get_logger( 'DrupalHelper' )->alert(
 				sprintf(
@@ -158,8 +192,11 @@ class DrupalHelper extends FgHelper {
 		if ( 'http' === $download_protocol ) {
 			// Otherwise, return URL.
 			$url = $this->get_fg_option( 'url' );
-			$uri = str_replace( 'public://', trailingslashit( $url ) . $public, $uri );
-			$uri = str_replace( 'private://', trailingslashit( $url ) . $private, $uri );
+			// as seen here: fg-drupal-to-wp-premium/admin/class-fg-drupal-to-wp-admin.php
+			// function set_default_file_paths will add trailingslashit.
+			// otherwise there is a missing / in the return value.
+			$uri = str_replace( 'public://', trailingslashit( $url ) . trailingslashit( $public ), $uri );
+			$uri = str_replace( 'private://', trailingslashit( $url ) . trailingslashit( $private ), $uri );
 		}
 
 		if ( 'file_system' === $download_protocol ) {
