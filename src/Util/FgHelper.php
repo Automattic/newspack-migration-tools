@@ -123,7 +123,7 @@ class FgHelper {
 		$options['username'] = getenv( 'DB_USER' );
 
 		// testing for: ! isset( $options['password'] )
-		// if env DB_PASSSORD does not exit, then getenv returns bool "false" which means the value is actually set so exit doesn't happen.
+		// if env DB_PASSSORD does not exist, then getenv returns bool "false" which means the value is actually set so exit doesn't happen.
 		// if env DB_PASSSORD=(blank), then getenv returns "" which is also "set", so exit does not happen.
 		// if env DB_PASSSORD=false, then getenv returns string "false" which is also "set", so exit does not happen.
 		// if we want to support a blank value, then do this:
