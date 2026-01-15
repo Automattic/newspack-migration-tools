@@ -82,9 +82,9 @@ class DrupalHelper extends FgHelper {
 			);
 
 			foreach ( $results as $row ) {
-				$nid = substr( $row['source'], 5 ); // Remove 'node/' prefix.
+				$nid_from_soruce = substr( $row['source'], 5 ); // Remove 'node/' prefix.
 				if ( ! empty( $row['alias'] ) ) {
-					$this->nid_to_url_map[ $nid ] = $row['alias'];
+					$this->nid_to_url_map[ $nid_from_soruce ] = $row['alias'];
 				}
 			}
 		}
@@ -129,9 +129,9 @@ class DrupalHelper extends FgHelper {
 			);
 
 			foreach ( $results as $row ) {
-				$tid = substr( $row['source'], 14 ); // Remove 'taxonomy/term/' prefix.
+				$tid_from_source = substr( $row['source'], 14 ); // Remove 'taxonomy/term/' prefix.
 				if ( ! empty( $row['alias'] ) ) {
-					$this->tid_to_url_map[ $tid ] = $row['alias'];
+					$this->tid_to_url_map[ $tid_from_source ] = $row['alias'];
 				}
 			}
 		}
@@ -158,8 +158,8 @@ class DrupalHelper extends FgHelper {
 		if ( 'http' === $download_protocol ) {
 			// Otherwise, return URL.
 			$url = $this->get_fg_option( 'url' );
-			$uri = str_replace( 'public://', trailingslashit( $url ) . $public, $uri );
-			$uri = str_replace( 'private://', trailingslashit( $url ) . $private, $uri );
+			$uri = str_replace( 'public://', trailingslashit( $url ) . trailingslashit( $public ), $uri );
+			$uri = str_replace( 'private://', trailingslashit( $url ) . trailingslashit( $private ), $uri );
 		}
 
 		if ( 'file_system' === $download_protocol ) {
