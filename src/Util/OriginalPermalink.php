@@ -79,6 +79,9 @@ class OriginalPermalink {
 	 * @return string The path formatted string – eg. /some/path/here.
 	 */
 	public static function ensure_path_format( string $url_or_path ): string {
+		// I've seen sites where /health is a category, but /health/ is a tag.
+		// also /about might be the about page, but /about/ could be a folder.
+		// possibly don't remove the trailing slash....up to you.
 		return untrailingslashit( '/' . ltrim( wp_make_link_relative( $url_or_path ), '/' ) );
 	}
 }

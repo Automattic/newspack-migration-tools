@@ -5,8 +5,8 @@
  * This class provides a consistent way to store original values from a migration
  * source (like IDs, titles, URLs, etc.) on posts, terms, and users.
  *
- * All keys follow the format: _nmt_original_<entity>_<key>
- * For example: _nmt_original_post_permalink, _nmt_original_term_taxonomy, _nmt_original_user_email
+ * All keys follow the format: _nmt_original_<key>
+ * For example: _nmt_original_permalink, _nmt_original_taxonomy, _nmt_original_email
  *
  * @package Newspack\MigrationTools
  */

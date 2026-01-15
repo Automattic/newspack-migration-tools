@@ -424,6 +424,13 @@ class OriginalValueCommands implements WpCliCommandInterface {
 			NMT::exit_with_message( sprintf( 'No value found for user ID %d with key "%s".', $user_id, $key ) );
 		}
 
+		// i'm not sure, but you may want to write a warning on the CLI if the user has 2 meta values:
+		// user meta for user 1:
+		// 20	1	_nmt_original_my_key	my_value
+		// 21	1	_nmt_original_my_key	another
+		// but then again develpers probably shouldn't add multiple _nmt_original by hand...but for testing I added
+		// a second meta row...  maybe I get what I deserve by adding it by hand... not sure.
+
 		$data = [
 			[
 				'user_id' => $user_id,
@@ -465,7 +472,35 @@ class OriginalValueCommands implements WpCliCommandInterface {
 		}
 
 		$offset = $batch_args['start'] - 1;
-		$limit  = min( $batch_args['end'], $total_users ) - $batch_args['start'];
+		
+		// if no value is set on command line, then this equates to 0, which causes the SQL to LIMIT 0 - no rows.
+		// but there is one 1 in the DB.  The CLI looks like this:
+		// wp newspack-migration-tools original-value user list "my_key"
+		// Showing users 1 to 1 of 1 total.
+		// +---------+-------+
+		// | user_id | value |
+		// +---------+-------+
+		// +---------+-------+
+		// it's saying 1 user, but the table is blank.
+
+		// The only way I could get something to show up was add a second row in the db:
+		// usermeta for user_id = 1
+		// 20	1	_nmt_original_my_key	my_value
+		// 21	1	_nmt_original_my_key	another
+		// this will make something show up in the CLI.
+		// Showing users 1 to 2 of 2 total.
+		// +---------+----------+
+		// | user_id | value    |
+		// +---------+----------+
+		// | 1       | my_value |
+		// +---------+----------+
+		// it says 2 total but only 1 row...
+
+		// I tried to add --start --end --num-items, but not helped...
+
+		// doing the following seems to work...you'll want to test.
+		// $limit  = min( $batch_args['end'], $total_users ) - $batch_args['start'];
+		$limit  = min( $batch_args['end'], $total_users );
 
 		if ( $offset >= $total_users ) {
 			WP_CLI::warning( sprintf( 'Start index %d exceeds total users %d.', $batch_args['start'], $total_users ) );
