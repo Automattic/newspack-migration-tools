@@ -499,8 +499,8 @@ class OriginalValueCommands implements WpCliCommandInterface {
 		// I tried to add --start --end --num-items, but not helped...
 
 		// doing the following seems to work...you'll want to test.
-		// $limit  = min( $batch_args['end'], $total_users ) - $batch_args['start'];
-		$limit  = min( $batch_args['end'], $total_users );
+		$limit  = min( $batch_args['end'], $total_users ) - $batch_args['start'];
+		// $limit  = min( $batch_args['end'], $total_users );
 
 		if ( $offset >= $total_users ) {
 			WP_CLI::warning( sprintf( 'Start index %d exceeds total users %d.', $batch_args['start'], $total_users ) );
