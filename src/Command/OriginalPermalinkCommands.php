@@ -223,7 +223,7 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 		$source_domain = $assoc_args['source-domain'] ?? '';
 		$posts_data    = OriginalValueCommands::get_posts_data_for_key( OriginalPermalink::KEY, $assoc_args );
 
-		if ( null === $posts_data ) {
+		if ( empty( $posts_data['total'] ) ) {
 			WP_CLI::warning( 'No posts found with source permalinks.' );
 			return;
 		}
@@ -325,7 +325,7 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 		$source_domain = $assoc_args['source-domain'] ?? '';
 		$terms_data    = OriginalValueCommands::get_terms_data_for_key( OriginalPermalink::KEY, $assoc_args );
 
-		if ( null === $terms_data ) {
+		if ( empty( $terms_data['total'] ) ) {
 			WP_CLI::warning( 'No terms found with source permalinks.' );
 			return;
 		}
@@ -390,7 +390,7 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 		$check_redirects = isset( $assoc_args['check-redirects'] ) && $assoc_args['check-redirects'];
 		$posts_data      = OriginalValueCommands::get_posts_data_for_key( OriginalPermalink::KEY, $assoc_args );
 
-		if ( null === $posts_data ) {
+		if ( empty( $posts_data['total'] ) ) {
 			WP_CLI::warning( 'No posts found with source permalinks.' );
 			return;
 		}
@@ -472,13 +472,12 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 	 *                          'start', 'end', 'num-items'.
 	 *
 	 * @return void
-	 * @todo Consider adding fuzzy matching options (case-insensitive, trailing slash handling).
 	 */
 	public static function term_list_mismatches( array $pos_args, array $assoc_args ): void {
 		$source_domain = $assoc_args['source-domain'] ?? '';
 		$terms_data    = OriginalValueCommands::get_terms_data_for_key( OriginalPermalink::KEY, $assoc_args );
 
-		if ( null === $terms_data ) {
+		if ( empty( $terms_data['total'] ) ) {
 			WP_CLI::warning( 'No terms found with source permalinks.' );
 			return;
 		}
