@@ -252,8 +252,6 @@ class OriginalValueCommands implements WpCliCommandInterface {
 			return;
 		}
 
-		WP_CLI::line( sprintf( 'Showing posts %d to %d of %d total.', $posts_data['batch_args']['start'], min( $posts_data['batch_args']['end'] - 1, $posts_data['total'] ), $posts_data['total'] ) );
-
 		$data = [];
 		foreach ( $posts_data['results'] as $row ) {
 			$data[] = [
@@ -348,9 +346,7 @@ class OriginalValueCommands implements WpCliCommandInterface {
 			WP_CLI::warning( sprintf( 'No terms found with key "%s".', $key ) );
 			return;
 		}
-
-		WP_CLI::line( sprintf( 'Showing terms %d to %d of %d total.', $terms_data['batch_args']['start'], min( $terms_data['batch_args']['end'] - 1, $terms_data['total'] ), $terms_data['total'] ) );
-
+		
 		$data = [];
 		foreach ( $terms_data['results'] as $row ) {
 			$data[] = [
@@ -410,39 +406,15 @@ class OriginalValueCommands implements WpCliCommandInterface {
 		$meta_key   = OriginalValueStore::key_for( $key );
 		$batch_args = BatchLogic::validate_and_get_batch_args( $assoc_args );
 
-		// Get total count.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$total_users = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$wpdb->usermeta} WHERE meta_key = %s",
-				$meta_key
-			)
-		);
-
-		if ( 0 === $total_users ) {
-			WP_CLI::warning( sprintf( 'No users found with key "%s".', $key ) );
-			return;
-		}
-
-		$offset = $batch_args['start'] - 1;
-		$limit  = min( $batch_args['end'], $total_users ) - $batch_args['start'];
-
-		if ( $offset >= $total_users ) {
-			WP_CLI::warning( sprintf( 'Start index %d exceeds total users %d.', $batch_args['start'], $total_users ) );
-			return;
-		}
-
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT user_id, meta_value FROM {$wpdb->usermeta} WHERE meta_key = %s ORDER BY user_id LIMIT %d OFFSET %d",
 				$meta_key,
-				$limit,
-				$offset
+				$batch_args['total'],
+				$batch_args['start'] - 1
 			)
 		);
-
-		WP_CLI::line( sprintf( 'Showing users %d to %d of %d total.', $batch_args['start'], min( $batch_args['end'] - 1, $total_users ), $total_users ) );
 
 		$data = [];
 		foreach ( $results as $row ) {
