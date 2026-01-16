@@ -228,8 +228,6 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 			return;
 		}
 
-		WP_CLI::line( sprintf( 'Showing posts %d to %d of %d total.', $posts_data['batch_args']['start'], min( $posts_data['batch_args']['end'] - 1, $posts_data['total'] ), $posts_data['total'] ) );
-
 		// Build data array with additional fields.
 		$data = [];
 		foreach ( $posts_data['results'] as $row ) {
@@ -445,11 +443,9 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 		$mode_text = $check_redirects ? '(URLs that resolve correctly via canonical redirect are not shown)' : '(string comparison - some URLs may work via canonical redirect)';
 		WP_CLI::line(
 			sprintf(
-				"Showing posts %d to %d of %d total. \n Found %d mismatches in batch %s.",
-				$posts_data['batch_args']['start'],
-				min( $posts_data['batch_args']['end'] - 1, $posts_data['total'] ),
-				$posts_data['total'],
+				"Found %d mismatches out of %d. %s.",
 				count( $data ),
+				$posts_data['total'],
 				$mode_text,
 			)
 		);
