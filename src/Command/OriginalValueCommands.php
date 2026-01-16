@@ -305,7 +305,7 @@ class OriginalValueCommands implements WpCliCommandInterface {
 	 * @param string $key        The original value key.
 	 * @param array  $assoc_args Associative arguments (batch args, etc).
 	 *
-	 * @return array Array with 'total', 'results', 'batch_args' keys, or null if no data.
+	 * @return array Array with 'total', 'results', and 'batch_args' keys.
 	 */
 	public static function get_terms_data_for_key( string $key, array $assoc_args ): array {
 		global $wpdb;
