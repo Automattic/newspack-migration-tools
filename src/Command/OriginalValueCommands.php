@@ -346,7 +346,6 @@ class OriginalValueCommands implements WpCliCommandInterface {
 			WP_CLI::warning( sprintf( 'No terms found with key "%s".', $key ) );
 			return;
 		}
-		
 		$data = [];
 		foreach ( $terms_data['results'] as $row ) {
 			$data[] = [
