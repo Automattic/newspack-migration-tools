@@ -46,11 +46,9 @@ class FgHelper {
 				$this->function_prefix         = 'fgj2wp';
 				$this->db_import_tables_prefix = 'joomla_';
 				break;
-		}
 
-		$supported_cms = [ 'drupal', 'joomla' ];
-		if ( empty( $this->type ) || ! in_array( $this->type, $supported_cms ) ) {
-			NMT::exit_with_message( sprintf( 'Invalid migration type "%s". Only %s are supported as of now.', $type, implode( $supported_cms ) ) );
+			default:
+				NMT::exit_with_message( sprintf( 'Invalid migration type "%s". Only Joomla and Drupal are supported as of now.' ) );
 		}
 
 		// If a constant is defined, use it as the prefix for the import tables. (Blank prefix is OK).
