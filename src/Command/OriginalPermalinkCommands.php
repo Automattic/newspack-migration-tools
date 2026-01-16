@@ -443,7 +443,7 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 		$mode_text = $check_redirects ? '(URLs that resolve correctly via canonical redirect are not shown)' : '(string comparison - some URLs may work via canonical redirect)';
 		WP_CLI::line(
 			sprintf(
-				"Found %d mismatches out of %d. %s.",
+				'Found %d mismatches out of %d. %s.',
 				count( $data ),
 				$posts_data['total'],
 				$mode_text,
