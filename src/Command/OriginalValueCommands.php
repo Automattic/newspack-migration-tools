@@ -210,26 +210,46 @@ class OriginalValueCommands implements WpCliCommandInterface {
 	 * @param string $key        The original value key.
 	 * @param array  $assoc_args Associative arguments (batch args, etc).
 	 *
-	 * @return array Array with 'total', 'results', 'batch_args' keys.
+	 * @return array|null Array with 'total', 'results', 'batch_args' keys, or null if no data.
 	 */
-	public static function get_posts_data_for_key( string $key, array $assoc_args ): array {
+	public static function get_posts_data_for_key( string $key, array $assoc_args ): ?array {
 		global $wpdb;
 
 		$meta_key   = OriginalValueStore::key_for( $key );
 		$batch_args = BatchLogic::validate_and_get_batch_args( $assoc_args );
+
+		// Get total count.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$total_posts = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = %s",
+				$meta_key
+			)
+		);
+
+		if ( 0 === $total_posts ) {
+			return null;
+		}
+
+		$offset = $batch_args['start'] - 1;
+		$limit  = min( $batch_args['end'], $total_posts ) - $batch_args['start'];
+
+		if ( $offset >= $total_posts ) {
+			return null;
+		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s ORDER BY post_id LIMIT %d OFFSET %d",
 				$meta_key,
-				$batch_args['total'],
-				$batch_args['start'] - 1
+				$limit,
+				$offset
 			)
 		);
 
 		return [
-			'total'      => count( $results ),
+			'total'      => $total_posts,
 			'results'    => $results,
 			'batch_args' => $batch_args,
 		];
@@ -247,7 +267,7 @@ class OriginalValueCommands implements WpCliCommandInterface {
 		$key        = $pos_args[0];
 		$posts_data = self::get_posts_data_for_key( $key, $assoc_args );
 
-		if ( empty( $posts_data['total'] ) ) {
+		if ( null === $posts_data ) {
 			WP_CLI::warning( sprintf( 'No posts found with key "%s".', $key ) );
 			return;
 		}
@@ -307,26 +327,46 @@ class OriginalValueCommands implements WpCliCommandInterface {
 	 * @param string $key        The original value key.
 	 * @param array  $assoc_args Associative arguments (batch args, etc).
 	 *
-	 * @return array Array with 'total', 'results', 'batch_args' keys, or null if no data.
+	 * @return array|null Array with 'total', 'results', 'batch_args' keys, or null if no data.
 	 */
-	public static function get_terms_data_for_key( string $key, array $assoc_args ): array {
+	public static function get_terms_data_for_key( string $key, array $assoc_args ): ?array {
 		global $wpdb;
 
 		$meta_key   = OriginalValueStore::key_for( $key );
 		$batch_args = BatchLogic::validate_and_get_batch_args( $assoc_args );
+
+		// Get total count.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$total_terms = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->termmeta} WHERE meta_key = %s",
+				$meta_key
+			)
+		);
+
+		if ( 0 === $total_terms ) {
+			return null;
+		}
+
+		$offset = $batch_args['start'] - 1;
+		$limit  = min( $batch_args['end'], $total_terms ) - $batch_args['start'];
+
+		if ( $offset >= $total_terms ) {
+			return null;
+		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT term_id, meta_value FROM {$wpdb->termmeta} WHERE meta_key = %s ORDER BY term_id LIMIT %d OFFSET %d",
 				$meta_key,
-				$batch_args['total'],
-				$batch_args['start'] - 1
+				$limit,
+				$offset
 			)
 		);
 
 		return [
-			'total'      => count( $results ),
+			'total'      => $total_terms,
 			'results'    => $results,
 			'batch_args' => $batch_args,
 		];
@@ -344,7 +384,7 @@ class OriginalValueCommands implements WpCliCommandInterface {
 		$key        = $pos_args[0];
 		$terms_data = self::get_terms_data_for_key( $key, $assoc_args );
 
-		if ( empty( $terms_data['total'] ) ) {
+		if ( null === $terms_data ) {
 			WP_CLI::warning( sprintf( 'No terms found with key "%s".', $key ) );
 			return;
 		}
