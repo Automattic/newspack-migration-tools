@@ -48,7 +48,7 @@ class FgHelper {
 				break;
 
 			default:
-				NMT::exit_with_message( sprintf( 'Invalid migration type "%s". Only Joomla and Drupal are supported as of now.' ) );
+				NMT::exit_with_message( sprintf( 'Invalid migration type "%s". Only Joomla and Drupal are supported as of now.', $type ) );
 		}
 
 		// If a constant is defined, use it as the prefix for the import tables. (Blank prefix is OK).
