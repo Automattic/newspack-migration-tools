@@ -221,7 +221,13 @@ class OriginalValueCommands implements WpCliCommandInterface {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s ORDER BY post_id LIMIT %d OFFSET %d",
+				"SELECT post_id, meta_value 
+						FROM {$wpdb->postmeta}
+						JOIN {$wpdb->posts} ON {$wpdb->posts}.ID = {$wpdb->postmeta}.post_id
+						WHERE 
+						    meta_key = %s
+							AND {$wpdb->posts}.post_status = 'publish'
+						ORDER BY post_id LIMIT %d OFFSET %d",
 				$meta_key,
 				$batch_args['total'],
 				$batch_args['start'] - 1

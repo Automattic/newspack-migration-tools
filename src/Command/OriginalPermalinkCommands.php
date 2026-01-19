@@ -396,13 +396,8 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 		// Build data array and filter to mismatches.
 		$data = [];
 		foreach ( $posts_data['results'] as $row ) {
-			$post = get_post( $row->post_id );
-			if ( empty( $post ) || 'publish' !== $post->post_status ) {
-				continue;
-			}
-
 			$source_permalink = $row->meta_value;
-			$wp_permalink     = get_permalink( $post->ID );
+			$wp_permalink     = get_permalink( $row->post_id );
 			$wp_path          = OriginalPermalink::ensure_path_format( $wp_permalink );
 
 			if ( $check_redirects ) {
@@ -410,12 +405,12 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 				// WordPress's canonical redirect system can handle many URL variations.
 				// Use current site's domain since url_to_postid() only works with current site URLs.
 				$source_path      = OriginalPermalink::ensure_path_format( $source_permalink );
-				$current_site_url = untrailingslashit( home_url( $source_path ) );
+				$source_path_url = untrailingslashit( home_url( $source_path ) );
 				// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.url_to_postid_url_to_postid
-				$resolved_post_id = url_to_postid( $current_site_url );
+				$resolved_post_id = url_to_postid( $source_path_url );
 
 				// Flag as mismatch if source URL doesn't resolve to this post.
-				$is_mismatch = $resolved_post_id !== $post->ID;
+				$is_mismatch = $resolved_post_id !== (int) $row->post_id;
 			} else {
 				// Default mode: Fast string comparison, flag any differences.
 				$is_mismatch = mb_strtolower( untrailingslashit( $source_permalink ) ) !== mb_strtolower( untrailingslashit( $wp_path ) );
@@ -440,14 +435,15 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 		$fields = $assoc_args['fields'] ?? 'post_id,wp_path,source_permalink_path';
 		WP_CLI\Utils\format_items( $format, $data, explode( ',', $fields ) );
 
-		$mode_text = $check_redirects ? '(URLs that resolve correctly via canonical redirect are not shown)' : '(string comparison - some URLs may work via canonical redirect)';
+
 		WP_CLI::line(
 			sprintf(
-				'Found %d mismatches out of %d. %s.',
+				'Found %d mismatches',
 				count( $data ),
-				$posts_data['total'],
-				$mode_text,
 			)
+		);
+		WP_CLI::line(
+			$check_redirects ? '(URLs that resolve correctly via canonical redirect are not shown)' : '(string comparison - some URLs may work via canonical redirect)'
 		);
 	}
 
