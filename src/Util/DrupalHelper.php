@@ -13,13 +13,6 @@ use Newspack\MigrationTools\Util\Log\CliLog;
 class DrupalHelper extends FgHelper {
 
 	/**
-	 * Tid (term id) to original URL map.
-	 *
-	 * @var array
-	 */
-	private array $tid_to_url_map = [];
-
-	/**
 	 * Drupal version.
 	 *
 	 * Use this var to warn for functions that may only work for certain Drupal versions.
@@ -96,6 +89,8 @@ class DrupalHelper extends FgHelper {
 	 * @return string URL alias from Drupal.
 	 */
 	public function get_alias_from_term_id( int $tid ): string {
+		global $wpdb;
+
 		if ( $this->drupal_version > 7 ) {
 			CliLog::get_logger( 'DrupalHelper' )->alert(
 				sprintf(
@@ -105,8 +100,9 @@ class DrupalHelper extends FgHelper {
 			);
 		}
 
-		if ( empty( $this->tid_to_url_map ) ) {
-			global $wpdb;
+		$tid_to_url_map = null;
+
+		if ( null == $tid_to_url_map ) {
 
 			$prefix = $this->get_import_tables_prefix();
 
@@ -125,12 +121,12 @@ class DrupalHelper extends FgHelper {
 			foreach ( $results as $row ) {
 				$tid_from_source = substr( $row['source'], 14 ); // Remove 'taxonomy/term/' prefix.
 				if ( ! empty( $row['alias'] ) ) {
-					$this->tid_to_url_map[ $tid_from_source ] = $row['alias'];
+					$tid_to_url_map[ $tid_from_source ] = $row['alias'];
 				}
 			}
 		}
 
-		return $this->tid_to_url_map[ $tid ] ?? '';
+		return $tid_to_url_map[ $tid ] ?? '';
 	}
 
 	/**
