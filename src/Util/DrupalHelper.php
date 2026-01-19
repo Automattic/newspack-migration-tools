@@ -13,13 +13,6 @@ use Newspack\MigrationTools\Util\Log\CliLog;
 class DrupalHelper extends FgHelper {
 
 	/**
-	 * Nid (node id) to original URL map.
-	 *
-	 * @var array
-	 */
-	private array $nid_to_url_map = [];
-
-	/**
 	 * Tid (term id) to original URL map.
 	 *
 	 * @var array
@@ -55,6 +48,8 @@ class DrupalHelper extends FgHelper {
 	 * @return string URL alias from Drupal.
 	 */
 	public function get_alias_from_node_id( int $nid ): string {
+		global $wpdb;
+
 		if ( $this->drupal_version > 7 ) {
 			CliLog::get_logger( 'DrupalHelper' )->alert(
 				sprintf(
@@ -64,11 +59,10 @@ class DrupalHelper extends FgHelper {
 			);
 		}
 
-		if ( empty( $this->nid_to_url_map ) ) {
-			global $wpdb;
-
-			$prefix               = $this->get_import_tables_prefix();
-			$this->nid_to_url_map = [];
+		static $nid_to_url_map = null;
+		if ( null == $nid_to_url_map ) {
+			$prefix         = $this->get_import_tables_prefix();
+			$nid_to_url_map = [];
 
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$results = $wpdb->get_results(
@@ -84,12 +78,12 @@ class DrupalHelper extends FgHelper {
 			foreach ( $results as $row ) {
 				$nid_from_soruce = substr( $row['source'], 5 ); // Remove 'node/' prefix.
 				if ( ! empty( $row['alias'] ) ) {
-					$this->nid_to_url_map[ $nid_from_soruce ] = $row['alias'];
+					$nid_to_url_map[ $nid_from_soruce ] = $row['alias'];
 				}
 			}
 		}
 
-		return $this->nid_to_url_map[ $nid ] ?? '';
+		return $nid_to_url_map[ $nid ] ?? '';
 	}
 
 	/**
