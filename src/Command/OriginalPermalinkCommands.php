@@ -419,7 +419,7 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 			if ( $is_mismatch ) {
 				$data[] = [
 					'post_id'               => $row->post_id,
-					'wp_path'               => empty( $source_domain ) ? untrailingslashit( $wp_path ) : untrailingslashit( $wp_permalink ),
+					'wp_path'               => empty( $source_domain ) ? untrailingslashit( $wp_path ) : $wp_permalink,
 					'source_permalink_path' => self::maybe_convert_to_url( $source_permalink, $source_domain ),
 				];
 			}
