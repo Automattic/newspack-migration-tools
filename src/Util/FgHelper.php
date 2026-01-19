@@ -112,13 +112,15 @@ class FgHelper {
 			$options = [];
 		}
 
-		$options['hostname'] = getenv( 'DB_HOST' );
-		$options['database'] = getenv( 'DB_NAME' );
-		$options['username'] = getenv( 'DB_USER' );
 		$options['password'] = getenv( 'DB_PASSWORD' );
-		if ( empty( $options['hostname'] ) || empty( $options['database'] ) || empty( $options['username'] ) || ! isset( $options['password'] ) ) {
-			NMT::exit_with_message( 'Could not get database connection details from environment variables.' );
+		if ( false === $options['password'] ) {
+			NMT::exit_with_message( 'You must set the DB_PASSWORD as an environment variable to use the FgHelper. See docs/fg-helper.md' );
 		}
+
+		// If env vars are not set for these, just use WP's constants for the DB WordPress DB connection.
+		$options['hostname'] = getenv( 'DB_HOST' ) ?? DB_HOST;
+		$options['database'] = getenv( 'DB_NAME' ) ?? DB_NAME;
+		$options['username'] = getenv( 'DB_USER' ) ?? DB_USER;
 
 		$options['prefix'] = $this->get_import_tables_prefix();
 

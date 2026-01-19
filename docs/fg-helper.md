@@ -36,13 +36,15 @@ You _have to_ define the url of the original site you are migrating away from: `
 
 You can customize the table prefix for the tables that contain the old data with this constant: `NCCM_FG_MIGRATOR_PREFIX`.
 
-Set environment values (for local Newspack Docker, set the values in .env file):
+Set environment values (for local Newspack Docker or any environment that loads env files, set the values in .env file):
 ```
 DB_HOST=$MYSQL_HOST (or different host)
 DB_USER=$MYSQL_USER (or different user)
 DB_PASSWORD=$MYSQL_PASSWORD (or different pass)
 DB_NAME=[ your db name ] (can be same database as wordpress)
 ```
+
+Only the `DB_PASSWORD` _has_ to be in an environment variable. The rest can also be read from `wp-config.php`. We enforce that the password is in an env var for security reasons to avoid pasting passwords. On WPCloud they are set already. See: https://wp.me/PfsEZG-2Z – no need to set anything there.
 
 ## Running Commands
 
