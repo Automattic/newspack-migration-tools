@@ -404,7 +404,7 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 				// Check redirects mode: Only flag if source URL doesn't resolve to the correct post.
 				// WordPress's canonical redirect system can handle many URL variations.
 				// Use current site's domain since url_to_postid() only works with current site URLs.
-				$source_path      = OriginalPermalink::ensure_path_format( $source_permalink );
+				$source_path     = OriginalPermalink::ensure_path_format( $source_permalink );
 				$source_path_url = untrailingslashit( home_url( $source_path ) );
 				// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.url_to_postid_url_to_postid
 				$resolved_post_id = url_to_postid( $source_path_url );
