@@ -132,7 +132,7 @@ Add `--check-redirects` to verify if old URLs actually resolve correctly via Wor
 wp newspack-migration-tools original-permalink post list-mismatches --check-redirects
 ```
 
-This mode is slower (URL parsing + database queries for each post) but more accurate - it only flags URLs that truly need redirect rules. It might be a good idea to use the [--start=<start>], [--end=<end>], or [--num-items=<num-items>] parameters to batch through large datasets.
+This mode is slower (URL parsing + database queries for each post) but more accurate - it only flags URLs that truly need redirect rules. It might be a good idea to use the `--start=<start>`, `--end=<end>`, or `--num-items=<num-items>` parameters to batch through large datasets.
 
 **When to use which mode:**
 - **Default (no flag):** Quick overview of all URL changes, useful for generating comprehensive redirect rules
