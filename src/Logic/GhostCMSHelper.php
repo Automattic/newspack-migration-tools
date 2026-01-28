@@ -19,6 +19,7 @@ use Newspack\MigrationTools\Util\Log\FileLog;
 use Newspack\MigrationTools\Util\Log\MultiLog;
 use Monolog\Level;
 use Psr\Log\LogLevel;
+use simplehtmldom\HtmlDocument;
 use UnhandledMatchError;
 use WP_Error;
 use WP_User;
@@ -208,10 +209,16 @@ class GhostCMSHelper {
 
 			}
 
+			// Post content processing.
+			$post_content = str_replace( '__GHOST_URL__', $this->ghost_url, $json_post->html );
+			// Replace video and audio embeds from Ghost's "Koenig editor" to classic HTML5 (Ghost's syntax won't work in WP frontend or Gutenberg).
+			$post_content = $this->replace_video_embeds( $post_content );
+			$post_content = $this->replace_audio_embeds( $post_content );
+
 			// Post.
 			$args = array(
 				'post_author'  => $default_user->ID,
-				'post_content' => str_replace( '__GHOST_URL__', $this->ghost_url, $json_post->html ),
+				'post_content' => $post_content,
 				'post_date'    => $json_post->published_at,
 				'post_excerpt' => $json_post->custom_excerpt ?? '',
 				'post_name'    => $json_post->slug,
@@ -922,5 +929,90 @@ class GhostCMSHelper {
 		}
 			
 		return null;
+	}
+
+	/**
+	 * Replace Ghost's "Koenig editor" video embeds with <video> elements.
+	 * 
+	 * The resulting <video> element(s):
+	 *   - are not Gutenberg blocks, because the input HTML is not in expected to be in blocks either,
+	 *   - are simple HTML5 video players with controls,
+	 *   - are given the `style="width: 100%%; height: auto;"` to ensure they are displayed correctly in WP.
+	 *
+	 * @param string $content Content to replace video embeds in.
+	 * @return string Processed content.
+	 */
+	public function replace_video_embeds( string $content ): string {
+		// Find all kg-video-container divs.
+		$doc              = new HtmlDocument( $content );
+		$video_containers = $doc->find( 'div.kg-video-container' );
+		if ( empty( $video_containers ) ) {
+			return $content;
+		}
+
+		foreach ( $video_containers as $container ) {
+			// Find the first video element within this container.
+			$video_element = $container->find( 'video', 0 );
+			if ( ! $video_element ) {
+				continue;
+			}
+
+			// Get the src attribute.
+			$src = $video_element->getAttribute( 'src' );
+			if ( empty( $src ) ) {
+				continue;
+			}
+
+			// Replace the entire kg-video-container with the simple video element.
+			$replacement          = sprintf(
+				'<video src="%s" controls style="width: 100%%; height: auto;"></video>',
+				esc_attr( $src )
+			);
+			$container->outertext = $replacement;
+		}
+
+		return (string) $doc;
+	}
+
+	/**
+	 * Replace Ghost's "Koenig editor" audio embeds with <audio> elements.
+	 * 
+	 * The resulting <audio> element(s):
+	 *   - are not Gutenberg blocks, because the input HTML is not expected to be in blocks either,
+	 *   - are simple HTML5 audio players with controls.
+	 *
+	 * @param string $content Content to replace audio embeds in.
+	 * @return string Processed content.
+	 */
+	public function replace_audio_embeds( string $content ): string {
+		// Find all kg-audio-card divs.
+		$doc              = new HtmlDocument( $content );
+		$audio_containers = $doc->find( 'div.kg-audio-card' );
+		if ( empty( $audio_containers ) ) {
+			return $content;
+		}
+
+		foreach ( $audio_containers as $container ) {
+			// Find the first audio element within this container.
+			$audio_element = $container->find( 'audio', 0 );
+			if ( ! $audio_element ) {
+				continue;
+			}
+
+			// Get the src attribute.
+			$src = $audio_element->getAttribute( 'src' );
+			if ( empty( $src ) ) {
+				continue;
+			}
+
+			// Replace the entire kg-audio-card with the simple audio element.
+			$replacement          = sprintf(
+				'<audio src="%s" controls></audio>',
+				esc_attr( $src )
+			);
+			$container->outertext = $replacement;
+		}
+
+		return (string) $doc;
 	}
 }
