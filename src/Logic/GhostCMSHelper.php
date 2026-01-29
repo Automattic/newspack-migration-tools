@@ -21,6 +21,7 @@ use Monolog\Level;
 use Psr\Log\LogLevel;
 use simplehtmldom\HtmlDocument;
 use UnhandledMatchError;
+use WP_CLI;
 use WP_Error;
 use WP_User;
 
@@ -111,6 +112,12 @@ class GhostCMSHelper {
 
 		// Argument parsing.
 
+		// --visibility-csv, default is 'public'.
+		$visibilities_to_import = [ 'public' ];
+		if ( isset( $assoc_args['visibility-csv'] ) ) {
+			$visibilities_to_import = explode( ',', $assoc_args['visibility-csv'] );
+		}
+
 		// --created-after.
 		$created_after = null;
 		if ( isset( $assoc_args['created-after'] ) ) {
@@ -180,7 +187,23 @@ class GhostCMSHelper {
 			// phpcs:ignore WordPress.DateTime.RestrictedFunctions.date_date
 			$this->log( '--created-after: ' . date( 'Y-m-d H:i:s', $created_after ) );
 		}
-		
+
+		// Check if there are any additional post visibility values in JSON data, besides the ones which are selected for import.
+		$visibilities_existing         = $this->get_visibility_values( $this->data );
+		$are_all_visibilities_selected = empty( array_diff( $visibilities_existing, $visibilities_to_import ) );
+		if ( false === $are_all_visibilities_selected ) {
+			$this->log(
+				sprintf(
+					'There are %d existing `visibility` values found in JSON posts: %s. Only the posts with visibility value(s) %s will be imported.',
+					count( $visibilities_existing ),
+					'`' . implode( '`, `', $visibilities_existing ) . '`',
+					'`' . implode( '`, `', $visibilities_to_import ) . '`'
+				),
+				LogLevel::WARNING
+			);
+			WP_CLI::confirm( 'Continue with the import (y), or stop here (n) and set the `--visibility-csv` argument to the target values?' );
+		}
+
 		// Insert posts.
 		foreach ( $this->data->posts as $json_post ) {
 
@@ -197,7 +220,7 @@ class GhostCMSHelper {
 			}
 			
 			// Check for skips, log, and continue.
-			$skip_reason = $this->skip( $json_post );
+			$skip_reason = $this->skip( $json_post, $visibilities_to_import );
 			if ( ! empty( $skip_reason ) ) {
 			
 				$this->log( 'Skip JSON post (review by hand -skips.log): ' . $skip_reason, LogLevel::NOTICE );
@@ -872,10 +895,11 @@ class GhostCMSHelper {
 	/**
 	 * Check if need to skip this JSON post.
 	 *
-	 * @param object $json_post JSON post object.
+	 * @param object $json_post             JSON post object.
+	 * @param array  $visibilities_to_import Visibility values to import.
 	 * @return string|null
 	 */
-	private function skip( object $json_post ): ?string {
+	private function skip( object $json_post, array $visibilities_to_import ): ?string {
 
 		global $wpdb;
 
@@ -887,8 +911,8 @@ class GhostCMSHelper {
 		if ( 'published' != $json_post->status ) {
 			return 'not_published';
 		}
-		if ( 'public' != $json_post->visibility ) {
-			return 'not_public';
+		if ( ! in_array( $json_post->visibility, $visibilities_to_import, true ) ) {
+			return 'visibility_is_different';
 		}
 
 		// Empty properties.
@@ -1017,5 +1041,22 @@ class GhostCMSHelper {
 		}
 
 		return (string) $doc;
+	}
+
+	/**
+	 * Get all visibility values from JSON data.
+	 *
+	 * @param object $data JSON data.
+	 * @return array Visibility values.
+	 */
+	private function get_visibility_values( object $data ): array {
+		$visibilities = [];
+		foreach ( $data->posts as $json_post ) {
+			if ( ! in_array( $json_post->visibility, $visibilities, true ) ) {
+				$visibilities[] = $json_post->visibility;
+			}
+		}
+
+		return $visibilities;
 	}
 }
