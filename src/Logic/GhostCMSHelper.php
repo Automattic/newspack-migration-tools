@@ -242,6 +242,9 @@ class GhostCMSHelper {
 			update_post_meta( $wp_post_id, 'newspack_ghostcms_id', $json_post->id );
 			update_post_meta( $wp_post_id, 'newspack_ghostcms_uuid', $json_post->uuid );
 			update_post_meta( $wp_post_id, 'newspack_ghostcms_slug', $json_post->slug );
+			if ( ! empty( $json_post->custom_excerpt ) ) {
+				update_post_meta( $wp_post_id, 'newspack_post_subtitle', $json_post->custom_excerpt );
+			}
 			
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
 			update_post_meta( $wp_post_id, 'newspack_ghostcms_checksum', md5( json_encode( $json_post ) ) );            
