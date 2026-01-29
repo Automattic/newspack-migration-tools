@@ -30,7 +30,7 @@ class JsonIterator {
 	 *
 	 * @param FileLog|null $file_logger Optional File logger instance.
 	 */
-	public function __construct( FileLog $file_logger = null ) {
+	public function __construct( ?FileLog $file_logger = null ) {
 		if ( ! $file_logger ) {
 			$file_logger = FileLog::get_logger( 'JsonIterator', 'json-iterator.log' );
 		}
