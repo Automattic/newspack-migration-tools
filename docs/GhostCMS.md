@@ -61,6 +61,20 @@ Optional arguments:
 --created-after=<created-after>
 Datetime cut-off to only import posts AFTER this date. (Must be parseable by strtotime).
 
+--visibility-csv=<visibility-csv>
+Comma separated list of post visibility values to import. Default is 'public'.
+Ghost posts can have visibility values like: public, members, paid, tiers.
+
+Examples:
+- --visibility-csv=public (default, only public posts)
+- --visibility-csv=public,members (include both public and members-only posts)
+
+Important: The visibility check scans ALL posts in the JSON file before any other filters are applied. 
+When combined with --created-after, the visibility report will show all visibility values found in the 
+entire dataset, which may include values not present in the date-filtered posts that will actually be 
+imported. This behavior is intentional to help you understand your complete dataset and catch any 
+unexpected visibility values in your historical data.
+
 --json-data-path=<json-data-path>
 Standard `jq`-style path notation to node in JSON where posts (and other objects) are stored (e.g., --json-data-path=".db[0].data" or --json-data-path=".data").
 
@@ -84,7 +98,7 @@ For testing, you can use these test values (with the included `json` test file):
 
 Command (_be sure to replace your values_):
 ```
-wp newspack-migration-tools ghostcms-import --default-user-id=<default-user-id> --ghost-url=<ghost-url> --json-file=<json-file> [--created-after=<created-after>] [--json-data-path=<json-data-path>]
+wp newspack-migration-tools ghostcms-import --default-user-id=<default-user-id> --ghost-url=<ghost-url> --json-file=<json-file> [--created-after=<created-after>] [--visibility-csv=<visibility-csv>] [--json-data-path=<json-data-path>]
 ```
 
 If the migrator command is stopped mid-migration, it is OK to simply re-run the command.

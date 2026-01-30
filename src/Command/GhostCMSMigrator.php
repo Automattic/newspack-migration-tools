@@ -60,7 +60,9 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 							'type'        => 'assoc',
 							'name'        => 'visibility-csv',
 							'description' => 'Comma separated list of post visibility (i.e. post status) values to import. ' .
-											'This command will scan for existing visibilities in the JSON data before importing any posts, and warn you if there are any multiple values besides the default `public`. ' .
+											'This command will scan for existing visibilities in ALL posts in the JSON data before applying any filters (like --created-after). ' .
+											'You will be warned if there are multiple visibility values besides the default `public`. ' .
+											'Note: The visibility scan in this command reports on the entire dataset, which may include visibility values not present in the filtered date range. ' .
 											'E.g. `--visibility-csv=public,members,paid,tiers`.',
 							'optional'    => true,
 							'repeating'   => false,
