@@ -486,6 +486,8 @@ SQL;
 			$callback( $post );
 		}
 
+		unset( $posts );
+
 		sleep( $wait );
 
 		self::throttled_posts_loop( $query_args, $callback, $wait, $posts_per_batch, $batch + 1 );
