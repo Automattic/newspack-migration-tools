@@ -89,6 +89,13 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 					),
 				],
 			],
+			[
+				'newspack-migration-tools ghostcms-check-imported-posts-for-custom-html-content',
+				[ __CLASS__, 'cmd_check_imported_posts_for_custom_html_content' ],
+				[
+					'shortdesc' => "After the content has been imported, run this command to check the imported posts for yet unvalidated/unsupported custom HTML content/syntax from the Ghost Koenig editor (such as different custom embeds, or Ghost's equivalents to Gutenberg blocks). This scans all HTML elements with kg-* classes.",
+				],
+			],
 		];
 	}
 	
@@ -113,5 +120,23 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 		// Do helper.
 		$helper = new GhostCMSHelper();
 		$helper->ghostcms_import( $pos_args, $assoc_args, $log_slug );
+	}
+
+	/**
+	 * Callable for the 'newspack-migration-tools ghostcms-check-imported-posts-for-custom-html-content' command.
+	 */
+	public static function cmd_check_imported_posts_for_custom_html_content( array $pos_args, array $assoc_args ): void {
+		$log_slug = str_replace( __NAMESPACE__ . '\\', '', __CLASS__ ) . '_' . __FUNCTION__;
+		$logger   = MultiLog::get_logger( 
+			'multi-' . $log_slug,
+			[
+				CliLog::get_logger( $log_slug ),
+				FileLog::get_logger( $log_slug ),
+			]
+		);
+		
+		$logger->info( 'Starting CLI - Scanning imported posts for custom HTML content...' );
+		$helper = new GhostCMSHelper();
+		$helper->cmd_check_imported_posts_for_custom_html_content( $pos_args, $assoc_args, $logger );
 	}
 }
