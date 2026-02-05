@@ -118,9 +118,9 @@ class FgHelper {
 		}
 
 		// If env vars are not set for these, just use WP's constants for the DB WordPress DB connection.
-		$options['hostname'] = getenv( 'DB_HOST' ) ?? DB_HOST;
-		$options['database'] = getenv( 'DB_NAME' ) ?? DB_NAME;
-		$options['username'] = getenv( 'DB_USER' ) ?? DB_USER;
+		$options['hostname'] = false === getenv( 'DB_HOST' ) ? DB_HOST : getenv( 'DB_HOST' );
+		$options['database'] = false === getenv( 'DB_NAME' ) ? DB_NAME : getenv( 'DB_NAME' );
+		$options['username'] = false === getenv( 'DB_USER' ) ? DB_USER : getenv( 'DB_USER' );
 
 		$options['prefix'] = $this->get_import_tables_prefix();
 
