@@ -238,7 +238,6 @@ class GhostCMSHelper {
 			// Replace various syntax elements from Ghost's "Koenig editor" to compatible HTML.
 			$post_content = $this->replace_video_embeds( $post_content );
 			$post_content = $this->replace_audio_embeds( $post_content );
-			$post_content = $this->replace_blockquotes( $post_content );
 
 			// Post.
 			$args = array(
@@ -829,7 +828,7 @@ class GhostCMSHelper {
 	 * @return void
 	 */
 	private function log( string $message, string $level = 'debug', bool $exit_on_error = false ): void {
-		$logger = MultiLog::get_cli_and_file_logger( 'multi-' . $this->log_slug );
+		$logger = MultiLog::get_cli_and_file_logger( $this->log_slug );
 
 		try {
 			$level = Level::fromName( $level );
