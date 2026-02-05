@@ -290,18 +290,22 @@ class GhostCMSHelper {
 
 		}
 
-		$this->log( 'Done.' );
+		$this->log( 'Done importing posts from Ghost.', LogLevel::INFO );
+
+		// Run command to check for custom Ghost HTML content.
+		$this->check_imported_posts_for_custom_html_content( $this->log_slug );
 	}
 
 	/**
 	 * Check imported posts for custom Ghost Koenig editor HTML content, by scanning all HTML elements with kg-* classes.
 	 * 
-	 * @param array           $pos_args The positional arguments.
-	 * @param array           $assoc_args The associative arguments.
-	 * @param LoggerInterface $logger The logger.
+	 * @param string $logger_slug The logger slug.
 	 */
-	public function cmd_check_imported_posts_for_custom_html_content( array $pos_args, array $assoc_args, LoggerInterface $logger ): void {
+	public function check_imported_posts_for_custom_html_content( string $logger_slug ): void {
 		global $wpdb;
+
+		// Init logger usage in this class.
+		$this->log_slug = $logger_slug;
 		
 		// Prepare output file.
 		$output_file = 'ghost_kg_elements.jsonl';
@@ -312,7 +316,6 @@ class GhostCMSHelper {
 		/**
 		 * Check all published posts migrated from Ghost for custom Ghost editor HTML content -- HTML elements with "kg-*" classes.
 		 */
-		$logger->debug( sprintf( 'Checking %d posts imported from Ghost for custom Ghost editor HTML content...', count( $post_rows ) ) );
 		$post_rows = $wpdb->get_results( // phpcs:ignore -- WordPress.DB.DirectDatabaseQuery.DirectQuery WordPress.DB.DirectDatabaseQuery.NoCaching.
 			"select p.ID, p.post_content from {$wpdb->posts} p
 			join {$wpdb->postmeta} pm on p.ID = pm.post_id
@@ -323,6 +326,7 @@ class GhostCMSHelper {
 			order by p.ID desc",
 			ARRAY_A
 		);
+		$this->log( sprintf( 'Checking posts imported from Ghost for custom Ghost editor HTML content...', count( $post_rows ) ) );
 		$elements     = [];
 		$failed_posts = [];
 		foreach ( $post_rows as $post_row ) {
@@ -388,7 +392,7 @@ class GhostCMSHelper {
 				}
 			} catch ( \Exception $e ) {
 				$failed_posts[] = $post_id;
-				$logger->warning( sprintf( 'Failed to parse post ID %d: %s', $post_id, $e->getMessage() ) );
+				$this->log( sprintf( 'Failed to parse post ID %d: %s', $post_id, $e->getMessage() ), LogLevel::WARNING );
 			}
 		}
 
@@ -397,7 +401,7 @@ class GhostCMSHelper {
 		 */
 		$file_handle = fopen( $output_file, 'w' ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fopen.
 		if ( false === $file_handle ) {
-			$logger->error( sprintf( 'Failed to open file "%s" for writing.', $output_file ) );
+			$this->log( sprintf( 'Failed to open file "%s" for writing.', $output_file ), LogLevel::ERROR );
 		}
 		foreach ( $elements as $element_data ) {
 			$data = [
@@ -414,14 +418,14 @@ class GhostCMSHelper {
 		 * Log summary.
 		 */
 		if ( ! empty( $failed_posts ) ) {
-			$logger->error( sprintf( 'Failed to parse %d posts: %s', count( $failed_posts ), implode( ', ', $failed_posts ) ) );
+			$this->log( sprintf( 'Failed to parse %d posts: %s', count( $failed_posts ), implode( ', ', $failed_posts ) ), LogLevel::ERROR );
 		}
 		if ( ! empty( $elements ) ) {
-			$logger->warning( sprintf( "Found %d unfamiliar/unhandled 'kg-*' elements in total %d posts. Their tags and post IDs where they appear are saved to %s. Please QA these findings: if they display correctly/well enough in the WP frontend/backend, simply whitelist them in the GhostCMSHelper's constant; if they don't, write fixers/transformers for them.", count( $elements ), count( $post_rows ), $output_file ) );
+			$this->log( sprintf( "Found %d unfamiliar/unhandled 'kg-*' elements in total %d posts. Their tags and post IDs where they appear are saved to %s. Please QA these findings: if they display correctly/well enough in the WP frontend/backend, simply whitelist them in the GhostCMSHelper's constant; if they don't, write fixers/transformers for them.", count( $elements ), count( $post_rows ), $output_file ), LogLevel::WARNING );
 		} else {
-			$logger->info( sprintf( "No unfamiliar/unhandled 'kg-*' elements found in total %d posts.", count( $post_rows ) ) );
+			$this->log( sprintf( "No unfamiliar/unhandled 'kg-*' elements found in total %d posts.", count( $post_rows ) ), LogLevel::INFO );
 		}
-		$logger->info( 'Done' );
+		$this->log( 'Done checking for custom Ghost HTML content.', LogLevel::INFO );
 	}
 
 	/**
@@ -824,20 +828,13 @@ class GhostCMSHelper {
 	 * @param boolean $exit_on_error For error messages if desired.
 	 * @return void
 	 */
-	private function log( string $message, string $level = 'info', bool $exit_on_error = false ): void {
-		
-		$logger = MultiLog::get_logger( 
-			'multi-' . $this->log_slug,
-			[
-				CliLog::get_logger( $this->log_slug ),
-				FileLog::get_logger( $this->log_slug ),
-			]
-		);
+	private function log( string $message, string $level = 'debug', bool $exit_on_error = false ): void {
+		$logger = MultiLog::get_cli_and_file_logger( 'multi-' . $this->log_slug );
 
 		try {
 			$level = Level::fromName( $level );
 		} catch ( UnhandledMatchError $e ) {
-			$level = Level::fromName( 'info' );
+			$level = Level::fromName( 'debug' );
 		}
 		
 		$logger->log( $level, $message );
