@@ -315,22 +315,20 @@ class GhostCMSHelper {
 		/**
 		 * Check all published posts migrated from Ghost for custom Ghost editor HTML content -- HTML elements with "kg-*" classes.
 		 */
-		$post_rows = $wpdb->get_results( // phpcs:ignore -- WordPress.DB.DirectDatabaseQuery.DirectQuery WordPress.DB.DirectDatabaseQuery.NoCaching.
-			"select p.ID, p.post_content from {$wpdb->posts} p
+		$post_ids = $wpdb->get_col( // phpcs:ignore -- WordPress.DB.DirectDatabaseQuery.DirectQuery WordPress.DB.DirectDatabaseQuery.NoCaching.
+			"select p.ID from {$wpdb->posts} p
 			join {$wpdb->postmeta} pm on p.ID = pm.post_id
 			where pm.meta_key = 'newspack_ghostcms_id'
 			and pm.meta_value is not null
 			and p.post_type = 'post'
-			and p.post_status = 'publish' 
-			order by p.ID desc",
+			and p.post_status = 'publish'",
 			ARRAY_A
 		);
-		$this->log( sprintf( 'Checking posts imported from Ghost for custom Ghost editor HTML content...', count( $post_rows ) ) );
+		$this->log( sprintf( 'Checking posts imported from Ghost for custom Ghost editor HTML content...', count( $post_ids ) ) );
 		$elements     = [];
 		$failed_posts = [];
-		foreach ( $post_rows as $post_row ) {
-			$post_id      = (int) $post_row['ID'];
-			$post_content = $post_row['post_content'];
+		foreach ( $post_ids as $post_id ) {
+			$post_content = $wpdb->get_var( $wpdb->prepare( "SELECT post_content FROM {$wpdb->posts} WHERE ID = %d", $post_id ) ); // phpcs:ignore -- WordPress.DB.DirectDatabaseQuery.DirectQuery WordPress.DB.DirectDatabaseQuery.NoCaching.
 			if ( empty( $post_content ) ) {
 				continue;
 			}
@@ -420,9 +418,9 @@ class GhostCMSHelper {
 			$this->log( sprintf( 'Failed to parse %d posts: %s', count( $failed_posts ), implode( ', ', $failed_posts ) ), LogLevel::ERROR );
 		}
 		if ( ! empty( $elements ) ) {
-			$this->log( sprintf( "Found %d unfamiliar/unhandled 'kg-*' elements in total %d posts. Their tags and post IDs where they appear are saved to %s. Please QA these findings: if they display correctly/well enough in the WP frontend/backend, simply whitelist them in the GhostCMSHelper's constant; if they don't, write fixers/transformers for them.", count( $elements ), count( $post_rows ), $output_file ), LogLevel::WARNING );
+			$this->log( sprintf( "Found %d unfamiliar/unhandled 'kg-*' elements in total %d posts. Their tags and post IDs where they appear are saved to %s. Please QA these findings: if they display correctly/well enough in the WP frontend/backend, simply whitelist them in the GhostCMSHelper's constant; if they don't, write fixers/transformers for them.", count( $elements ), count( $post_ids ), $output_file ), LogLevel::WARNING );
 		} else {
-			$this->log( sprintf( "No unfamiliar/unhandled 'kg-*' elements found in total %d posts.", count( $post_rows ) ), LogLevel::INFO );
+			$this->log( sprintf( "No unfamiliar/unhandled 'kg-*' elements found in total %d posts.", count( $post_ids ) ), LogLevel::INFO );
 		}
 		$this->log( 'Done checking for custom Ghost HTML content.', LogLevel::INFO );
 	}
