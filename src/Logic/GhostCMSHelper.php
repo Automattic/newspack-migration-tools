@@ -399,17 +399,18 @@ class GhostCMSHelper {
 		$file_handle = fopen( $output_file, 'w' ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fopen.
 		if ( false === $file_handle ) {
 			$this->log( sprintf( 'Failed to open file "%s" for writing.', $output_file ), LogLevel::ERROR );
+		} else {
+			foreach ( $elements as $element_data ) {
+				$data = [
+					'html_element'           => $element_data['html_element'],
+					'kg_classes'             => $element_data['kg_classes'],
+					'first_example_full_tag' => $element_data['first_example_full_tag'],
+					'post_ids'               => $element_data['post_ids'],
+				];
+				fwrite( $file_handle, wp_json_encode( $data ) . PHP_EOL ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fwrite.
+			}
+			fclose( $file_handle ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fclose.
 		}
-		foreach ( $elements as $element_data ) {
-			$data = [
-				'html_element'           => $element_data['html_element'],
-				'kg_classes'             => $element_data['kg_classes'],
-				'first_example_full_tag' => $element_data['first_example_full_tag'],
-				'post_ids'               => $element_data['post_ids'],
-			];
-			fwrite( $file_handle, wp_json_encode( $data ) . PHP_EOL ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fwrite.
-		}
-		fclose( $file_handle ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fclose.
 
 		/**
 		 * Log summary.
