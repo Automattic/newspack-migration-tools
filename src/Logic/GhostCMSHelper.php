@@ -324,7 +324,7 @@ class GhostCMSHelper {
 			and p.post_status = 'publish'",
 			ARRAY_A
 		);
-		$this->log( sprintf( 'Checking posts imported from Ghost for custom Ghost editor HTML content...', count( $post_ids ) ) );
+		$this->log( sprintf( 'Checking %d posts imported from Ghost for custom Ghost editor HTML content...', count( $post_ids ) ) );
 		$elements     = [];
 		$failed_posts = [];
 		foreach ( $post_ids as $post_id ) {
