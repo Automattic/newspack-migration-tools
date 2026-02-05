@@ -298,13 +298,13 @@ class GhostCMSHelper {
 	/**
 	 * Check imported posts for custom Ghost Koenig editor HTML content, by scanning all HTML elements with kg-* classes.
 	 * 
-	 * @param string $logger_slug The logger slug.
+	 * @param string $log_slug The logger slug.
 	 */
-	public function check_imported_posts_for_custom_html_content( string $logger_slug ): void {
+	public function check_imported_posts_for_custom_html_content( string $log_slug ): void {
 		global $wpdb;
 
 		// Init logger usage in this class.
-		$this->log_slug = $logger_slug;
+		$this->log_slug = $log_slug;
 		
 		// Prepare output file.
 		$output_file = 'ghost_kg_elements.jsonl';

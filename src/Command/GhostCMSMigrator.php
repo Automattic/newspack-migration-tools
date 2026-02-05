@@ -129,11 +129,11 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 	 * @param array $assoc_args The associative arguments.
 	 */
 	public static function cmd_check_imported_posts_for_custom_html_content( array $pos_args, array $assoc_args ): void {
-		$logger_slug = __FUNCTION__;
-		$logger      = MultiLog::get_cli_and_file_logger( $logger_slug );
+		$log_slug = __FUNCTION__;
+		$logger   = MultiLog::get_cli_and_file_logger( $log_slug );
 		$logger->info( 'Starting CLI - Scanning imported posts for custom HTML content...' );
 
 		$ghost = new GhostCMSHelper();
-		$ghost->check_imported_posts_for_custom_html_content( $logger_slug );
+		$ghost->check_imported_posts_for_custom_html_content( $log_slug );
 	}
 }
