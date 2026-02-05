@@ -321,8 +321,7 @@ class GhostCMSHelper {
 			where pm.meta_key = 'newspack_ghostcms_id'
 			and pm.meta_value is not null
 			and p.post_type = 'post'
-			and p.post_status = 'publish'",
-			ARRAY_A
+			and p.post_status = 'publish'"
 		);
 		$this->log( sprintf( 'Checking %d posts imported from Ghost for custom Ghost editor HTML content...', count( $post_ids ) ) );
 		$elements     = [];
