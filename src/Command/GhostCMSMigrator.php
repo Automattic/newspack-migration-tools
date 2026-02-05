@@ -124,18 +124,14 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 
 	/**
 	 * Callable for the 'newspack-migration-tools ghostcms-check-imported-posts-for-custom-html-content' command.
+	 * 
+	 * @param array $pos_args The positional arguments.
+	 * @param array $assoc_args The associative arguments.
 	 */
 	public static function cmd_check_imported_posts_for_custom_html_content( array $pos_args, array $assoc_args ): void {
-		$log_slug = str_replace( __NAMESPACE__ . '\\', '', __CLASS__ ) . '_' . __FUNCTION__;
-		$logger   = MultiLog::get_logger( 
-			'multi-' . $log_slug,
-			[
-				CliLog::get_logger( $log_slug ),
-				FileLog::get_logger( $log_slug ),
-			]
-		);
-		
+		$logger = MultiLog::get_cli_and_file_logger( __FUNCTION__ );
 		$logger->info( 'Starting CLI - Scanning imported posts for custom HTML content...' );
+
 		$helper = new GhostCMSHelper();
 		$helper->cmd_check_imported_posts_for_custom_html_content( $pos_args, $assoc_args, $logger );
 	}
