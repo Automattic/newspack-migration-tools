@@ -4,6 +4,7 @@ namespace Newspack\MigrationTools\Tests\Logic;
 
 use Newspack\Guest_Contributor_Role;
 use Newspack\MigrationTools\Logic\GhostCMSHelper;
+use Newspack\MigrationTools\Logic\GutenbergBlockGenerator;
 use ReflectionClass;
 use WP_UnitTestCase;
 
@@ -500,6 +501,108 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		$result = $helper->replace_video_embeds( $input );
 		$result = $helper->replace_audio_embeds( $result );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test basic blockquote replacement.
+	 *
+	 * @return void
+	 */
+	public function test_replace_blockquotes_basic_replacement(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input    = 'Before txt <blockquote class="kg-blockquote-alt">"Some quotation"</blockquote> After txt';
+		$expected = 'Before txt ' . serialize_blocks( [ $block_generator->get_quote( '"Some quotation"' ) ] ) . ' After txt';
+
+		$result = $helper->replace_blockquotes( $input );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test blockquote with multiline content collapses whitespace.
+	 *
+	 * @return void
+	 */
+	public function test_replace_blockquotes_multiline_content(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input    = 'Before txt <blockquote class="kg-blockquote-alt">"Some
+    quotation"</blockquote> After txt';
+		$expected = 'Before txt ' . serialize_blocks( [ $block_generator->get_quote( '"Some quotation"' ) ] ) . ' After txt';
+
+		$result = $helper->replace_blockquotes( $input );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test multiple blockquotes are all replaced.
+	 *
+	 * @return void
+	 */
+	public function test_replace_blockquotes_multiple(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input     = 'First <blockquote class="kg-blockquote-alt">"Quote one"</blockquote> Middle <blockquote class="kg-blockquote-alt">"Quote two"</blockquote> Last';
+		$quote_one = serialize_blocks( [ $block_generator->get_quote( '"Quote one"' ) ] );
+		$quote_two = serialize_blocks( [ $block_generator->get_quote( '"Quote two"' ) ] );
+		$expected  = 'First ' . $quote_one . ' Middle ' . $quote_two . ' Last';
+
+		$result = $helper->replace_blockquotes( $input );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test content without kg-blockquote-alt returns unchanged.
+	 *
+	 * @return void
+	 */
+	public function test_replace_blockquotes_no_kg_blockquotes_returns_unchanged(): void {
+		$helper = new GhostCMSHelper();
+
+		$input = 'Before txt <blockquote>Regular quote</blockquote> After txt';
+
+		$result = $helper->replace_blockquotes( $input );
+
+		$this->assertSame( $input, $result );
+	}
+
+	/**
+	 * Test blockquote with empty content is skipped.
+	 *
+	 * @return void
+	 */
+	public function test_replace_blockquotes_empty_content_skipped(): void {
+		$helper = new GhostCMSHelper();
+
+		$input = 'Before txt <blockquote class="kg-blockquote-alt">   </blockquote> After txt';
+
+		$result = $helper->replace_blockquotes( $input );
+
+		$this->assertSame( $input, $result );
+	}
+
+	/**
+	 * Test blockquote replacement preserves surrounding content.
+	 *
+	 * @return void
+	 */
+	public function test_replace_blockquotes_preserves_surrounding_content(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input = '<p>Before paragraph</p> <blockquote class="kg-blockquote-alt">"A quote"</blockquote> <p>After paragraph</p>';
+		// Note: HTML parser normalizes whitespace between block elements - this is expected behavior (same as video/audio tests).
+		$expected = '<p>Before paragraph</p>' . serialize_blocks( [ $block_generator->get_quote( '"A quote"' ) ] ) . '<p>After paragraph</p>';
+
+		$result = $helper->replace_blockquotes( $input );
 
 		$this->assertSame( $expected, $result );
 	}
