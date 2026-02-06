@@ -14,11 +14,9 @@ use Newspack\Guest_Contributor_Role;
 use Newspack\MigrationTools\Logic\UsersHelper;
 use Newspack\MigrationTools\Logic\GuestContributorsHelper;
 use Newspack\MigrationTools\NMT;
-use Newspack\MigrationTools\Util\Log\CliLog;
 use Newspack\MigrationTools\Util\Log\FileLog;
 use Newspack\MigrationTools\Util\Log\MultiLog;
 use Monolog\Level;
-use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 use simplehtmldom\HtmlDocument;
 use UnhandledMatchError;
@@ -30,6 +28,49 @@ use WP_User;
  * GhostCMS Helper.
  */
 class GhostCMSHelper {
+
+	/**
+	 * Ghost Koenig editor kg-* elements which are intentionally approved and accepted in post_content as-is after import,
+	 * because they render well enough in WordPress without any transformation. These elements will be skipped by
+	 * check_imported_posts_for_custom_html_content() so they don't show up as "unfamiliar/unhandled".
+	 * 
+	 * Do NOT add elements here that are transformed/removed during import (e.g. kg-video-container, kg-audio-card),
+	 * those should no longer exist in post_content, and detecting them is important to catch transformer bugs.
+	 * 
+	 * @var array ACCEPTED_KG_ELEMENTS List of accepted kg-* elements which are kept in post_content without any transformation.
+	 *   - html_element: the HTML tag name of the element.
+	 *   - kg_classes: one or more kg-* classes which identify the element.
+	 */
+	// phpcs:disable -- Allow custom spacing in the const array for readability, WordPress.Arrays.ArrayDeclarationSpacing.AssociativeArrayFound.
+	const ACCEPTED_KG_ELEMENTS = [
+		// Image elements.
+		[ 'html_element' => 'img',    'kg_classes' => [ 'kg-image' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-image-card' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-image-card', 'kg-card-hascaption' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-image-card', 'kg-width-full', 'kg-card-hascaption' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-image-card', 'kg-width-wide', 'kg-card-hascaption' ] ],
+		// Video elements.
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-video-card' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-video-card', 'kg-width-regular' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-video-card', 'kg-width-regular', 'kg-card-hascaption' ] ],
+		// Embed elements.
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-embed-card' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-embed-card', 'kg-card-hascaption' ] ],
+		// Callout.
+		[ 'html_element' => 'div',    'kg_classes' => [ 'kg-callout-text' ], ],
+		// Bookmark elements.
+		[ 'html_element' => 'a',      'kg_classes' => [ 'kg-bookmark-container' ] ],
+		[ 'html_element' => 'div',    'kg_classes' => [ 'kg-bookmark-content' ] ],
+		[ 'html_element' => 'div',    'kg_classes' => [ 'kg-bookmark-description' ] ],
+		[ 'html_element' => 'div',    'kg_classes' => [ 'kg-bookmark-metadata' ] ],
+		[ 'html_element' => 'div',    'kg_classes' => [ 'kg-bookmark-thumbnail' ] ],
+		[ 'html_element' => 'div',    'kg_classes' => [ 'kg-bookmark-title' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-bookmark-card' ] ],
+		[ 'html_element' => 'img',    'kg_classes' => [ 'kg-bookmark-icon' ] ],
+		[ 'html_element' => 'span',   'kg_classes' => [ 'kg-bookmark-author' ] ],
+		[ 'html_element' => 'span',   'kg_classes' => [ 'kg-bookmark-publisher' ] ],
+	];
+	// phpcs:enable
 
 	/**
 	 * Lookup to convert json authors to Guest Contributor user objects.
@@ -371,6 +412,11 @@ class GhostCMSHelper {
 					sort( $kg_classes );
 					$grouping_key = $tag_name . '|' . implode( ',', $kg_classes );
 
+					// Skip accepted kg-* elements which are intentionally kept in post_content as-is.
+					if ( $this->is_accepted_kg_element( $tag_name, $kg_classes ) ) {
+						continue;
+					}
+
 					// Initialize array element if first time adding it.
 					if ( ! isset( $elements[ $grouping_key ] ) ) {
 						$elements[ $grouping_key ] = [
@@ -418,11 +464,30 @@ class GhostCMSHelper {
 			$this->log( sprintf( 'Failed to parse %d posts: %s', count( $failed_posts ), implode( ', ', $failed_posts ) ), LogLevel::ERROR );
 		}
 		if ( ! empty( $elements ) ) {
-			$this->log( sprintf( "Found %d unfamiliar/unhandled 'kg-*' elements in total %d posts. Their tags and post IDs where they appear are saved to %s. Please QA these findings: if they display correctly/well enough in the WP frontend/backend, simply whitelist them in the GhostCMSHelper's constant; if they don't, write fixers/transformers for them.", count( $elements ), count( $post_ids ), $output_file ), LogLevel::WARNING );
+			$this->log( sprintf( "Found %d unfamiliar/unhandled 'kg-*' elements in total %d posts. Their tags and the post IDs where they appear are saved to %s. Please QA these findings: if they display correctly/well enough in WP frontend/backend, simply add them to ACCEPTED_KG_ELEMENTS constant in GhostCMSHelper; if they don't, write fixers/transformers for them.", count( $elements ), count( $post_ids ), $output_file ), LogLevel::WARNING );
 		} else {
 			$this->log( sprintf( "No unfamiliar/unhandled 'kg-*' elements found in total %d posts.", count( $post_ids ) ), LogLevel::INFO );
 		}
 		$this->log( 'Done checking for custom Ghost HTML content.', LogLevel::INFO );
+	}
+
+	/**
+	 * Checks if an element matches any entry in ACCEPTED_KG_ELEMENTS.
+	 *
+	 * @param string $tag_name   HTML tag name.
+	 * @param array  $kg_classes Sorted array of kg-* classes.
+	 * @return bool True if this element is an accepted kg-* element.
+	 */
+	private function is_accepted_kg_element( string $tag_name, array $kg_classes ): bool {
+		foreach ( self::ACCEPTED_KG_ELEMENTS as $accepted ) {
+			$accepted_kg_classes = $accepted['kg_classes'];
+			sort( $accepted_kg_classes );
+			if ( $accepted['html_element'] === $tag_name && $accepted_kg_classes === $kg_classes ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
