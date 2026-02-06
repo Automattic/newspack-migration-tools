@@ -19,7 +19,9 @@ use Newspack\MigrationTools\Util\Log\FileLog;
 use Newspack\MigrationTools\Util\Log\MultiLog;
 use Monolog\Level;
 use Psr\Log\LogLevel;
+use simplehtmldom\HtmlDocument;
 use UnhandledMatchError;
+use WP_CLI;
 use WP_Error;
 use WP_User;
 
@@ -110,6 +112,12 @@ class GhostCMSHelper {
 
 		// Argument parsing.
 
+		// --visibility-csv, default is 'public'.
+		$visibilities_to_import = [ 'public' ];
+		if ( isset( $assoc_args['visibility-csv'] ) ) {
+			$visibilities_to_import = explode( ',', $assoc_args['visibility-csv'] );
+		}
+
 		// --created-after.
 		$created_after = null;
 		if ( isset( $assoc_args['created-after'] ) ) {
@@ -179,7 +187,23 @@ class GhostCMSHelper {
 			// phpcs:ignore WordPress.DateTime.RestrictedFunctions.date_date
 			$this->log( '--created-after: ' . date( 'Y-m-d H:i:s', $created_after ) );
 		}
-		
+
+		// Check if there are any additional post visibility values in JSON data, besides the ones which are selected for import.
+		$visibilities_existing         = $this->get_visibility_values( $this->data );
+		$are_all_visibilities_selected = empty( array_diff( $visibilities_existing, $visibilities_to_import ) );
+		if ( false === $are_all_visibilities_selected ) {
+			$this->log(
+				sprintf(
+					'There are %d existing `visibility` values found in JSON posts: %s. Only the posts with visibility value(s) %s will be imported.',
+					count( $visibilities_existing ),
+					'`' . implode( '`, `', $visibilities_existing ) . '`',
+					'`' . implode( '`, `', $visibilities_to_import ) . '`'
+				),
+				LogLevel::WARNING
+			);
+			WP_CLI::confirm( 'Continue with the import (y), or stop here (n) and set the `--visibility-csv` argument to the target values?' );
+		}
+
 		// Insert posts.
 		foreach ( $this->data->posts as $json_post ) {
 
@@ -196,7 +220,7 @@ class GhostCMSHelper {
 			}
 			
 			// Check for skips, log, and continue.
-			$skip_reason = $this->skip( $json_post );
+			$skip_reason = $this->skip( $json_post, $visibilities_to_import );
 			if ( ! empty( $skip_reason ) ) {
 			
 				$this->log( 'Skip JSON post (review by hand -skips.log): ' . $skip_reason, LogLevel::NOTICE );
@@ -208,10 +232,16 @@ class GhostCMSHelper {
 
 			}
 
+			// Post content processing.
+			$post_content = str_replace( '__GHOST_URL__', $this->ghost_url, $json_post->html );
+			// Replace video and audio embeds from Ghost's "Koenig editor" to classic HTML5 (Ghost's syntax won't work in WP frontend or Gutenberg).
+			$post_content = $this->replace_video_embeds( $post_content );
+			$post_content = $this->replace_audio_embeds( $post_content );
+
 			// Post.
 			$args = array(
 				'post_author'  => $default_user->ID,
-				'post_content' => str_replace( '__GHOST_URL__', $this->ghost_url, $json_post->html ),
+				'post_content' => $post_content,
 				'post_date'    => $json_post->published_at,
 				'post_excerpt' => $json_post->custom_excerpt ?? '',
 				'post_name'    => $json_post->slug,
@@ -235,6 +265,9 @@ class GhostCMSHelper {
 			update_post_meta( $wp_post_id, 'newspack_ghostcms_id', $json_post->id );
 			update_post_meta( $wp_post_id, 'newspack_ghostcms_uuid', $json_post->uuid );
 			update_post_meta( $wp_post_id, 'newspack_ghostcms_slug', $json_post->slug );
+			if ( ! empty( $json_post->custom_excerpt ) ) {
+				update_post_meta( $wp_post_id, 'newspack_post_subtitle', $json_post->custom_excerpt );
+			}
 			
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
 			update_post_meta( $wp_post_id, 'newspack_ghostcms_checksum', md5( json_encode( $json_post ) ) );            
@@ -862,10 +895,11 @@ class GhostCMSHelper {
 	/**
 	 * Check if need to skip this JSON post.
 	 *
-	 * @param object $json_post JSON post object.
+	 * @param object $json_post             JSON post object.
+	 * @param array  $visibilities_to_import Visibility values to import.
 	 * @return string|null
 	 */
-	private function skip( object $json_post ): ?string {
+	private function skip( object $json_post, array $visibilities_to_import ): ?string {
 
 		global $wpdb;
 
@@ -877,8 +911,8 @@ class GhostCMSHelper {
 		if ( 'published' != $json_post->status ) {
 			return 'not_published';
 		}
-		if ( 'public' != $json_post->visibility ) {
-			return 'not_public';
+		if ( ! in_array( $json_post->visibility, $visibilities_to_import, true ) ) {
+			return 'visibility_is_different';
 		}
 
 		// Empty properties.
@@ -922,5 +956,107 @@ class GhostCMSHelper {
 		}
 			
 		return null;
+	}
+
+	/**
+	 * Replace Ghost's "Koenig editor" video embeds with <video> elements.
+	 * 
+	 * The resulting <video> element(s):
+	 *   - are not Gutenberg blocks, because the input HTML is not in expected to be in blocks either,
+	 *   - are simple HTML5 video players with controls,
+	 *   - are given the `style="width: 100%%; height: auto;"` to ensure they are displayed correctly in WP.
+	 *
+	 * @param string $content Content to replace video embeds in.
+	 * @return string Processed content.
+	 */
+	public function replace_video_embeds( string $content ): string {
+		// Find all kg-video-container divs.
+		$doc              = new HtmlDocument( $content );
+		$video_containers = $doc->find( 'div.kg-video-container' );
+		if ( empty( $video_containers ) ) {
+			return $content;
+		}
+
+		foreach ( $video_containers as $container ) {
+			// Find the first video element within this container.
+			$video_element = $container->find( 'video', 0 );
+			if ( ! $video_element ) {
+				continue;
+			}
+
+			// Get the src attribute.
+			$src = $video_element->getAttribute( 'src' );
+			if ( empty( $src ) ) {
+				continue;
+			}
+
+			// Replace the entire kg-video-container with the simple video element.
+			$replacement          = sprintf(
+				'<video src="%s" controls style="width: 100%%; height: auto;"></video>',
+				esc_attr( $src )
+			);
+			$container->outertext = $replacement;
+		}
+
+		return (string) $doc;
+	}
+
+	/**
+	 * Replace Ghost's "Koenig editor" audio embeds with <audio> elements.
+	 * 
+	 * The resulting <audio> element(s):
+	 *   - are not Gutenberg blocks, because the input HTML is not expected to be in blocks either,
+	 *   - are simple HTML5 audio players with controls.
+	 *
+	 * @param string $content Content to replace audio embeds in.
+	 * @return string Processed content.
+	 */
+	public function replace_audio_embeds( string $content ): string {
+		// Find all kg-audio-card divs.
+		$doc              = new HtmlDocument( $content );
+		$audio_containers = $doc->find( 'div.kg-audio-card' );
+		if ( empty( $audio_containers ) ) {
+			return $content;
+		}
+
+		foreach ( $audio_containers as $container ) {
+			// Find the first audio element within this container.
+			$audio_element = $container->find( 'audio', 0 );
+			if ( ! $audio_element ) {
+				continue;
+			}
+
+			// Get the src attribute.
+			$src = $audio_element->getAttribute( 'src' );
+			if ( empty( $src ) ) {
+				continue;
+			}
+
+			// Replace the entire kg-audio-card with the simple audio element.
+			$replacement          = sprintf(
+				'<audio src="%s" controls></audio>',
+				esc_attr( $src )
+			);
+			$container->outertext = $replacement;
+		}
+
+		return (string) $doc;
+	}
+
+	/**
+	 * Get all visibility values from JSON data.
+	 *
+	 * @param object $data JSON data.
+	 * @return array Visibility values.
+	 */
+	private function get_visibility_values( object $data ): array {
+		$visibilities = [];
+		foreach ( $data->posts as $json_post ) {
+			if ( ! in_array( $json_post->visibility, $visibilities, true ) ) {
+				$visibilities[] = $json_post->visibility;
+			}
+		}
+
+		return $visibilities;
 	}
 }

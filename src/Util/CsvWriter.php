@@ -27,7 +27,7 @@ class CsvWriter {
 		private string $filename
 	) {
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
-		$this->file_pointer = fopen( getcwd() . '/' . $this->filename, 'a+' );
+		$this->file_pointer = fopen( $this->filename, 'a+' );
 
 		if ( false === $this->file_pointer ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
@@ -58,8 +58,8 @@ class CsvWriter {
 	 * @throws Exception If the row cannot be written to the file.
 	 */
 	public function put( array $row ): void {
-		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fputcsv
-		if ( false === fputcsv( $this->file_pointer, $row ) ) {
+		// fputcsv escape='' for RFC 4180 compliance (@see https://www.php.net/manual/en/function.fputcsv.php).
+		if ( false === fputcsv( $this->file_pointer, $row, ',', '"', '' ) ) { // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fputcsv.
 			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			throw new Exception( "Could not write to file: {$this->filename}" );
 		}

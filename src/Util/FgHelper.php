@@ -34,14 +34,6 @@ class FgHelper {
 	public function __construct( string $type ) {
 
 		$type = strtolower( $type );
-		if ( ! in_array( $type, [ 'drupal', 'joomla' ] ) ) {
-			NMT::exit_with_message( sprintf( 'Invalid migration type "%s" is not supported', $type ) );
-		}
-
-		$supported_cms = [ 'drupal', 'joomla' ];
-		if ( ! in_array( $type, $supported_cms ) ) {
-			NMT::exit_with_message( sprintf( 'Invalid migration type "%s". Only %s are supported as of now.', $type, implode( $supported_cms ) ) );
-		}
 
 		switch ( $type ) {
 			case 'drupal':
@@ -54,6 +46,9 @@ class FgHelper {
 				$this->function_prefix         = 'fgj2wp';
 				$this->db_import_tables_prefix = 'joomla_';
 				break;
+
+			default:
+				NMT::exit_with_message( sprintf( 'Invalid migration type "%s". Only Joomla and Drupal are supported as of now.', $type ) );
 		}
 
 		// If a constant is defined, use it as the prefix for the import tables. (Blank prefix is OK).
@@ -72,8 +67,6 @@ class FgHelper {
 		if ( ! is_plugin_active( "fg-{$this->type}-to-wp-premium/fg-{$this->type}-to-wp-premium.php" ) ) {
 			NMT::exit_with_message( "FG {$this->type} to WP Premium plugin not found. Install and activate it before using this class." );
 		}
-
-		$this->type = $type;
 	}
 
 	/**
@@ -119,13 +112,15 @@ class FgHelper {
 			$options = [];
 		}
 
-		$options['hostname'] = getenv( 'DB_HOST' );
-		$options['database'] = getenv( 'DB_NAME' );
-		$options['username'] = getenv( 'DB_USER' );
 		$options['password'] = getenv( 'DB_PASSWORD' );
-		if ( empty( $options['hostname'] ) || empty( $options['database'] ) || empty( $options['username'] ) || empty( $options['password'] ) ) {
-			NMT::exit_with_message( 'Could not get database connection details from environment variables.' );
+		if ( false === $options['password'] ) {
+			NMT::exit_with_message( 'You must set the DB_PASSWORD as an environment variable to use the FgHelper. See docs/fg-helper.md' );
 		}
+
+		// If env vars are not set for these, just use WP's constants for the DB WordPress DB connection.
+		$options['hostname'] = false === getenv( 'DB_HOST' ) ? DB_HOST : getenv( 'DB_HOST' );
+		$options['database'] = false === getenv( 'DB_NAME' ) ? DB_NAME : getenv( 'DB_NAME' );
+		$options['username'] = false === getenv( 'DB_USER' ) ? DB_USER : getenv( 'DB_USER' );
 
 		$options['prefix'] = $this->get_import_tables_prefix();
 
@@ -141,5 +136,32 @@ class FgHelper {
 	 */
 	public function get_import_tables_prefix(): string {
 		return $this->db_import_tables_prefix;
+	}
+
+	/**
+	 * Get a specific FG option.
+	 *
+	 * @param string $option_name Name of the option to get - e.g. file_public_path_source, hostname, etc.
+	 *
+	 * @return mixed The option value or null if not found.
+	 */
+	public function get_fg_option( string $option_name ): mixed {
+		$fg_options = get_option( "{$this->function_prefix}_options" );
+		return $fg_options[ $option_name ] ?? null;
+	}
+
+	/**
+	 * Get a specific FG premium option.
+	 *
+	 * Note that this is almost the same as get_fg_option, but with a "p" for premium after the function prefix.
+	 *
+	 * @param string $option_name Name of the option to get - e.g. skip_users, unicode_usernames, etc.
+	 *
+	 * @return mixed The option value or null if not found.
+	 */
+	public function get_fg_premium_option( string $option_name ): mixed {
+		// Note the "p" for premium after the function prefix.
+		$premium_options = get_option( "{$this->function_prefix}p_options" );
+		return $premium_options[ $option_name ] ?? null;
 	}
 }
