@@ -18,6 +18,7 @@ use Newspack\MigrationTools\Util\Log\CliLog;
 use Newspack\MigrationTools\Util\Log\FileLog;
 use Newspack\MigrationTools\Util\Log\MultiLog;
 use Monolog\Level;
+use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 use simplehtmldom\HtmlDocument;
 use UnhandledMatchError;
@@ -234,7 +235,7 @@ class GhostCMSHelper {
 
 			// Post content processing.
 			$post_content = str_replace( '__GHOST_URL__', $this->ghost_url, $json_post->html );
-			// Replace video and audio embeds from Ghost's "Koenig editor" to classic HTML5 (Ghost's syntax won't work in WP frontend or Gutenberg).
+			// Replace various syntax elements from Ghost's "Koenig editor" to compatible HTML.
 			$post_content = $this->replace_video_embeds( $post_content );
 			$post_content = $this->replace_audio_embeds( $post_content );
 
@@ -288,7 +289,140 @@ class GhostCMSHelper {
 
 		}
 
-		$this->log( 'Done.' );
+		$this->log( 'Done importing posts from Ghost.', LogLevel::INFO );
+
+		// Run command to check for custom Ghost HTML content.
+		$this->check_imported_posts_for_custom_html_content( $this->log_slug );
+	}
+
+	/**
+	 * Check imported posts for custom Ghost Koenig editor HTML content, by scanning all HTML elements with kg-* classes.
+	 * 
+	 * @param string $log_slug The logger slug.
+	 */
+	public function check_imported_posts_for_custom_html_content( string $log_slug ): void {
+		global $wpdb;
+
+		// Init logger usage in this class.
+		$this->log_slug = $log_slug;
+		
+		// Prepare output file.
+		$output_file = 'ghost_kg_elements.jsonl';
+		if ( file_exists( $output_file ) ) {
+			unlink( $output_file ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink.
+		}
+
+		/**
+		 * Check all published posts migrated from Ghost for custom Ghost editor HTML content -- HTML elements with "kg-*" classes.
+		 */
+		$post_ids = $wpdb->get_col( // phpcs:ignore -- WordPress.DB.DirectDatabaseQuery.DirectQuery WordPress.DB.DirectDatabaseQuery.NoCaching.
+			"select p.ID from {$wpdb->posts} p
+			join {$wpdb->postmeta} pm on p.ID = pm.post_id
+			where pm.meta_key = 'newspack_ghostcms_id'
+			and pm.meta_value is not null
+			and p.post_type = 'post'
+			and p.post_status = 'publish'"
+		);
+		$this->log( sprintf( 'Checking %d posts imported from Ghost for custom Ghost editor HTML content...', count( $post_ids ) ) );
+		$elements     = [];
+		$failed_posts = [];
+		foreach ( $post_ids as $post_id ) {
+			$post_content = $wpdb->get_var( $wpdb->prepare( "SELECT post_content FROM {$wpdb->posts} WHERE ID = %d", $post_id ) ); // phpcs:ignore -- WordPress.DB.DirectDatabaseQuery.DirectQuery WordPress.DB.DirectDatabaseQuery.NoCaching.
+			if ( empty( $post_content ) ) {
+				continue;
+			}
+
+			try {
+				// Parse all elements.
+				$doc          = new HtmlDocument( $post_content );
+				$all_elements = $doc->find( '*' );
+				foreach ( $all_elements as $element ) {
+					$class_attr = $element->getAttribute( 'class' );
+					if ( empty( $class_attr ) ) {
+						continue;
+					}
+
+					// Extract kg-* classes.
+					$classes    = explode( ' ', $class_attr );
+					$kg_classes = [];
+					foreach ( $classes as $class ) {
+						$class = trim( $class );
+						if ( str_starts_with( $class, 'kg-' ) ) {
+							$kg_classes[] = $class;
+						}
+					}
+					if ( empty( $kg_classes ) ) {
+						continue;
+					}
+
+					// Get full opening tag for example.
+					$outertext           = $element->outertext;
+					$closing_bracket_pos = strpos( $outertext, '>' );
+					// If there's no closing bracket, use the whole outertext (e.g. malformed `<img src="broken`).
+					if ( false === $closing_bracket_pos ) {
+						$full_opening_tag = $outertext;
+					} else {
+						// From start to the first closing bracket inclusive (e.g. `<img src="x" class="kg-image">` from `<img ...>content</img>`).
+						$full_opening_tag = substr( $outertext, 0, $closing_bracket_pos + 1 );
+					}
+
+					// Group elements by keys = tag name + sorted kg-classes.
+					$tag_name = $element->tag;
+					sort( $kg_classes );
+					$grouping_key = $tag_name . '|' . implode( ',', $kg_classes );
+
+					// Initialize array element if first time adding it.
+					if ( ! isset( $elements[ $grouping_key ] ) ) {
+						$elements[ $grouping_key ] = [
+							'html_element'           => $tag_name,
+							'kg_classes'             => $kg_classes,
+							'post_ids'               => [],
+							'first_example_full_tag' => $full_opening_tag, // Store first full example for convenience.
+						];
+					}
+
+					// Add this post ID where the element appears.
+					if ( ! in_array( $post_id, $elements[ $grouping_key ]['post_ids'], true ) ) {
+						$elements[ $grouping_key ]['post_ids'][] = $post_id;
+					}
+				}
+			} catch ( \Exception $e ) {
+				$failed_posts[] = $post_id;
+				$this->log( sprintf( 'Failed to parse post ID %d: %s', $post_id, $e->getMessage() ), LogLevel::WARNING );
+			}
+		}
+
+		/**
+		 * Write results to JSONL file.
+		 */
+		$file_handle = fopen( $output_file, 'w' ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fopen.
+		if ( false === $file_handle ) {
+			$this->log( sprintf( 'Failed to open file "%s" for writing.', $output_file ), LogLevel::ERROR );
+		} else {
+			foreach ( $elements as $element_data ) {
+				$data = [
+					'html_element'           => $element_data['html_element'],
+					'kg_classes'             => $element_data['kg_classes'],
+					'first_example_full_tag' => $element_data['first_example_full_tag'],
+					'post_ids'               => $element_data['post_ids'],
+				];
+				fwrite( $file_handle, wp_json_encode( $data ) . PHP_EOL ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fwrite.
+			}
+			fclose( $file_handle ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fclose.
+		}
+
+		/**
+		 * Log summary.
+		 */
+		if ( ! empty( $failed_posts ) ) {
+			$this->log( sprintf( 'Failed to parse %d posts: %s', count( $failed_posts ), implode( ', ', $failed_posts ) ), LogLevel::ERROR );
+		}
+		if ( ! empty( $elements ) ) {
+			$this->log( sprintf( "Found %d unfamiliar/unhandled 'kg-*' elements in total %d posts. Their tags and post IDs where they appear are saved to %s. Please QA these findings: if they display correctly/well enough in the WP frontend/backend, simply whitelist them in the GhostCMSHelper's constant; if they don't, write fixers/transformers for them.", count( $elements ), count( $post_ids ), $output_file ), LogLevel::WARNING );
+		} else {
+			$this->log( sprintf( "No unfamiliar/unhandled 'kg-*' elements found in total %d posts.", count( $post_ids ) ), LogLevel::INFO );
+		}
+		$this->log( 'Done checking for custom Ghost HTML content.', LogLevel::INFO );
 	}
 
 	/**
@@ -691,20 +825,13 @@ class GhostCMSHelper {
 	 * @param boolean $exit_on_error For error messages if desired.
 	 * @return void
 	 */
-	private function log( string $message, string $level = 'info', bool $exit_on_error = false ): void {
-		
-		$logger = MultiLog::get_logger( 
-			'multi-' . $this->log_slug,
-			[
-				CliLog::get_logger( $this->log_slug ),
-				FileLog::get_logger( $this->log_slug ),
-			]
-		);
+	private function log( string $message, string $level = 'debug', bool $exit_on_error = false ): void {
+		$logger = MultiLog::get_cli_and_file_logger( $this->log_slug );
 
 		try {
 			$level = Level::fromName( $level );
 		} catch ( UnhandledMatchError $e ) {
-			$level = Level::fromName( 'info' );
+			$level = Level::fromName( 'debug' );
 		}
 		
 		$logger->log( $level, $message );
@@ -1042,6 +1169,8 @@ class GhostCMSHelper {
 
 		return (string) $doc;
 	}
+
+	
 
 	/**
 	 * Get all visibility values from JSON data.
