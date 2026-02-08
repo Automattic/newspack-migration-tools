@@ -534,6 +534,18 @@ AUDIO;
 
 	/**
 	 * Generate a Paragraph Block.
+	 * 
+	 * Example usage — for a paragraph with custom background and text color:
+	 *   get_paragraph( 'Text content', '', '', '', [ 'has-background', 'has-text-color' ],
+	 *     [ 'style' => [ 'color' => [ 'background' => '#E3F2FD', 'text' => '#333333' ] ] ],
+	 *     [ 'background-color' => '#E3F2FD', 'color' => '#333333' ]
+	 *   )
+	 *   Produces:
+	 *   ```
+	 *     <!-- wp:paragraph {"style":{"color":{"background":"#E3F2FD","text":"#333333"}}} -->
+	 *     <p class="has-background has-text-color" style="background-color:#E3F2FD;color:#333333">Hello</p>
+	 *     <!-- /wp:paragraph -->
+	 *   ```
 	 *
 	 * @param string $paragraph_content      Paragraph content.
 	 * @param string $anchor                 Paragraph anchor.
@@ -541,10 +553,11 @@ AUDIO;
 	 * @param string $font_size              Paragraph font size (small, normal, medium, large, huge).
 	 * @param array  $additional_css_classes Additional paragraph classes.
 	 * @param array  $attrs                  Paragraph attributes.
+	 * @param array  $inline_styles          Inline CSS styles as key-value pairs added to the `<p>` element's `style` attribute.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_paragraph( $paragraph_content, $anchor = '', $text_color = '', $font_size = '', array $additional_css_classes = [], $attrs = [] ) {
+	public function get_paragraph( $paragraph_content, $anchor = '', $text_color = '', $font_size = '', array $additional_css_classes = [], $attrs = [], array $inline_styles = [] ) {
 		// Paragraph can have both <p class=""> classes, and <!-- wp:paragraph {"className":""} --> className attributes (called "Additional CSS classes" in Gutenberg).
 		$paragraph_element_classes = [];
 		if ( ! empty( $text_color ) ) {
@@ -564,8 +577,18 @@ AUDIO;
 
 		$paragraph_element_class_string = ! empty( $paragraph_element_classes ) ? ' class="' . implode( ' ', $paragraph_element_classes ) . '"' : '';
 
+		// Build inline style attribute.
+		$style_attribute = '';
+		if ( ! empty( $inline_styles ) ) {
+			$style_parts = [];
+			foreach ( $inline_styles as $property => $value ) {
+				$style_parts[] = $property . ':' . $value;
+			}
+			$style_attribute = ' style="' . implode( ';', $style_parts ) . '"';
+		}
+
 		$anchor_attribute = ! empty( $anchor ) ? ' id="' . $anchor . '"' : '';
-		$content          = '<p' . $anchor_attribute . $paragraph_element_class_string . '>' . $paragraph_content . '</p>';
+		$content          = '<p' . $anchor_attribute . $paragraph_element_class_string . $style_attribute . '>' . $paragraph_content . '</p>';
 
 		return [
 			'blockName'    => 'core/paragraph',
