@@ -1344,12 +1344,11 @@ class GhostCMSHelper {
 			}
 
 			// Skip if both are empty.
-			$paragraph_content = $emoji_text . $callout_text;
-			if ( empty( $paragraph_content ) ) {
+			if ( empty( $emoji_text ) && empty( $callout_text ) ) {
 				continue;
 			}
-			// Insert space between emoji and text.
-			$paragraph_content = $emoji_text . ' ' . $callout_text;
+			// Insert space between emoji and text only when both are present.
+			$paragraph_content = trim( $emoji_text . ( $emoji_text && $callout_text ? ' ' : '' ) . $callout_text );
 
 			// Detect background color from optional color classes.
 			$class_attr = $callout->getAttribute( 'class' );
