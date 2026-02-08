@@ -283,6 +283,7 @@ class GhostCMSHelper {
 			$post_content = $this->replace_video_embeds( $post_content );
 			$post_content = $this->replace_audio_embeds( $post_content );
 			$post_content = $this->replace_blockquotes( $post_content );
+			$post_content = $this->replace_callout_cards( $post_content );
 
 			// Post.
 			$args = array(
@@ -1240,10 +1241,7 @@ class GhostCMSHelper {
 	}
 
 	/**
-	 * Replace Ghost's "Koenig editor" blockquotes with Gutenberg quote blocks.
-	 * 
-	 * The resulting blockquote(s) are wrapped in Gutenberg `wp:quote` block comments
-	 * with the inner text wrapped in `wp:paragraph`.
+	 * Replace Ghost's "Koenig editor" `blockquote.kg-blockquote-alt` with Gutenberg quote blocks.
 	 *
 	 * @param string $content Content to replace blockquotes in.
 	 * @return string Processed content.
@@ -1274,6 +1272,113 @@ class GhostCMSHelper {
 			$replacement = serialize_blocks( [ $block_generator->get_quote( $inner_text ) ] );
 
 			$blockquote->outertext = $replacement;
+		}
+
+		return (string) $doc;
+	}
+
+	/**
+	 * Replace Ghost's "Koenig editor" callout cards with Gutenberg paragraphs.
+	 * 
+	 * @see Ghost Koenig editor documentation: https://ghost.org/docs/themes/content/
+	 * 
+	 * Callout card consists of:
+	 *   1. a parent wrapper:
+	 *     - a `div` element with required classes `kg-card kg-callout-card`
+	 *     - optional additional classes:
+	 *       - `kg-callout-card-accent`
+	 *       - `kg-callout-card-blue`
+	 *       - `kg-callout-card-grey`
+	 *       - `kg-callout-card-green`
+	 *       - `kg-callout-card-white`
+	 *       - `kg-callout-card-yellow`
+	 *   2. children elements:
+	 *     - a `div.kg-callout-emoji`
+	 *     - a `div.kg-callout-text`
+	 * 
+	 * @param string $content Content to replace callout cards in.
+	 * @return string Processed content.
+	 */
+	public function replace_callout_cards( string $content ): string {
+		/**
+		 * Map Ghost callout color classes to hex background colors.
+		 * The following classes have been taken from Ghost's documentation https://ghost.org/docs/themes/content/ 
+		 * and Ghost's source code https://github.com/TryGhost/Ghost/blob/c667620d8f2e32c96fe376ad0f3dabc79488532a/ghost/core/core/frontend/src/cards/css/callout.css
+		 * where the rgba codes are here converted to hex.
+		 */
+		$color_codes = [
+			'kg-callout-card-accent' => '#7C8B9A21',
+			'kg-callout-card-blue'   => '#E3F2FD',
+			'kg-callout-card-grey'   => '#7C8B9A21',
+			'kg-callout-card-green'  => '#34b7431f',
+			'kg-callout-card-yellow' => '#FFF9E6',
+			'kg-callout-card-red'    => '#d12e2e1c',
+			'kg-callout-card-pink'   => '#e147ae1c',
+			'kg-callout-card-purple' => '#8755ec1f',
+			'kg-callout-card-white'  => '#FFFFFF',
+		];
+
+		// Find all kg-callout-card divs.
+		$doc      = new HtmlDocument( $content );
+		$callouts = $doc->find( 'div.kg-callout-card' );
+		if ( empty( $callouts ) ) {
+			return $content;
+		}
+
+		/** @var GutenbergBlockGenerator $block_generator */
+		$block_generator = new GutenbergBlockGenerator();
+
+		foreach ( $callouts as $callout ) {
+			// Get emoji.
+			$emoji_text = '';
+			$emoji_div  = $callout->find( 'div.kg-callout-emoji', 0 );
+			if ( $emoji_div ) {
+				$emoji_text = trim( $emoji_div->innertext );
+			}
+
+			// Get text.
+			$callout_text = '';
+			$text_div     = $callout->find( 'div.kg-callout-text', 0 );
+			if ( $text_div ) {
+				$callout_text = trim( $text_div->innertext );
+			}
+
+			// Skip if both are empty.
+			$paragraph_content = $emoji_text . $callout_text;
+			if ( empty( $paragraph_content ) ) {
+				continue;
+			}
+			// Insert space between emoji and text.
+			$paragraph_content = $emoji_text . ' ' . $callout_text;
+
+			// Detect background color from optional color classes.
+			$class_attr = $callout->getAttribute( 'class' );
+			$bg_color   = '';
+			$classes    = explode( ' ', $class_attr );
+			foreach ( $classes as $class ) {
+				$class = trim( $class );
+				if ( isset( $color_codes[ $class ] ) ) {
+					$bg_color = $color_codes[ $class ];
+					break;
+				}
+			}
+
+			// Build paragraph block with optional background color.
+			if ( ! empty( $bg_color ) ) {
+				$block = $block_generator->get_paragraph(
+					$paragraph_content,
+					'',
+					'',
+					'',
+					[ 'has-background' ],
+					[ 'style' => [ 'color' => [ 'background' => $bg_color ] ] ],
+					[ 'background-color' => $bg_color ]
+				);
+			} else {
+				$block = $block_generator->get_paragraph( $paragraph_content );
+			}
+
+			$callout->outertext = serialize_blocks( [ $block ] );
 		}
 
 		return (string) $doc;
