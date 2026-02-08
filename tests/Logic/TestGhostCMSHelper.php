@@ -608,6 +608,215 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test basic callout card with emoji and text, no color class.
+	 *
+	 * @return void
+	 */
+	public function test_replace_callout_cards_basic_with_emoji_and_text(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input    = 'Before txt <div class="kg-card kg-callout-card"><div class="kg-callout-emoji">💡</div><div class="kg-callout-text">Important note</div></div> After txt';
+		$expected = 'Before txt ' . serialize_blocks( [ $block_generator->get_paragraph( '💡 Important note' ) ] ) . ' After txt';
+
+		$result = $helper->replace_callout_cards( $input );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test callout card with color class produces background-colored paragraph.
+	 *
+	 * @return void
+	 */
+	public function test_replace_callout_cards_with_color_class(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input    = 'Before txt <div class="kg-card kg-callout-card kg-callout-card-blue"><div class="kg-callout-emoji">💡</div><div class="kg-callout-text">Blue note</div></div> After txt';
+		$expected = 'Before txt ' . serialize_blocks(
+			[
+				$block_generator->get_paragraph(
+					'💡 Blue note',
+					'',
+					'',
+					'',
+					[ 'has-background' ],
+					[ 'style' => [ 'color' => [ 'background' => '#E3F2FD' ] ] ],
+					[ 'background-color' => '#E3F2FD' ]
+				),
+			] 
+		) . ' After txt';
+
+		$result = $helper->replace_callout_cards( $input );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test different color classes produce their respective background colors.
+	 *
+	 * @return void
+	 */
+	public function test_replace_callout_cards_different_colors(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		// Yellow callout.
+		$input_yellow    = '<div class="kg-card kg-callout-card kg-callout-card-yellow"><div class="kg-callout-emoji">⚠️</div><div class="kg-callout-text">Warning</div></div>';
+		$expected_yellow = serialize_blocks(
+			[
+				$block_generator->get_paragraph(
+					'⚠️ Warning',
+					'',
+					'',
+					'',
+					[ 'has-background' ],
+					[ 'style' => [ 'color' => [ 'background' => '#FFF9E6' ] ] ],
+					[ 'background-color' => '#FFF9E6' ]
+				),
+			] 
+		);
+
+		$result_yellow = $helper->replace_callout_cards( $input_yellow );
+		$this->assertSame( $expected_yellow, $result_yellow );
+
+		// White callout.
+		$input_white    = '<div class="kg-card kg-callout-card kg-callout-card-white"><div class="kg-callout-emoji">📝</div><div class="kg-callout-text">Note</div></div>';
+		$expected_white = serialize_blocks(
+			[
+				$block_generator->get_paragraph(
+					'📝 Note',
+					'',
+					'',
+					'',
+					[ 'has-background' ],
+					[ 'style' => [ 'color' => [ 'background' => '#FFFFFF' ] ] ],
+					[ 'background-color' => '#FFFFFF' ]
+				),
+			] 
+		);
+
+		$result_white = $helper->replace_callout_cards( $input_white );
+		$this->assertSame( $expected_white, $result_white );
+	}
+
+	/**
+	 * Test multiple callout cards are all replaced.
+	 *
+	 * @return void
+	 */
+	public function test_replace_callout_cards_multiple(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input = 'First <div class="kg-card kg-callout-card"><div class="kg-callout-emoji">💡</div><div class="kg-callout-text">Note one</div></div> Middle <div class="kg-card kg-callout-card kg-callout-card-blue"><div class="kg-callout-emoji">🔵</div><div class="kg-callout-text">Note two</div></div> Last';
+
+		$block_one = serialize_blocks( [ $block_generator->get_paragraph( '💡 Note one' ) ] );
+		$block_two = serialize_blocks(
+			[
+				$block_generator->get_paragraph(
+					'🔵 Note two',
+					'',
+					'',
+					'',
+					[ 'has-background' ],
+					[ 'style' => [ 'color' => [ 'background' => '#E3F2FD' ] ] ],
+					[ 'background-color' => '#E3F2FD' ]
+				),
+			] 
+		);
+		$expected  = 'First ' . $block_one . ' Middle ' . $block_two . ' Last';
+
+		$result = $helper->replace_callout_cards( $input );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test content without callout cards returns unchanged.
+	 *
+	 * @return void
+	 */
+	public function test_replace_callout_cards_no_callouts_returns_unchanged(): void {
+		$helper = new GhostCMSHelper();
+
+		$input = 'Before txt <p>Some paragraph</p> After txt';
+
+		$result = $helper->replace_callout_cards( $input );
+
+		$this->assertSame( $input, $result );
+	}
+
+	/**
+	 * Test callout card with empty emoji and empty text is skipped.
+	 *
+	 * @return void
+	 */
+	public function test_replace_callout_cards_empty_content_skipped(): void {
+		$helper = new GhostCMSHelper();
+
+		$input = 'Before txt <div class="kg-card kg-callout-card"><div class="kg-callout-emoji"></div><div class="kg-callout-text"></div></div> After txt';
+
+		$result = $helper->replace_callout_cards( $input );
+
+		$this->assertSame( $input, $result );
+	}
+
+	/**
+	 * Test callout with empty emoji div produces no leading space in output.
+	 *
+	 * @return void
+	 */
+	public function test_replace_callout_cards_empty_emoji_no_leading_space(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input = 'Before txt <div class="kg-card kg-callout-card"><div class="kg-callout-emoji"></div><div class="kg-callout-text">Just text</div></div> After txt';
+		// When emoji is empty, text should not have a leading space.
+		$expected = 'Before txt ' . serialize_blocks( [ $block_generator->get_paragraph( 'Just text' ) ] ) . ' After txt';
+
+		$result = $helper->replace_callout_cards( $input );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test callout with text containing inline HTML (bold, links) preserves it.
+	 *
+	 * @return void
+	 */
+	public function test_replace_callout_cards_text_with_inline_html(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input    = 'Before txt <div class="kg-card kg-callout-card"><div class="kg-callout-emoji">⚠️</div><div class="kg-callout-text">This is <strong>important</strong> and <a href="https://example.com">linked</a></div></div> After txt';
+		$expected = 'Before txt ' . serialize_blocks( [ $block_generator->get_paragraph( '⚠️ This is <strong>important</strong> and <a href="https://example.com">linked</a>' ) ] ) . ' After txt';
+
+		$result = $helper->replace_callout_cards( $input );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test callout replacement preserves surrounding content.
+	 *
+	 * @return void
+	 */
+	public function test_replace_callout_cards_preserves_surrounding_content(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input = '<p>Before paragraph</p> <div class="kg-card kg-callout-card"><div class="kg-callout-emoji">💡</div><div class="kg-callout-text">A note</div></div> <p>After paragraph</p>';
+		// Note: HTML parser normalizes whitespace between block elements - this is expected behavior (same as video/audio/blockquote tests).
+		$expected = '<p>Before paragraph</p>' . serialize_blocks( [ $block_generator->get_paragraph( '💡 A note' ) ] ) . '<p>After paragraph</p>';
+
+		$result = $helper->replace_callout_cards( $input );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
 	 * Test that GhostCMS Helper will import from JSON file.
 	 *
 	 * @return void
