@@ -44,21 +44,6 @@ class GhostCMSHelper {
 	 */
 	// phpcs:disable -- Allow custom spacing in the const array for readability, WordPress.Arrays.ArrayDeclarationSpacing.AssociativeArrayFound.
 	const ACCEPTED_KG_ELEMENTS = [
-		// Image elements.
-		[ 'html_element' => 'img',    'kg_classes' => [ 'kg-image' ] ],
-		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-image-card' ] ],
-		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-image-card', 'kg-card-hascaption' ] ],
-		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-image-card', 'kg-width-full', 'kg-card-hascaption' ] ],
-		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-image-card', 'kg-width-wide', 'kg-card-hascaption' ] ],
-		// Video elements.
-		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-video-card' ] ],
-		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-video-card', 'kg-width-regular' ] ],
-		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-video-card', 'kg-width-regular', 'kg-card-hascaption' ] ],
-		// Embed elements.
-		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-embed-card' ] ],
-		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-embed-card', 'kg-card-hascaption' ] ],
-		// Callout.
-		[ 'html_element' => 'div',    'kg_classes' => [ 'kg-callout-text' ], ],
 		// Bookmark elements.
 		[ 'html_element' => 'a',      'kg_classes' => [ 'kg-bookmark-container' ] ],
 		[ 'html_element' => 'div',    'kg_classes' => [ 'kg-bookmark-content' ] ],
@@ -70,6 +55,19 @@ class GhostCMSHelper {
 		[ 'html_element' => 'img',    'kg_classes' => [ 'kg-bookmark-icon' ] ],
 		[ 'html_element' => 'span',   'kg_classes' => [ 'kg-bookmark-author' ] ],
 		[ 'html_element' => 'span',   'kg_classes' => [ 'kg-bookmark-publisher' ] ],
+		// Image elements.
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-image-card' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-image-card', 'kg-card-hascaption' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-image-card', 'kg-width-full', 'kg-card-hascaption' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-image-card', 'kg-width-wide', 'kg-card-hascaption' ] ],
+		[ 'html_element' => 'img',    'kg_classes' => [ 'kg-image' ] ],
+		// Video elements (some types of videos which render correctly on frontend).
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-video-card' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-video-card', 'kg-width-regular' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-video-card', 'kg-width-regular', 'kg-card-hascaption' ] ],
+		// Embed elements.
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-embed-card' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-embed-card', 'kg-card-hascaption' ] ],
 	];
 	// phpcs:enable
 
