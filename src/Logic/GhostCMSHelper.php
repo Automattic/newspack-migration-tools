@@ -1428,6 +1428,23 @@ class GhostCMSHelper {
 	}
 
 	/**
+	 * Get WP attachment ID from an image URL.
+	 * 
+	 * A wrapper method to allow overriding and mocking in tests.
+	 *
+	 * @param string $url The image URL.
+	 * @return int Attachment ID, or 0 if not found.
+	 */
+	protected function get_attachment_id_from_url( string $url ): int {
+		$attachment_id = attachment_url_to_postid( $url ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.attachment_url_to_postid_attachment_url_to_postid.
+		if ( ! $attachment_id ) {
+			$filename      = basename( wp_parse_url( $url, PHP_URL_PATH ) );
+			$attachment_id = Attachments::get_attachment_id_by_filename( $filename );
+		}
+		return $attachment_id ? $attachment_id : 0;
+	}
+
+	/**
 	 * Replace Ghost's "Koenig editor" galleries with Gutenberg galleries, and logs the updates.
 	 * 
 	 * Koenig editor gallery structure:
@@ -1472,12 +1489,7 @@ class GhostCMSHelper {
 				}
 
 				// Get WP attachment ID from the image URL.
-				$attachment_id = attachment_url_to_postid( $src ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.attachment_url_to_postid_attachment_url_to_postid.
-				if ( ! $attachment_id ) {
-					// Try by filename as fallback.
-					$filename      = basename( wp_parse_url( $src, PHP_URL_PATH ) );
-					$attachment_id = Attachments::get_attachment_id_by_filename( $filename );
-				}
+				$attachment_id = $this->get_attachment_id_from_url( $src );
 
 				if ( $attachment_id > 0 ) {
 					$attachment_ids[] = $attachment_id;
