@@ -272,7 +272,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$input    = 'Before txt <div class="kg-video-container"><video src="https://example.com/video.mp4"></video></div> After txt';
 		$expected = 'Before txt <video src="https://example.com/video.mp4" controls style="width: 100%; height: auto;"></video> After txt';
 
-		$result = $helper->replace_video_embeds( $input );
+		$result = $helper->replace_video_embeds( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -288,7 +288,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$input    = 'First <div class="kg-video-container"><video src="https://example.com/video1.mp4"></video></div> Middle <div class="kg-video-container"><video src="https://example.com/video2.mp4"></video></div> Last';
 		$expected = 'First <video src="https://example.com/video1.mp4" controls style="width: 100%; height: auto;"></video> Middle <video src="https://example.com/video2.mp4" controls style="width: 100%; height: auto;"></video> Last';
 
-		$result = $helper->replace_video_embeds( $input );
+		$result = $helper->replace_video_embeds( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -303,7 +303,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		$input = 'Before txt <p>Some paragraph</p> After txt';
 
-		$result = $helper->replace_video_embeds( $input );
+		$result = $helper->replace_video_embeds( $input, '123' );
 
 		$this->assertSame( $input, $result );
 	}
@@ -318,7 +318,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		$input = 'Before txt <div class="kg-video-container"><p>No video here</p></div> After txt';
 
-		$result = $helper->replace_video_embeds( $input );
+		$result = $helper->replace_video_embeds( $input, '123' );
 
 		$this->assertSame( $input, $result );
 	}
@@ -333,7 +333,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		$input = 'Before txt <div class="kg-video-container"><video></video></div> After txt';
 
-		$result = $helper->replace_video_embeds( $input );
+		$result = $helper->replace_video_embeds( $input, '123' );
 
 		$this->assertSame( $input, $result );
 	}
@@ -352,8 +352,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		</div> More';
 		$expected  = 'Text <video src="https://example.com/video.mp4" controls style="width: 100%; height: auto;"></video> More';
 
-		$result_compact   = $helper->replace_video_embeds( $compact );
-		$result_formatted = $helper->replace_video_embeds( $formatted );
+		$result_compact   = $helper->replace_video_embeds( $compact, '123' );
+		$result_formatted = $helper->replace_video_embeds( $formatted, '123' );
 
 		$this->assertSame( $expected, $result_compact );
 		$this->assertSame( $expected, $result_formatted );
@@ -371,7 +371,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		// Note: HTML parser normalizes whitespace between block elements - this is expected behavior.
 		$expected = '<p>Before paragraph</p><video src="https://example.com/video.mp4" controls style="width: 100%; height: auto;"></video><p>After paragraph</p>';
 
-		$result = $helper->replace_video_embeds( $input );
+		$result = $helper->replace_video_embeds( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -387,7 +387,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$input    = 'Before txt <div class="kg-audio-card"><audio src="https://example.com/audio.mp3"></audio></div> After txt';
 		$expected = 'Before txt <audio src="https://example.com/audio.mp3" controls></audio> After txt';
 
-		$result = $helper->replace_audio_embeds( $input );
+		$result = $helper->replace_audio_embeds( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -403,7 +403,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$input    = 'First <div class="kg-audio-card"><audio src="https://example.com/audio1.mp3"></audio></div> Middle <div class="kg-audio-card"><audio src="https://example.com/audio2.mp3"></audio></div> Last';
 		$expected = 'First <audio src="https://example.com/audio1.mp3" controls></audio> Middle <audio src="https://example.com/audio2.mp3" controls></audio> Last';
 
-		$result = $helper->replace_audio_embeds( $input );
+		$result = $helper->replace_audio_embeds( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -418,7 +418,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		$input = 'Before txt <p>Some paragraph</p> After txt';
 
-		$result = $helper->replace_audio_embeds( $input );
+		$result = $helper->replace_audio_embeds( $input, '123' );
 
 		$this->assertSame( $input, $result );
 	}
@@ -433,7 +433,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		$input = 'Before txt <div class="kg-audio-card"><p>No audio here</p></div> After txt';
 
-		$result = $helper->replace_audio_embeds( $input );
+		$result = $helper->replace_audio_embeds( $input, '123' );
 
 		$this->assertSame( $input, $result );
 	}
@@ -448,7 +448,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		$input = 'Before txt <div class="kg-audio-card"><audio></audio></div> After txt';
 
-		$result = $helper->replace_audio_embeds( $input );
+		$result = $helper->replace_audio_embeds( $input, '123' );
 
 		$this->assertSame( $input, $result );
 	}
@@ -465,7 +465,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		// Note: HTML parser normalizes whitespace between block elements - this is expected behavior.
 		$expected = '<p>Before paragraph</p><audio src="https://example.com/audio.mp3" controls></audio><p>After paragraph</p>';
 
-		$result = $helper->replace_audio_embeds( $input );
+		$result = $helper->replace_audio_embeds( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -482,8 +482,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$expected = 'Start <video src="https://example.com/video.mp4" controls style="width: 100%; height: auto;"></video> Middle <audio src="https://example.com/audio.mp3" controls></audio> End';
 
 		// Apply both replacements as they would be in the import process.
-		$result = $helper->replace_video_embeds( $input );
-		$result = $helper->replace_audio_embeds( $result );
+		$result = $helper->replace_video_embeds( $input, '123' );
+		$result = $helper->replace_audio_embeds( $result, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -499,8 +499,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$input    = '<div><p>Text</p><div class="kg-video-container"><video src="https://example.com/video.mp4"></video></div><ul><li><div class="kg-audio-card"><audio src="https://example.com/audio.mp3"></audio></div></li></ul></div>';
 		$expected = '<div><p>Text</p><video src="https://example.com/video.mp4" controls style="width: 100%; height: auto;"></video><ul><li><audio src="https://example.com/audio.mp3" controls></audio></li></ul></div>';
 
-		$result = $helper->replace_video_embeds( $input );
-		$result = $helper->replace_audio_embeds( $result );
+		$result = $helper->replace_video_embeds( $input, '123' );
+		$result = $helper->replace_audio_embeds( $result, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -517,7 +517,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$input    = 'Before txt <blockquote class="kg-blockquote-alt">"Some quotation"</blockquote> After txt';
 		$expected = 'Before txt ' . serialize_blocks( [ $block_generator->get_quote( '"Some quotation"' ) ] ) . ' After txt';
 
-		$result = $helper->replace_blockquotes( $input );
+		$result = $helper->replace_blockquotes( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -535,7 +535,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
     quotation"</blockquote> After txt';
 		$expected = 'Before txt ' . serialize_blocks( [ $block_generator->get_quote( '"Some quotation"' ) ] ) . ' After txt';
 
-		$result = $helper->replace_blockquotes( $input );
+		$result = $helper->replace_blockquotes( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -554,7 +554,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$quote_two = serialize_blocks( [ $block_generator->get_quote( '"Quote two"' ) ] );
 		$expected  = 'First ' . $quote_one . ' Middle ' . $quote_two . ' Last';
 
-		$result = $helper->replace_blockquotes( $input );
+		$result = $helper->replace_blockquotes( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -569,7 +569,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		$input = 'Before txt <blockquote>Regular quote</blockquote> After txt';
 
-		$result = $helper->replace_blockquotes( $input );
+		$result = $helper->replace_blockquotes( $input, '123' );
 
 		$this->assertSame( $input, $result );
 	}
@@ -584,7 +584,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		$input = 'Before txt <blockquote class="kg-blockquote-alt">   </blockquote> After txt';
 
-		$result = $helper->replace_blockquotes( $input );
+		$result = $helper->replace_blockquotes( $input, '123' );
 
 		$this->assertSame( $input, $result );
 	}
@@ -602,7 +602,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		// Note: HTML parser normalizes whitespace between block elements - this is expected behavior (same as video/audio tests).
 		$expected = '<p>Before paragraph</p>' . serialize_blocks( [ $block_generator->get_quote( '"A quote"' ) ] ) . '<p>After paragraph</p>';
 
-		$result = $helper->replace_blockquotes( $input );
+		$result = $helper->replace_blockquotes( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -619,7 +619,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$input    = 'Before txt <div class="kg-card kg-callout-card"><div class="kg-callout-emoji">💡</div><div class="kg-callout-text">Important note</div></div> After txt';
 		$expected = 'Before txt ' . serialize_blocks( [ $block_generator->get_paragraph( '💡 Important note' ) ] ) . ' After txt';
 
-		$result = $helper->replace_callout_cards( $input );
+		$result = $helper->replace_callout_cards( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -648,7 +648,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 			] 
 		) . ' After txt';
 
-		$result = $helper->replace_callout_cards( $input );
+		$result = $helper->replace_callout_cards( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -678,7 +678,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 			] 
 		);
 
-		$result_yellow = $helper->replace_callout_cards( $input_yellow );
+		$result_yellow = $helper->replace_callout_cards( $input_yellow, '123' );
 		$this->assertSame( $expected_yellow, $result_yellow );
 
 		// White callout.
@@ -697,7 +697,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 			] 
 		);
 
-		$result_white = $helper->replace_callout_cards( $input_white );
+		$result_white = $helper->replace_callout_cards( $input_white, '123' );
 		$this->assertSame( $expected_white, $result_white );
 	}
 
@@ -728,7 +728,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		);
 		$expected  = 'First ' . $block_one . ' Middle ' . $block_two . ' Last';
 
-		$result = $helper->replace_callout_cards( $input );
+		$result = $helper->replace_callout_cards( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -743,7 +743,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		$input = 'Before txt <p>Some paragraph</p> After txt';
 
-		$result = $helper->replace_callout_cards( $input );
+		$result = $helper->replace_callout_cards( $input, '123' );
 
 		$this->assertSame( $input, $result );
 	}
@@ -758,7 +758,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		$input = 'Before txt <div class="kg-card kg-callout-card"><div class="kg-callout-emoji"></div><div class="kg-callout-text"></div></div> After txt';
 
-		$result = $helper->replace_callout_cards( $input );
+		$result = $helper->replace_callout_cards( $input, '123' );
 
 		$this->assertSame( $input, $result );
 	}
@@ -776,7 +776,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		// When emoji is empty, text should not have a leading space.
 		$expected = 'Before txt ' . serialize_blocks( [ $block_generator->get_paragraph( 'Just text' ) ] ) . ' After txt';
 
-		$result = $helper->replace_callout_cards( $input );
+		$result = $helper->replace_callout_cards( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -793,7 +793,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$input    = 'Before txt <div class="kg-card kg-callout-card"><div class="kg-callout-emoji">⚠️</div><div class="kg-callout-text">This is <strong>important</strong> and <a href="https://example.com">linked</a></div></div> After txt';
 		$expected = 'Before txt ' . serialize_blocks( [ $block_generator->get_paragraph( '⚠️ This is <strong>important</strong> and <a href="https://example.com">linked</a>' ) ] ) . ' After txt';
 
-		$result = $helper->replace_callout_cards( $input );
+		$result = $helper->replace_callout_cards( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -811,7 +811,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		// Note: HTML parser normalizes whitespace between block elements - this is expected behavior (same as video/audio/blockquote tests).
 		$expected = '<p>Before paragraph</p>' . serialize_blocks( [ $block_generator->get_paragraph( '💡 A note' ) ] ) . '<p>After paragraph</p>';
 
-		$result = $helper->replace_callout_cards( $input );
+		$result = $helper->replace_callout_cards( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
