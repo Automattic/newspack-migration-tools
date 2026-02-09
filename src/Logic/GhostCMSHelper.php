@@ -280,10 +280,11 @@ class GhostCMSHelper {
 			 */
 			$post_content = str_replace( '__GHOST_URL__', $this->ghost_url, $json_post->html );
 			// Replace various HTML elements to compatible HTML.
-			$post_content = $this->replace_video_embeds( $post_content );
-			$post_content = $this->replace_audio_embeds( $post_content );
-			$post_content = $this->replace_blockquotes( $post_content );
-			$post_content = $this->replace_callout_cards( $post_content );
+			$post_content = $this->replace_video_embeds( $post_content, $json_post->id );
+			$post_content = $this->replace_audio_embeds( $post_content, $json_post->id );
+			$post_content = $this->replace_blockquotes( $post_content, $json_post->id );
+			$post_content = $this->replace_callout_cards( $post_content, $json_post->id );
+			$post_content = $this->replace_galleries( $post_content, $json_post->id );
 
 			// Post.
 			$args = array(
@@ -1156,7 +1157,7 @@ class GhostCMSHelper {
 	}
 
 	/**
-	 * Replace Ghost's "Koenig editor" video embeds with <video> elements.
+	 * Replace Ghost's "Koenig editor" video embeds with <video> elements, and logs the updates.
 	 * 
 	 * The resulting <video> element(s):
 	 *   - are not Gutenberg blocks, because the input HTML is not in expected to be in blocks either,
@@ -1164,9 +1165,11 @@ class GhostCMSHelper {
 	 *   - are given the `style="width: 100%%; height: auto;"` to ensure they are displayed correctly in WP.
 	 *
 	 * @param string $content Content to replace video embeds in.
+	 * @param string $ghost_id Ghost ID of the content.
+	 * 
 	 * @return string Processed content.
 	 */
-	public function replace_video_embeds( string $content ): string {
+	public function replace_video_embeds( string $content, string $ghost_id ): string {
 		// Find all kg-video-container divs.
 		$doc              = new HtmlDocument( $content );
 		$video_containers = $doc->find( 'div.kg-video-container' );
@@ -1195,20 +1198,27 @@ class GhostCMSHelper {
 			$container->outertext = $replacement;
 		}
 
+		$this->log(
+			sprintf( 'Replaced %d video embeds in Ghost ID %d.', count( $video_containers ), $ghost_id ),
+			LogLevel::INFO
+		);
+
 		return (string) $doc;
 	}
 
 	/**
-	 * Replace Ghost's "Koenig editor" audio embeds with <audio> elements.
+	 * Replace Ghost's "Koenig editor" audio embeds with <audio> elements, and logs the updates.
 	 * 
 	 * The resulting <audio> element(s):
 	 *   - are not Gutenberg blocks, because the input HTML is not expected to be in blocks either,
 	 *   - are simple HTML5 audio players with controls.
 	 *
 	 * @param string $content Content to replace audio embeds in.
+	 * @param string $ghost_id Ghost ID of the content.
+	 * 
 	 * @return string Processed content.
 	 */
-	public function replace_audio_embeds( string $content ): string {
+	public function replace_audio_embeds( string $content, string $ghost_id ): string {
 		// Find all kg-audio-card divs.
 		$doc              = new HtmlDocument( $content );
 		$audio_containers = $doc->find( 'div.kg-audio-card' );
@@ -1237,16 +1247,24 @@ class GhostCMSHelper {
 			$container->outertext = $replacement;
 		}
 
+		$this->log(
+			sprintf( 'Replaced %d audio embeds in Ghost ID %d.', count( $audio_containers ), $ghost_id ),
+			LogLevel::INFO
+		);
+
 		return (string) $doc;
 	}
 
 	/**
-	 * Replace Ghost's "Koenig editor" `blockquote.kg-blockquote-alt` with Gutenberg quote blocks.
+	 * Replace Ghost's "Koenig editor" `blockquote.kg-blockquote-alt` with Gutenberg quote blocks
+	 * and logs the updates.
 	 *
 	 * @param string $content Content to replace blockquotes in.
+	 * @param string $ghost_id Ghost ID of the content.
+	 * 
 	 * @return string Processed content.
 	 */
-	public function replace_blockquotes( string $content ): string {
+	public function replace_blockquotes( string $content, string $ghost_id ): string {
 		// Find all kg-blockquote-alt blockquotes.
 		$doc         = new HtmlDocument( $content );
 		$blockquotes = $doc->find( 'blockquote.kg-blockquote-alt' );
@@ -1274,11 +1292,16 @@ class GhostCMSHelper {
 			$blockquote->outertext = $replacement;
 		}
 
+		$this->log(
+			sprintf( 'Replaced %d blockquotes in Ghost ID %d.', count( $blockquotes ), $ghost_id ),
+			LogLevel::INFO
+		);
+
 		return (string) $doc;
 	}
 
 	/**
-	 * Replace Ghost's "Koenig editor" callout cards with Gutenberg paragraphs.
+	 * Replace Ghost's "Koenig editor" callout cards with Gutenberg paragraphs, and logs the updates.
 	 * 
 	 * @see Ghost Koenig editor documentation: https://ghost.org/docs/themes/content/
 	 * 
@@ -1297,9 +1320,11 @@ class GhostCMSHelper {
 	 *     - a `div.kg-callout-text`
 	 * 
 	 * @param string $content Content to replace callout cards in.
+	 * @param string $ghost_id Ghost ID of the content.
+	 * 
 	 * @return string Processed content.
 	 */
-	public function replace_callout_cards( string $content ): string {
+	public function replace_callout_cards( string $content, string $ghost_id ): string {
 		/**
 		 * Map Ghost callout color classes to hex background colors.
 		 * The following classes have been taken from Ghost's documentation https://ghost.org/docs/themes/content/ 
@@ -1379,6 +1404,117 @@ class GhostCMSHelper {
 
 			$callout->outertext = serialize_blocks( [ $block ] );
 		}
+
+		$this->log(
+			sprintf( 'Replaced %d callout cards in Ghost ID %d.', count( $callouts ), $ghost_id ),
+			LogLevel::INFO
+		);
+
+		return (string) $doc;
+	}
+
+	/**
+	 * Replace Ghost's "Koenig editor" galleries with Gutenberg galleries, and logs the updates.
+	 * 
+	 * Koenig editor gallery structure:
+	 *   - parent `figure` with classes "kg-card kg-gallery-card" (optionally "kg-width-wide" or "kg-width-full", and "kg-card-hascaption" if caption present)
+	 *   - child of `figure.kg-gallery-card` -- `div` with class "kg-gallery-container"
+	 *   - children of `div.kg-gallery-container` -- multiple rows `div` with class "kg-gallery-row"
+	 *   - children of `div.kg-gallery-row` -- multiple images per row `div` with class "kg-gallery-image"
+	 *   - child of `div.kg-gallery-image` -- `img` (with attributes: src, width, height, loading="lazy", srcset, sizes)
+	 *   - child of `figure.kg-gallery-card`, sibling to `div.kg-gallery-container` -- `figcaption` (only present when kg-card-hascaption class exists)
+	 * 
+	 * There are no captions per images, just a single optional caption for the entire gallery.
+	 * 
+	 * The Koenig editor gallery looks like a tile grid, so we'll use the Jetpack Tiled Gallery block, however the Jetpack Tiled Gallery block generator
+	 * doesn't always produce the correct CSS layout, because it's computed in frontend, so a QA is always advised after the replacement,
+	 * which is why a warning is logged.
+	 * 
+	 * @param string $content Content to replace galleries in.
+	 * @param string $ghost_id Ghost ID of the content.
+	 * 
+	 * @return string Processed content.
+	 */
+	public function replace_galleries( string $content, string $ghost_id ): string {
+		// Find all kg-gallery-card figures.
+		$doc       = new HtmlDocument( $content );
+		$galleries = $doc->find( 'figure.kg-gallery-card' );
+		if ( empty( $galleries ) ) {
+			return $content;
+		}
+
+		/** @var GutenbergBlockGenerator $block_generator */
+		$block_generator = new GutenbergBlockGenerator();
+
+		foreach ( $galleries as $gallery ) {
+			// Find all images within this gallery.
+			$images         = $gallery->find( 'div.kg-gallery-image img' );
+			$attachment_ids = [];
+
+			foreach ( $images as $img ) {
+				$src = $img->getAttribute( 'src' );
+				if ( empty( $src ) ) {
+					continue;
+				}
+
+				// Get WP attachment ID from the image URL.
+				$attachment_id = attachment_url_to_postid( $src ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.attachment_url_to_postid_attachment_url_to_postid.
+				if ( ! $attachment_id ) {
+					// Try by filename as fallback.
+					$filename      = basename( wp_parse_url( $src, PHP_URL_PATH ) );
+					$attachment_id = Attachments::get_attachment_id_by_filename( $filename );
+				}
+
+				if ( $attachment_id > 0 ) {
+					$attachment_ids[] = $attachment_id;
+				} else {
+					$this->log(
+						sprintf( 'Image attachment with URL %s not found for gallery in Ghost ID %s.', $src, $ghost_id ),
+						LogLevel::ERROR
+					);
+				}
+			}
+
+			// Skip if no valid attachments found.
+			if ( empty( $attachment_ids ) ) {
+				$this->log(
+					sprintf( 'No valid attachments found for gallery in Ghost ID %s.', $ghost_id ),
+					LogLevel::WARNING
+				);
+				continue;
+			}
+
+			// Check for optional gallery caption (this is not per-image, just a single caption for the entire gallery, like "Photos by John Doe").
+			$caption    = '';
+			$figcaption = $gallery->find( 'figcaption', 0 );
+			if ( $figcaption ) {
+				$caption = trim( $figcaption->innertext );
+			}
+
+			// Generate Jetpack Tiled Gallery block.
+			$gallery_block = $block_generator->get_jetpack_tiled_gallery( $attachment_ids, 'media' );
+			$replacement   = serialize_blocks( [ $gallery_block ] );
+
+			// If gallerycaption exists, append it as a centered italic paragraph.
+			if ( ! empty( $caption ) ) {
+				$caption_block = $block_generator->get_paragraph(
+					'<em>' . $caption . '</em>',
+					'',
+					'',
+					'',
+					[ 'has-text-align-center' ],
+					[ 'align' => 'center' ]
+				);
+				$replacement  .= serialize_blocks( [ $caption_block ] );
+			}
+
+			$gallery->outertext = $replacement;
+		}
+
+		$this->log(
+			sprintf( 'Replaced %d galleries in Ghost ID %d.', count( $galleries ), $ghost_id ),
+			LogLevel::INFO
+		);
 
 		return (string) $doc;
 	}
