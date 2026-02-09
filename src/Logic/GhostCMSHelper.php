@@ -97,11 +97,11 @@ class GhostCMSHelper {
 	private ?object $data = null;
 
 	/**
-	 * Log slug.
+	 * Log slug. If empty, logging is disabled (useful for unit tests).
 	 *
 	 * @var string $log_slug
 	 */
-	private string $log_slug;
+	private string $log_slug = '';
 
 	/**
 	 * Lookup to convert json tags to wp categories.
@@ -127,6 +127,15 @@ class GhostCMSHelper {
 	}
 
 	/**
+	 * Set log slug.
+	 * 
+	 * @param string $log_slug Log slug.
+	 */
+	public function set_log_slug( string $log_slug ): void {
+		$this->log_slug = $log_slug;
+	}
+
+	/**
 	 * Import GhostCMS Content from JSON file.
 	 * 
 	 * @param array  $pos_args Positional arguments.
@@ -136,7 +145,7 @@ class GhostCMSHelper {
 	public function ghostcms_import( array $pos_args, array $assoc_args, string $log_slug ): void {
 
 		// Set log slug from args.
-		$this->log_slug = $log_slug;
+		$this->set_log_slug( $log_slug );
 
 		// Validate dependencies.
 		$validate_cap = UsersHelper::validate_co_authors_plus();
@@ -351,7 +360,7 @@ class GhostCMSHelper {
 		global $wpdb;
 
 		// Init logger usage in this class.
-		$this->log_slug = $log_slug;
+		$this->set_log_slug( $log_slug );
 		
 		// Prepare output file.
 		$output_file = 'ghost_kg_elements.jsonl';
@@ -897,6 +906,11 @@ class GhostCMSHelper {
 	 * @return void
 	 */
 	private function log( string $message, string $level = 'debug', bool $exit_on_error = false ): void {
+		// Skip logging if log_slug is not set (e.g., in unit tests).
+		if ( empty( $this->log_slug ) ) {
+			return;
+		}
+
 		$logger = MultiLog::get_cli_and_file_logger( $this->log_slug );
 
 		try {
