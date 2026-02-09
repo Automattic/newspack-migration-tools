@@ -1521,17 +1521,20 @@ class GhostCMSHelper {
 			$gallery_block = $block_generator->get_jetpack_tiled_gallery( $attachment_ids, 'media' );
 			$replacement   = serialize_blocks( [ $gallery_block ] );
 
-			// If gallerycaption exists, append it as a centered italic paragraph.
+			// If gallery caption exists, append it as a centered italic paragraph.
 			if ( ! empty( $caption ) ) {
-				$caption_block = $block_generator->get_paragraph(
-					'<em>' . $caption . '</em>',
-					'',
-					'',
-					'',
-					[ 'has-text-align-center' ],
-					[ 'align' => 'center' ]
-				);
-				$replacement  .= serialize_blocks( [ $caption_block ] );
+				// Strip HTML tags from caption (Ghost may include <p><span>...</span></p>).
+				$caption_text = wp_strip_all_tags( $caption );
+				// Build caption block manually since get_paragraph couples className attr with <p> class,
+				// but for alignment we need class="has-text-align-center" on <p> without className in attrs.
+				$caption_block = [
+					'blockName'    => 'core/paragraph',
+					'attrs'        => [ 'align' => 'center' ],
+					'innerBlocks'  => [],
+					'innerHTML'    => '<p class="has-text-align-center"><em>' . $caption_text . '</em></p>',
+					'innerContent' => [ '<p class="has-text-align-center"><em>' . $caption_text . '</em></p>' ],
+				];
+				$replacement  .= "\n" . serialize_blocks( [ $caption_block ] );
 			}
 
 			$gallery->outertext = $replacement;
@@ -1540,6 +1543,10 @@ class GhostCMSHelper {
 		$this->log(
 			sprintf( 'Replaced %d galleries in Ghost ID %d.', count( $galleries ), $ghost_id ),
 			LogLevel::INFO
+		);
+		$this->log(
+			sprintf( 'QA is advised of Jetpack Tiled Galleries used in Ghost ID %s -- gallery layout may not be correct until refreshed in frontend/Gutenberg editor.', $ghost_id ),
+			LogLevel::WARNING
 		);
 
 		return (string) $doc;
