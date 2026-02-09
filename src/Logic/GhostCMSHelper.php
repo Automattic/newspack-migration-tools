@@ -1211,7 +1211,7 @@ class GhostCMSHelper {
 		}
 
 		$this->log(
-			sprintf( 'Replaced %d video embeds in Ghost ID %d.', count( $video_containers ), $ghost_id ),
+			sprintf( 'Replaced %d video embeds in Ghost ID %s.', count( $video_containers ), $ghost_id ),
 			LogLevel::INFO
 		);
 
@@ -1260,7 +1260,7 @@ class GhostCMSHelper {
 		}
 
 		$this->log(
-			sprintf( 'Replaced %d audio embeds in Ghost ID %d.', count( $audio_containers ), $ghost_id ),
+			sprintf( 'Replaced %d audio embeds in Ghost ID %s.', count( $audio_containers ), $ghost_id ),
 			LogLevel::INFO
 		);
 
@@ -1305,7 +1305,7 @@ class GhostCMSHelper {
 		}
 
 		$this->log(
-			sprintf( 'Replaced %d blockquotes in Ghost ID %d.', count( $blockquotes ), $ghost_id ),
+			sprintf( 'Replaced %d blockquotes in Ghost ID %s.', count( $blockquotes ), $ghost_id ),
 			LogLevel::INFO
 		);
 
@@ -1418,7 +1418,7 @@ class GhostCMSHelper {
 		}
 
 		$this->log(
-			sprintf( 'Replaced %d callout cards in Ghost ID %d.', count( $callouts ), $ghost_id ),
+			sprintf( 'Replaced %d callout cards in Ghost ID %s.', count( $callouts ), $ghost_id ),
 			LogLevel::INFO
 		);
 
@@ -1539,7 +1539,7 @@ class GhostCMSHelper {
 		}
 
 		$this->log(
-			sprintf( 'Replaced %d galleries in Ghost ID %d.', count( $galleries ), $ghost_id ),
+			sprintf( 'Replaced %d galleries in Ghost ID %s.', count( $galleries ), $ghost_id ),
 			LogLevel::INFO
 		);
 		$this->log(
