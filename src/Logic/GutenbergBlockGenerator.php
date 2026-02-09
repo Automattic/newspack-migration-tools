@@ -582,9 +582,15 @@ AUDIO;
 		if ( ! empty( $inline_styles ) ) {
 			$style_parts = [];
 			foreach ( $inline_styles as $property => $value ) {
-				$style_parts[] = $property . ':' . $value;
+				$sanitized_property = sanitize_key( $property );
+				if ( '' === $sanitized_property ) {
+					continue;
+				}
+				$style_parts[] = $sanitized_property . ':' . $value;
 			}
-			$style_attribute = ' style="' . implode( ';', $style_parts ) . '"';
+			if ( ! empty( $style_parts ) ) {
+				$style_attribute = ' style="' . esc_attr( implode( ';', $style_parts ) ) . '"';
+			}
 		}
 
 		$anchor_attribute = ! empty( $anchor ) ? ' id="' . $anchor . '"' : '';
