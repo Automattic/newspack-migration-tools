@@ -574,8 +574,10 @@ class Attachments {
 	/**
 	 * Find an attachment by its filename.
 	 *
+	 * @deprecated Use get_attachment_id_by_filename() instead, which has proper LIKE escaping and typed return.
+	 *
 	 * @param string $filename The filename.
-	 * @return int The attachment ID.
+	 * @return int|null The attachment ID or null if not found.
 	 */
 	public static function get_attachment_by_filename( $filename ) {
 		global $wpdb;
