@@ -2,6 +2,7 @@
 
 namespace Newspack\MigrationTools\Tests\Logic;
 
+use Newspack\MigrationTools\Tests\Logic\TestableGhostCMSHelper;
 use Newspack\Guest_Contributor_Role;
 use Newspack\MigrationTools\Logic\GhostCMSHelper;
 use Newspack\MigrationTools\Logic\GutenbergBlockGenerator;
@@ -812,6 +813,194 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$expected = '<p>Before paragraph</p>' . serialize_blocks( [ $block_generator->get_paragraph( '💡 A note' ) ] ) . '<p>After paragraph</p>';
 
 		$result = $helper->replace_callout_cards( $input, '123' );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test content without galleries returns unchanged.
+	 *
+	 * @return void
+	 */
+	public function test_replace_galleries_no_galleries_returns_unchanged(): void {
+		$helper = new GhostCMSHelper();
+
+		$input = 'Before txt <p>Some paragraph</p> After txt';
+
+		$result = $helper->replace_galleries( $input, '123' );
+
+		$this->assertSame( $input, $result );
+	}
+
+	/**
+	 * Test gallery with no images is skipped (returns unchanged).
+	 *
+	 * @return void
+	 */
+	public function test_replace_galleries_empty_gallery_skipped(): void {
+		$helper = new GhostCMSHelper();
+
+		$input = 'Before txt <figure class="kg-card kg-gallery-card"><div class="kg-gallery-container"><div class="kg-gallery-row"></div></div></figure> After txt';
+
+		$result = $helper->replace_galleries( $input, '123' );
+
+		$this->assertSame( $input, $result );
+	}
+
+	/**
+	 * Test gallery images without src attribute are ignored.
+	 *
+	 * @return void
+	 */
+	public function test_replace_galleries_images_without_src_skipped(): void {
+		$helper = new GhostCMSHelper();
+
+		$input = 'Before txt <figure class="kg-card kg-gallery-card"><div class="kg-gallery-container"><div class="kg-gallery-row"><div class="kg-gallery-image"><img></div></div></div></figure> After txt';
+
+		$result = $helper->replace_galleries( $input, '123' );
+
+		// Gallery with images that have no src should be skipped.
+		$this->assertSame( $input, $result );
+	}
+
+	/**
+	 * Test gallery where no attachments resolve returns unchanged.
+	 *
+	 * @return void
+	 */
+	public function test_replace_galleries_unresolved_attachments_skipped(): void {
+		$helper = new TestableGhostCMSHelper();
+		// Empty map means no URLs will resolve to attachment IDs.
+		$helper->set_attachment_map( [] );
+
+		$input = 'Before txt <figure class="kg-card kg-gallery-card"><div class="kg-gallery-container"><div class="kg-gallery-row"><div class="kg-gallery-image"><img src="https://example.com/image1.jpg"></div></div></div></figure> After txt';
+
+		$result = $helper->replace_galleries( $input, '123' );
+
+		// Gallery with no resolved attachments should be skipped.
+		$this->assertSame( $input, $result );
+	}
+
+	/**
+	 * Test basic gallery replacement with mock attachments.
+	 *
+	 * @return void
+	 */
+	public function test_replace_galleries_basic_replacement(): void {
+		// Create real attachment using the factory.
+		$attachment_id = $this->factory()->attachment->create_upload_object( __DIR__ . '/../fixtures/koi.jpg' );
+
+		$helper = new TestableGhostCMSHelper();
+		$helper->set_attachment_map(
+			[
+				'https://example.com/image1.jpg' => $attachment_id,
+			] 
+		);
+
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input    = '<figure class="kg-card kg-gallery-card"><div class="kg-gallery-container"><div class="kg-gallery-row"><div class="kg-gallery-image"><img src="https://example.com/image1.jpg"></div></div></div></figure>';
+		$expected = serialize_blocks( [ $block_generator->get_jetpack_tiled_gallery( [ $attachment_id ], 'media' ) ] );
+
+		$result = $helper->replace_galleries( $input, '123' );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test gallery with caption appends centered italic paragraph.
+	 *
+	 * @return void
+	 */
+	public function test_replace_galleries_with_caption(): void {
+		// Create real attachment using the factory.
+		$attachment_id = $this->factory()->attachment->create_upload_object( __DIR__ . '/../fixtures/koi.jpg' );
+
+		$helper = new TestableGhostCMSHelper();
+		$helper->set_attachment_map(
+			[
+				'https://example.com/image1.jpg' => $attachment_id,
+			] 
+		);
+
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input = '<figure class="kg-card kg-gallery-card kg-card-hascaption"><div class="kg-gallery-container"><div class="kg-gallery-row"><div class="kg-gallery-image"><img src="https://example.com/image1.jpg"></div></div></div><figcaption>Photos by John Doe</figcaption></figure>';
+
+		// Build expected output: gallery block + caption paragraph.
+		$gallery_block = $block_generator->get_jetpack_tiled_gallery( [ $attachment_id ], 'media' );
+		$caption_block = $block_generator->get_paragraph(
+			'<em>Photos by John Doe</em>',
+			'',
+			'',
+			'',
+			[ 'has-text-align-center' ],
+			[ 'align' => 'center' ]
+		);
+		$expected      = serialize_blocks( [ $gallery_block ] ) . serialize_blocks( [ $caption_block ] );
+
+		$result = $helper->replace_galleries( $input, '123' );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test multiple galleries in content are all processed.
+	 *
+	 * @return void
+	 */
+	public function test_replace_galleries_multiple_galleries(): void {
+		// Create real attachments using the factory.
+		$attachment_id_1 = $this->factory()->attachment->create_upload_object( __DIR__ . '/../fixtures/koi.jpg' );
+		$attachment_id_2 = $this->factory()->attachment->create_upload_object( __DIR__ . '/../fixtures/koi.jpg' );
+
+		$helper = new TestableGhostCMSHelper();
+		$helper->set_attachment_map(
+			[
+				'https://example.com/image1.jpg' => $attachment_id_1,
+				'https://example.com/image2.jpg' => $attachment_id_2,
+			] 
+		);
+
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input = 'First <figure class="kg-card kg-gallery-card"><div class="kg-gallery-container"><div class="kg-gallery-row"><div class="kg-gallery-image"><img src="https://example.com/image1.jpg"></div></div></div></figure> Middle <figure class="kg-card kg-gallery-card"><div class="kg-gallery-container"><div class="kg-gallery-row"><div class="kg-gallery-image"><img src="https://example.com/image2.jpg"></div></div></div></figure> Last';
+
+		// Build expected output.
+		$gallery_block_1 = serialize_blocks( [ $block_generator->get_jetpack_tiled_gallery( [ $attachment_id_1 ], 'media' ) ] );
+		$gallery_block_2 = serialize_blocks( [ $block_generator->get_jetpack_tiled_gallery( [ $attachment_id_2 ], 'media' ) ] );
+		// Note: HTML parser normalizes whitespace between block elements.
+		$expected = 'First ' . $gallery_block_1 . ' Middle ' . $gallery_block_2 . ' Last';
+
+		$result = $helper->replace_galleries( $input, '123' );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test gallery replacement preserves surrounding content.
+	 *
+	 * @return void
+	 */
+	public function test_replace_galleries_preserves_surrounding_content(): void {
+		// Create real attachment using the factory.
+		$attachment_id = $this->factory()->attachment->create_upload_object( __DIR__ . '/../fixtures/koi.jpg' );
+
+		$helper = new TestableGhostCMSHelper();
+		$helper->set_attachment_map(
+			[
+				'https://example.com/image1.jpg' => $attachment_id,
+			] 
+		);
+
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input = '<p>Before paragraph</p> <figure class="kg-card kg-gallery-card"><div class="kg-gallery-container"><div class="kg-gallery-row"><div class="kg-gallery-image"><img src="https://example.com/image1.jpg"></div></div></div></figure> <p>After paragraph</p>';
+
+		// Note: HTML parser normalizes whitespace between block elements (same as video/audio/blockquote tests).
+		$expected = '<p>Before paragraph</p>' . serialize_blocks( [ $block_generator->get_jetpack_tiled_gallery( [ $attachment_id ], 'media' ) ] ) . '<p>After paragraph</p>';
+
+		$result = $helper->replace_galleries( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
