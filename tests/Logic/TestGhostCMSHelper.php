@@ -929,15 +929,15 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		// Build expected output: gallery block + caption paragraph.
 		$gallery_block = $block_generator->get_jetpack_tiled_gallery( [ $attachment_id ], 'media' );
-		$caption_block = $block_generator->get_paragraph(
-			'<em>Photos by John Doe</em>',
-			'',
-			'',
-			'',
-			[ 'has-text-align-center' ],
-			[ 'align' => 'center' ]
-		);
-		$expected      = serialize_blocks( [ $gallery_block ] ) . serialize_blocks( [ $caption_block ] );
+		// Caption block is built manually in the implementation to avoid className attr coupling.
+		$caption_block = [
+			'blockName'    => 'core/paragraph',
+			'attrs'        => [ 'align' => 'center' ],
+			'innerBlocks'  => [],
+			'innerHTML'    => '<p class="has-text-align-center"><em>Photos by John Doe</em></p>',
+			'innerContent' => [ '<p class="has-text-align-center"><em>Photos by John Doe</em></p>' ],
+		];
+		$expected      = serialize_blocks( [ $gallery_block ] ) . "\n" . serialize_blocks( [ $caption_block ] );
 
 		$result = $helper->replace_galleries( $input, '123' );
 
