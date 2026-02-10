@@ -31,14 +31,13 @@ use WP_User;
 class GhostCMSHelper {
 
 	/**
-	 * Ghost Koenig editor kg-* elements which are intentionally approved and accepted in post_content as-is after import,
-	 * because they render well enough in WordPress without any transformation. These elements will be skipped by
-	 * check_imported_posts_for_custom_html_content() so they don't show up as "unfamiliar/unhandled".
+	 * List of approved HTML custom content elements from Ghost Koenig editor which render well enough in WordPress without any transformation.
+	 * These elements will be skipped by the check_imported_posts_for_custom_html_content() so they don't show up as "unfamiliar/unhandled".
 	 * 
-	 * Do NOT add elements here that are transformed/removed during import (e.g. kg-video-container, kg-audio-card),
-	 * those should no longer exist in post_content, and detecting them is important to catch transformer bugs.
+	 * Do NOT add here elements that are transformed or removed by custom content transformers during import (e.g. kg-video-container, kg-audio-card),
+	 * those should be transformed during the import and no longer exist in post_content, so detecting them is important to catch any transformer bugs.
 	 * 
-	 * @var array ACCEPTED_KG_ELEMENTS List of accepted kg-* elements which are kept in post_content without any transformation.
+	 * @var array ACCEPTED_KG_ELEMENTS List of elements with "kg-*" classes which are kept in post_content without any transformation/replacement.
 	 *   - html_element: the HTML tag name of the element.
 	 *   - kg_classes: one or more kg-* classes which identify the element.
 	 */
@@ -95,11 +94,11 @@ class GhostCMSHelper {
 	private ?object $data = null;
 
 	/**
-	 * Log slug. If empty, logging is disabled (useful for unit tests).
+	 * Log slug. If left empty, logging is disabled (test-environment friendly).
 	 *
 	 * @var string $log_slug
 	 */
-	private string $log_slug = '';
+	private string $log_slug;
 
 	/**
 	 * Lookup to convert json tags to wp categories.
