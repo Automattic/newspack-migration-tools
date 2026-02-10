@@ -365,6 +365,11 @@ class GhostCMSHelper {
 		if ( file_exists( $output_file ) ) {
 			unlink( $output_file ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink.
 		}
+		$file_handle = fopen( $output_file, 'w' ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fopen.
+		if ( false === $file_handle ) {
+			$this->log( sprintf( 'Failed to open file "%s" for writing -- check file permissions and try running the custom Ghost content check command again.', $output_file ), LogLevel::ERROR );
+			return;
+		}
 
 		/**
 		 * Check all published posts migrated from Ghost for custom Ghost editor HTML content -- HTML elements with "kg-*" classes.
@@ -454,21 +459,16 @@ class GhostCMSHelper {
 		/**
 		 * Write results to JSONL file.
 		 */
-		$file_handle = fopen( $output_file, 'w' ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fopen.
-		if ( false === $file_handle ) {
-			$this->log( sprintf( 'Failed to open file "%s" for writing.', $output_file ), LogLevel::ERROR );
-		} else {
-			foreach ( $elements as $element_data ) {
-				$data = [
-					'html_element'           => $element_data['html_element'],
-					'kg_classes'             => $element_data['kg_classes'],
-					'first_example_full_tag' => $element_data['first_example_full_tag'],
-					'post_ids'               => $element_data['post_ids'],
-				];
-				fwrite( $file_handle, wp_json_encode( $data ) . PHP_EOL ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fwrite.
-			}
-			fclose( $file_handle ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fclose.
+		foreach ( $elements as $element_data ) {
+			$data = [
+				'html_element'           => $element_data['html_element'],
+				'kg_classes'             => $element_data['kg_classes'],
+				'first_example_full_tag' => $element_data['first_example_full_tag'],
+				'post_ids'               => $element_data['post_ids'],
+			];
+			fwrite( $file_handle, wp_json_encode( $data ) . PHP_EOL ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fwrite.
 		}
+		fclose( $file_handle ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fclose.
 
 		/**
 		 * Log summary.
@@ -477,7 +477,7 @@ class GhostCMSHelper {
 			$this->log( sprintf( 'Failed to parse %d posts: %s', count( $failed_posts ), implode( ', ', $failed_posts ) ), LogLevel::ERROR );
 		}
 		if ( ! empty( $elements ) ) {
-			$this->log( sprintf( "Found %d unfamiliar/unhandled 'kg-*' elements in total %d posts. Their tags and the post IDs where they appear are saved to %s. Please QA these findings: if they display correctly/well enough in WP frontend/backend, simply add them to ACCEPTED_KG_ELEMENTS constant in GhostCMSHelper; if they don't, write fixers/transformers for them.", count( $elements ), count( $post_ids ), $output_file ), LogLevel::WARNING );
+			$this->log( sprintf( "Found %d unfamiliar/unhandled 'kg-*' elements in total %d posts, full list was saved to %s. Please QA these findings: if they display correctly/well enough in WP frontend/backend, simply add them to ACCEPTED_KG_ELEMENTS constant in GhostCMSHelper; if they don't, write fixers/transformers for them.", count( $elements ), count( $post_ids ), $output_file ), LogLevel::WARNING );
 		} else {
 			$this->log( sprintf( "No unfamiliar/unhandled 'kg-*' elements found in total %d posts.", count( $post_ids ) ), LogLevel::INFO );
 		}
