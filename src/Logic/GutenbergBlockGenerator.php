@@ -535,12 +535,19 @@ AUDIO;
 	/**
 	 * Generate a Paragraph Block.
 	 * 
-	 * Example usage — for a paragraph with custom background and text color:
-	 *   get_paragraph( 'Text content', '', '', '', [ 'has-background', 'has-text-color' ],
-	 *     [ 'style' => [ 'color' => [ 'background' => '#E3F2FD', 'text' => '#333333' ] ] ],
-	 *     [ 'background-color' => '#E3F2FD', 'color' => '#333333' ]
-	 *   )
-	 *   Produces:
+	 * Backgound and text color usage $inline_styles and:
+	 *   $block = get_paragraph(
+	 *      'Text content',
+	 *      '',
+	 *      '',
+	 *      '',
+	 *      [ 'has-background', 'has-text-color' ], // Additional CSS classes to <p> and Block.
+	 *      [ 'style' => [ 'color' => [ 'background' => '#E3F2FD', 'text' => '#333333' ] ] ], // Inline styles as key-value pairs added to the `<p>` element's `style` attribute.
+	 *      [ 'background-color' => '#E3F2FD', 'color' => '#333333' ] // Inline styles as key-value pairs added to the `<p>` element's `style` attribute.
+	 *   );
+	 * 
+	 * 
+	 *   Produces, after serialization:
 	 *   ```
 	 *     <!-- wp:paragraph {"style":{"color":{"background":"#E3F2FD","text":"#333333"}}} -->
 	 *     <p class="has-background has-text-color" style="background-color:#E3F2FD;color:#333333">Hello</p>
