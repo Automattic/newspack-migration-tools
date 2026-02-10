@@ -30,7 +30,7 @@ class JsonIterator {
 	 *
 	 * @param FileLog|null $file_logger Optional File logger instance.
 	 */
-	public function __construct( FileLog $file_logger = null ) {
+	public function __construct( ?FileLog $file_logger = null ) {
 		if ( ! $file_logger ) {
 			$file_logger = FileLog::get_logger( 'JsonIterator', 'json-iterator.log' );
 		}
@@ -101,8 +101,49 @@ class JsonIterator {
 
 		try {
 			return Items::fromFile( $json_file, $options );
-		} catch ( Exception $o_0 ) {
-			NMT::exit_with_message( sprintf( 'Could not read the JSON from: %s', $json_file ), [ $this->file_logger ] );
+		} catch ( Exception $e ) {
+			NMT::exit_with_message( sprintf( 'Could not read the JSON from "%s": %s', $json_file, $e->getMessage() ), [ $this->file_logger ] );
+		}
+
+		return new \EmptyIterator();
+	}
+
+	/**
+	 * Will read a JSON file and return an iterable of objects from the JSON, filtered by a key and value.
+	 *
+	 * @param string            $json_file Path to the JSON file – can be a URL too.
+	 * @param string            $key       The key to filter by.
+	 * @param string|array|null $value The value to filter by.
+	 *
+	 * @return iterable
+	 */
+	public function filtered_items( string $json_file, string $key, string|array|null $value = null ): iterable {
+		$file_exists = str_starts_with( $json_file, 'http' ) ? $this->url_responds( $json_file ) : file_exists( $json_file );
+
+		if ( ! $file_exists ) {
+			NMT::exit_with_message( sprintf( 'File does not exist: %s', $json_file ), [ $this->file_logger ] );
+			return new \EmptyIterator();
+		}
+
+		try {
+			$items = Items::fromFile( $json_file );
+			foreach ( $items as $item ) {
+				// If value is null, only check if the key exists.
+				if ( null === $value ) {
+					if ( isset( $item->$key ) ) {
+						yield $item;
+					}
+				} elseif ( is_array( $value ) ) {
+					if ( isset( $item->$key ) && in_array( $item->$key, $value ) ) {
+						yield $item;
+					}
+				} elseif ( isset( $item->$key ) && $item->$key === $value ) {
+					// If value is set, check both key existence and value equality
+					yield $item;
+				}
+			}
+		} catch ( Exception $e ) {
+			NMT::exit_with_message( sprintf( 'Could not read the JSON from "%s": %s', $json_file, $e->getMessage() ), [ $this->file_logger ] );
 		}
 
 		return new \EmptyIterator();
@@ -123,7 +164,7 @@ class JsonIterator {
 		if ( file_exists( $json_file_path ) ) {
 			// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.system_calls_exec
 			exec( 'cat ' . escapeshellarg( $json_file_path ) . " | jq 'length'", $count );
-			if ( ! empty( $count[0] ) ) {
+			if ( isset( $count[0] ) ) {
 				return (int) $count[0];
 			}
 		}

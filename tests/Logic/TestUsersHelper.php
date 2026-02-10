@@ -157,4 +157,177 @@ class TestUsersHelper extends WP_UnitTestCase {
 		$should_also_be_shorter_and_different = UsersHelper::get_unused_nicename( $long_nicename );
 		$this->assertTrue( strlen( $should_also_be_shorter_and_different ) <= $max_length );
 	}
+
+	/**
+	 * Test that ensures that create_or_get_user only looks for users by their unique identifier, not by email, login, or nicename.
+	 */
+	public function test_create_or_get_user_only_looks_by_unique_identifier() {
+		// Create a user with a specific unique identifier
+		$user_data = [
+			'user_email'   => 'test@example.com',
+			'user_login'   => 'testuser',
+			'display_name' => 'Test User',
+		];
+		$unique_id = 'unique-123';
+
+		$user1 = UsersHelper::create_or_get_user( $user_data, $unique_id );
+		$this->assertInstanceOf( 'WP_User', $user1 );
+		$this->assertEquals( 'test@example.com', $user1->user_email );
+		$this->assertEquals( 'testuser', $user1->user_login );
+
+		// Test 1: Try to get the same user with the same unique identifier (should succeed)
+		$user2 = UsersHelper::create_or_get_user( $user_data, $unique_id );
+		$this->assertEquals( $user1->ID, $user2->ID );
+		$this->assertEquals( $user1->user_email, $user2->user_email );
+
+		// Test 2: Try to get a user with the same email but different unique identifier (should create new user)
+		$different_unique_id = 'unique-456';
+		$user3               = UsersHelper::create_or_get_user( $user_data, $different_unique_id );
+		$this->assertNotEquals( $user1->ID, $user3->ID );
+		$this->assertNotEquals( $user1->user_email, $user3->user_email ); // Should have different email due to conflict resolution
+
+		// Test 3: Try to get a user with the same login but different unique identifier (should create new user)
+		$user_data_same_login = [
+			'user_login'   => 'testuser',
+			'display_name' => 'Another Test User',
+		];
+		$another_unique_id    = 'unique-789';
+		$user4                = UsersHelper::create_or_get_user( $user_data_same_login, $another_unique_id );
+		$this->assertNotEquals( $user1->ID, $user4->ID );
+		$this->assertNotEquals( $user1->user_login, $user4->user_login ); // Should have different login due to conflict resolution
+
+		// Test 4: Verify that all users have their respective unique identifiers
+		$this->assertEquals( $unique_id, get_user_meta( $user1->ID, UsersHelper::UNIQUE_IDENTIFIER_META_KEY, true ) );
+		$this->assertEquals( $different_unique_id, get_user_meta( $user3->ID, UsersHelper::UNIQUE_IDENTIFIER_META_KEY, true ) );
+		$this->assertEquals( $another_unique_id, get_user_meta( $user4->ID, UsersHelper::UNIQUE_IDENTIFIER_META_KEY, true ) );
+
+		// Test 5: Try to get a user with completely different data but same unique identifier (should return existing user)
+		$different_data = [
+			'user_email'   => 'different@example.com',
+			'user_login'   => 'differentuser',
+			'display_name' => 'Different User',
+		];
+		$user5          = UsersHelper::create_or_get_user( $different_data, $unique_id );
+		$this->assertEquals( $user1->ID, $user5->ID );
+		$this->assertEquals( $user1->user_email, $user5->user_email ); // Should return original user, not create new one
+	}
+
+	public function test_assign_authors_to_post() {
+
+		$post_id = wp_insert_post(
+			[
+				'post_title' => 'Test Post',
+			]
+		);
+
+		$user = UsersHelper::create_or_get_user(
+			[
+				'user_login' => 'test_user_login',
+			],
+			wp_rand()
+		);
+
+		$success_single = UsersHelper::assign_authors_to_post( $post_id, [ $user->ID ] );
+		$this->assertTrue( $success_single );
+		
+		$success_mulitple = UsersHelper::assign_authors_to_post( $post_id, [ $user->ID, $this->peter_parker_id ] );
+		$this->assertTrue( $success_mulitple );
+
+		$failure_empty = UsersHelper::assign_authors_to_post( $post_id, [] );
+		$this->assertInstanceOf( \WP_Error::class, $failure_empty );
+		$this->assertEquals( 'ERROR_ASSIGN_CONTRIBUTORS', $failure_empty->get_error_code() );
+	}
+
+	/**
+	 * Data provider for display name tests.
+	 */
+	public function data_provider_display_name_tests() {
+		// name => input, expected
+		return [
+			'empty'      => [ '', '' ],
+			'trim'       => [ ' ', '' ], // single space
+			'ascii'      => [ 'John Smith', 'John Smith' ],
+			'email'      => [ 'someone@example.com', 'someone' ],
+			'name-email' => [ 'Joan - Reporter, someone@example.com', 'Joan - Reporter, someone' ],
+			'unicode-1'  => [ 'Café 😀', 'Café 😀' ], // unicode chars.
+			'unicode-2'  => [ 'Café 😀 @ Café 😀', 'Café 😀' ], // unicode chars with "@".
+			'limit'      => [ str_repeat( 'a', 251 ), str_repeat( 'a', 250 ) ], // over db column max.
+		];
+	}
+
+	/**
+	 * Test that sanitize_display_name works as expected.
+	 *
+	 * @dataProvider data_provider_display_name_tests
+	 */
+	public function test_sanitize_display_name( $input, $expected ) {
+		$result = UsersHelper::sanitize_display_name( $input );
+		$this->assertEquals( $result, $expected );
+	}
+
+	/**
+	 * Test create users by display name.
+	 */
+	public function test_create_or_get_user_by_display_name() {
+
+		$provider = $this->data_provider_display_name_tests();
+
+		// Blank string causes an exception.
+		// Don't use $this->expectException() with multiple tests in same function, since it exits early
+		// upon first test "passed" - this no further code will run.  Using try/catch will allow multiple tests
+		// in same function to run.  Note: $this->fail() will also stop further execution but only if a failure
+		// happens - which someone will need to fix.  There will not be "false positives".
+		try {
+			$data = [
+				'display_name' => $provider['empty'][0],
+			];
+			$user = UsersHelper::create_or_get_user( $data, wp_rand() );
+			$this->fail( 'Expected Exception was not thrown. (Note: further tests below also stopped until this is fixed).' );
+		} catch ( \InvalidArgumentException $e ) {
+			// Exception was thrown, as expected - continue on to further tests below.
+			$this->assertStringContainsString( 'Data array is missing one or more of the vital fields', $e->getMessage() );
+		}
+		
+		// Plain ascii.
+		$data = [
+			'display_name' => $provider['ascii'][0],
+		];
+		$user = UsersHelper::create_or_get_user( $data, wp_rand() );
+		$this->assertInstanceOf( 'WP_User', $user );
+		$this->assertEquals( $user->display_name, $provider['ascii'][1] );
+
+		// Email.
+		$data = [
+			'display_name' => $provider['email'][0],
+		];
+		$user = UsersHelper::create_or_get_user( $data, wp_rand() );
+		$this->assertInstanceOf( 'WP_User', $user );
+		$this->assertEquals( $user->display_name, $provider['email'][1] );
+		$this->assertEquals( $user->user_nicename, 'someone' ); // user_nicename must not use email address (Bad: someoneexample-com).
+
+		// Name and email.
+		$data = [
+			'display_name' => $provider['name-email'][0],
+		];
+		$user = UsersHelper::create_or_get_user( $data, wp_rand() );
+		$this->assertInstanceOf( 'WP_User', $user );
+		$this->assertEquals( $user->display_name, $provider['name-email'][1] );
+		$this->assertEquals( $user->user_nicename, 'joan-reporter-someone' ); // user_nicename must not use email address (Bad: someoneexample-com).
+		
+		// Unicode.
+		$data = [
+			'display_name' => $provider['unicode-2'][0],
+		];
+		$user = UsersHelper::create_or_get_user( $data, wp_rand() );
+		$this->assertInstanceOf( 'WP_User', $user );
+		$this->assertEquals( $user->display_name, $provider['unicode-2'][1] );
+
+		// Over char limit.
+		$data = [
+			'display_name' => $provider['limit'][0],
+		];
+		$user = UsersHelper::create_or_get_user( $data, wp_rand() );
+		$this->assertInstanceOf( 'WP_User', $user );
+		$this->assertEquals( $user->display_name, $provider['limit'][1] );
+	}
 }

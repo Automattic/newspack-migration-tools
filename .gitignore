@@ -1,3 +1,8 @@
+.env
+.env.*
+.env.local
+.env.*.local
+
 # Editors
 project.xml
 project.properties
@@ -29,3 +34,5 @@ codecov/
 coverage/
 .phpunit.result.cache
 build/
+
+*.log

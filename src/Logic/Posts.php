@@ -2,12 +2,52 @@
 
 namespace Newspack\MigrationTools\Logic;
 
+use Newspack\MigrationTools\Hooks\PostUpdateHook;
 use Newspack\MigrationTools\Util\Log\CliLog;
+use Newspack\MigrationTools\Util\Log\FileLog;
+use WP_Post;
+use WP_Error;
 
 /**
  * Posts logic class.
  */
 class Posts {
+	/**
+	 * Meta key for the unique identifier for posts.
+	 */
+	public const UNIQUE_POST_IDENTIFIER_META_KEY = '_nmt_post_uniqid';
+
+	/**
+	 * Create or get a post.
+	 *
+	 * @param array  $data              The data to create the post with. The array is the same as wp_insert_post accepts. https://developer.wordpress.org/reference/functions/wp_insert_post.
+	 * @param string $unique_identifier The unique identifier for the post.
+	 *
+	 * @return int|WP_Error The post ID if created or found, or a WP_Error if the post cannot be created.
+	 */
+	public static function create_or_get_post( array $data, string $unique_identifier ): int|WP_Error {
+		// Validate that the unique identifier is not empty.
+		if ( empty( $unique_identifier ) ) {
+			return new WP_Error( 'empty_unique_identifier', __( 'The unique identifier cannot be empty.', 'newspack-migration-tools' ) );
+		}
+		// First try with the uniqid for the post.
+		$wp_post_id = self::get_post_by_unique_identifier( $unique_identifier );
+		if ( $wp_post_id ) { // Great – we already have the post!
+			return $wp_post_id;
+		}
+
+		// If it doesn't exist, then create it.
+		$wp_post_id = wp_insert_post( $data );
+		if ( is_wp_error( $wp_post_id ) ) {
+			return $wp_post_id;
+		}
+
+		// Set the unique identifier for the post.
+		update_post_meta( $wp_post_id, self::UNIQUE_POST_IDENTIFIER_META_KEY, $unique_identifier );
+
+		return $wp_post_id;
+	}
+
 	/**
 	 * @param string|array $post_type   Post type(s).
 	 * @param array        $post_status Post statuses.
@@ -446,6 +486,8 @@ SQL;
 			$callback( $post );
 		}
 
+		unset( $posts );
+
 		sleep( $wait );
 
 		self::throttled_posts_loop( $query_args, $callback, $wait, $posts_per_batch, $batch + 1 );
@@ -685,5 +727,105 @@ SQL;
 		wp_cache_flush();
 
 		return $updated;
+	}
+
+	/**
+	 * Get a post by its unique identifier.
+	 *
+	 * The identifier was set when the post was created (if it was created by this class), so you probably know what it is.
+	 * Make sure you read the docs linked to at the top of the class.
+	 *
+	 * @param string $unique_identifier The unique identifier to search for.
+	 *
+	 * @return int|false The post ID if found, false otherwise.
+	 */
+	public static function get_post_by_unique_identifier( string $unique_identifier ): int|false {
+		if ( empty( $unique_identifier ) ) {
+			FileLog::get_logger( __CLASS__ )->error(
+				'Value is empty. Refusing to find a post with empty values.',
+				[
+					'unique_identifier' => $unique_identifier,
+				]
+			);
+
+			return false;
+		}
+
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$post_id = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT post_id FROM $wpdb->postmeta WHERE meta_key = %s AND meta_value = %s LIMIT 1",
+				self::UNIQUE_POST_IDENTIFIER_META_KEY,
+				$unique_identifier
+			)
+		);
+
+		return empty( $post_id ) ? false : (int) $post_id;
+	}
+
+	/**
+	 * Shorthand for updating a post without touching the post_modified and post_modified_gmt fields.
+	 *
+	 * Parameters are the same as for wp_update_post.
+	 *
+	 * @static
+	 * @access public
+	 *
+	 * @uses \Newspack\MigrationTools\Hooks\PostUpdateHook
+	 * @see https://developer.wordpress.org/reference/functions/wp_update_post/
+	 *
+	 * @param array|object $postarr          Optional. Post data. Arrays are expected to be escaped,
+	 *                                       objects are not. See wp_insert_post() for accepted arguments.
+	 *                                       Default array.
+	 * @param bool         $wp_error         Optional. Whether to return a WP_Error on failure. Default false.
+	 * @param bool         $fire_after_hooks Optional. Whether to fire the after insert hooks. Default true.
+	 * @return int|WP_Error The post ID on success. The value 0 or WP_Error on failure.
+	 */
+	public static function update_post_without_modified_date( $postarr = array(), $wp_error = false, $fire_after_hooks = true ) {
+		PostUpdateHook::attach_hook_to_prevent_modified_date_update();
+
+		$result = wp_update_post( $postarr, $wp_error, $fire_after_hooks );
+
+		PostUpdateHook::detach_hook_to_prevent_modified_date_update();
+
+		return $result;
+	}
+
+	/**
+	 * Shorthand for updating a post without touching the post_modified and post_modified_gmt fields,
+	 * but instead of wp_update_post only doing a revison after the update, this functions saves a
+	 * revision before the update too.
+	 *
+	 * Parameters are the same as for wp_update_post. Even though wp_update_post allows $postarr to be
+	 * optional, it's required here so that we have a post ID for saving the revision.
+	 *
+	 * @static
+	 * @access public
+	 *
+	 * @uses \Newspack\MigrationTools\Hooks\PostUpdateHook
+	 * @see https://developer.wordpress.org/reference/functions/wp_update_post/
+	 *
+	 * @param array|object $postarr          Post data. Arrays are expected to be escaped, objects are not. ID key or property is required. @see wp_update_post().
+	 * @param bool         $wp_error         @see wp_update_post(). Optional. Whether to return a WP_Error on failure. Default false.
+	 * @param bool         $fire_after_hooks @see wp_update_post(). Optional. Whether to fire the after insert hooks. Default true.
+	 * @return int|WP_Error The post ID on success. The value 0 or WP_Error on failure.
+	 */
+	public static function update_post_without_modified_date_with_pre_revision( array|object $postarr, bool $wp_error = false, bool $fire_after_hooks = true ) {
+		// Validate if $postarr ID key/property is set.
+		if ( is_array( $postarr ) ) {
+			$post_id = $postarr['ID'] ?? null;
+		} else {
+			$post_id = $postarr->ID ?? null;
+		}
+		
+		if ( ! $post_id ) {
+			return new WP_Error( 'missing_post_id', 'Post ID is required.' );
+		}
+
+		// Save revision before update.
+		wp_save_post_revision( $post_id );
+
+		return self::update_post_without_modified_date( $postarr, $wp_error, $fire_after_hooks );
 	}
 }

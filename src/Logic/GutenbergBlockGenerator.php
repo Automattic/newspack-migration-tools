@@ -38,13 +38,13 @@ class GutenbergBlockGenerator {
 	 *      - at the time of writing this, JP Tiled Gallery doesn't support captions
 	 *
 	 * @param int[]    $attachment_ids  Attachments IDs to be used in the tiled gallery.
-	 * @param string   $link_to         `linkTo` attribute of the Jetpack Tiled Gallery block. Can be "media", or "attachment".
+	 * @param ?string  $link_to         `linkTo` attribute of the Jetpack Tiled Gallery block. Can be "media", or "attachment", or null.
 	 * @param string[] $tile_sizes_list List of tiles sizes in percentages (e.g. ['50', '50']).
 	 *
 	 * @return array to be used in the serialize_block() or serialize_blocks() function to get the raw content of a Gutenberg Block.
 	 * @throws \UnexpectedValueException If $link_to param is invalid.
 	 */
-	public function get_jetpack_tiled_gallery( array $attachment_ids, string $link_to, array $tile_sizes_list = [
+	public function get_jetpack_tiled_gallery( array $attachment_ids, ?string $link_to, array $tile_sizes_list = [
 		'66.79014',
 		'33.20986',
 		'33.33333',
@@ -73,7 +73,7 @@ class GutenbergBlockGenerator {
 			' ',
 			array_filter(
 				array_map(
-					function ( $index, $attachment_id ) use ( &$tile_sizes, &$non_existing_attachment_indexes, $tile_sizes_list, $file_logger ) {
+					function ( $index, $attachment_id ) use ( &$tile_sizes, &$non_existing_attachment_indexes, $tile_sizes_list, $file_logger, $link_to ) {
 						$attachment_url = wp_get_attachment_url( $attachment_id );
 
 						if ( ! $attachment_url ) {
@@ -86,9 +86,20 @@ class GutenbergBlockGenerator {
 						$tile_size    = $this->get_tile_image_size_by_index( $index, $tile_sizes_list );
 						$tile_sizes[] = $tile_size;
 
+						// Add <a> link to attachment URL if linkTo is set to "attachment" or "media".
+						$a_opening_tag = '';
+						$a_closing_tag = '';
+						if ( 'attachment' == $link_to ) {
+							$a_opening_tag = sprintf( '<a href="%s">', get_permalink( $attachment_id ) );
+							$a_closing_tag = '</a>';
+						} elseif ( 'media' == $link_to ) {
+							$a_opening_tag = sprintf( '<a href="%s">', wp_get_attachment_url( $attachment_id ) );
+							$a_closing_tag = '</a>';
+						}
+
 						return '
                             <div class="tiled-gallery__col" style="flex-basis: ' . $tile_size . '%">
-                            <figure class="tiled-gallery__item">
+                            ' . $a_opening_tag . '<figure class="tiled-gallery__item">
                                 <img
                                         alt="' . get_the_title( $attachment_id ) . '"
                                         data-id="' . $attachment_id . '"
@@ -97,7 +108,7 @@ class GutenbergBlockGenerator {
                                         src="' . $attachment_url . '"
                                     data-amp-layout="responsive"
                                 />
-                            </figure>
+                            </figure>' . $a_closing_tag . '
                             </div>';
 					},
 					array_keys( $attachment_ids ),
@@ -137,14 +148,15 @@ class GutenbergBlockGenerator {
 	/**
 	 * Generate a Jetpack Slideshow Block.
 	 *
-	 * @param int[]     $attachment_ids Attachments IDs to be used in the tiled gallery.
-	 * @param string    $transition     Slideshow transition (slide or fade).
-	 * @param int|false $autoplay       False de disable, on the delay in seconds.
-	 * @param string    $image_size     Image size (thumbnail, medium, large, full).
+	 * @param int[]     $attachment_ids   Attachments IDs to be used in the tiled gallery.
+	 * @param string    $transition       Slideshow transition (slide or fade).
+	 * @param int|false $autoplay         False de disable, on the delay in seconds.
+	 * @param string    $image_size       Image size (thumbnail, medium, large, full).
+	 * @param array     $custom_captions  Optional associative array of custom captions keyed by attachment ID. If provided, will use this caption instead of the attachment excerpt/title.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_jetpack_slideshow( array $attachment_ids, $transition = 'slide', $autoplay = false, $image_size = 'large' ) {
+	public function get_jetpack_slideshow( array $attachment_ids, $transition = 'slide', $autoplay = false, $image_size = 'large', array $custom_captions = [] ) {
 		$data_autoplay = is_numeric( $autoplay ) ? 'data-autoplay="true" data-delay="' . $autoplay . '"' : '';
 		$data_effect   = 'data-effect="' . $transition . '"';
 
@@ -168,7 +180,14 @@ class GutenbergBlockGenerator {
         ';
 
 		foreach ( $attachment_posts as $attachment_post ) {
-			$caption = ! empty( $attachment_post->post_excerpt ) ? $attachment_post->post_excerpt : $attachment_post->post_title;
+			// Priority: custom caption → attachment excerpt → attachment title
+			if ( ! empty( $custom_captions[ $attachment_post->ID ] ) ) {
+				$caption = wp_kses_post( $custom_captions[ $attachment_post->ID ] );
+			} elseif ( ! empty( $attachment_post->post_excerpt ) ) {
+				$caption = $attachment_post->post_excerpt;
+			} else {
+				$caption = $attachment_post->post_title;
+			}
 
 			$slideshow_content .= '<li class="wp-block-jetpack-slideshow_slide swiper-slide">
             <figure>
@@ -263,16 +282,26 @@ class GutenbergBlockGenerator {
 	 * @param ?string  $classname              Media HTML class.
 	 * @param ?string  $align                  Image alignment (left, right).
 	 * @param ?string  $custom_link            If provided, will set custom link. Overrides $link_to_attachment_url.
+	 * @param bool     $hide_caption           Whether to hide the caption. Defaults to false.
+	 * @param ?string  $custom_caption         If provided, will use this caption instead of the attachment excerpt.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_image( $attachment_post, $size = 'full', $link_to_attachment_url = true, $classname = null, $align = null, $custom_link = null ) {
+	public function get_image( $attachment_post, $size = 'full', $link_to_attachment_url = true, $classname = null, $align = null, $custom_link = null, $hide_caption = false, $custom_caption = null ) {
 		// Validate size.
 		if ( ! in_array( $size, [ 'thumbnail', 'medium', 'large', 'full' ] ) ) {
 			$size = 'full';
 		}
 
-		$caption_tag   = ! empty( $attachment_post->post_excerpt ) ? '<figcaption class="wp-element-caption">' . $attachment_post->post_excerpt . '</figcaption>' : '';
+		// Determine caption to use: custom_caption takes priority, then attachment excerpt
+		$caption_text = null;
+		if ( null !== $custom_caption ) {
+			$caption_text = wp_kses_post( $custom_caption );
+		} elseif ( ! empty( $attachment_post->post_excerpt ) ) {
+			$caption_text = $attachment_post->post_excerpt;
+		}
+
+		$caption_tag   = ! empty( $caption_text ) && ! $hide_caption ? '<figcaption class="wp-element-caption">' . $caption_text . '</figcaption>' : '';
 		$image_alt     = get_post_meta( $attachment_post->ID, '_wp_attachment_image_alt', true );
 		$image_url     = Attachments::get_attachment_image_src( $attachment_post->ID, $size )[0];
 		$attachment_id = $attachment_post->ID;
@@ -307,6 +336,65 @@ class GutenbergBlockGenerator {
 		$figure_class = 'wp-block-image size-' . $size . ( $classname ? " $classname" : '' ) . ( $align ? " align$align" : '' );
 
 		$content = '<figure class="' . $figure_class . '">' . $a_opening_tag . '<img src="' . $image_url . '" alt="' . $image_alt . '" class="wp-image-' . $attachment_id . '"/>' . $a_closing_tag . $caption_tag . '</figure>';
+
+		return [
+			'blockName'    => 'core/image',
+			'attrs'        => $attrs,
+			'innerBlocks'  => [],
+			'innerHTML'    => $content,
+			'innerContent' => [ $content ],
+		];
+	}
+
+	/**
+	 * Generate an Image Block item from an external image URL.
+	 *
+	 * @param string  $image_url              Image URL.
+	 * @param ?string $image_caption          Image caption.
+	 * @param ?string $image_alt              Image alt text.
+	 * @param ?string $size                   Image size, full by default.
+	 * @param ?bool   $link_to_attachment_url Whether to link to the attachment URL or not. Defaults to true.
+	 * @param ?string $classname              Media HTML class.
+	 * @param ?string $align                  Image alignment (left, right).
+	 * @param ?string $custom_link            If provided, will set custom link. Overrides $link_to_attachment_url.
+	 *
+	 * @return array Image block with external image URL, to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 */
+	public function get_external_image( string $image_url, ?string $image_caption = null, ?string $image_alt = null, ?string $size = 'full', ?bool $link_to_attachment_url = true, ?string $classname = null, ?string $align = null, ?string $custom_link = null ): array {
+		// Validate size.
+		if ( ! in_array( $size, [ 'thumbnail', 'medium', 'large', 'full' ] ) ) {
+			$size = 'full';
+		}
+
+		// Add <a> link to attachment URL.
+		$a_opening_tag = '';
+		$a_closing_tag = '';
+		if ( $custom_link || $link_to_attachment_url ) {
+			if ( $custom_link ) {
+				$link = $custom_link;
+			} elseif ( $link_to_attachment_url ) {
+				$link = $image_url;
+			}
+
+			$a_opening_tag = sprintf( '<a href="%s">', $link );
+			$a_closing_tag = '</a>';
+		}
+
+		// HTML content.
+		$caption_tag  = ! empty( $image_caption ) ? '<figcaption class="wp-element-caption">' . $image_caption . '</figcaption>' : '';
+		$figure_class = 'wp-block-image size-' . $size . ( $classname ? " $classname" : '' ) . ( $align ? " align$align" : '' );
+		$content      = '<figure class="' . $figure_class . '">' . $a_opening_tag . '<img src="' . esc_url( $image_url ) . '" alt="' . esc_attr( $image_alt ) . '"/>' . $a_closing_tag . $caption_tag . '</figure>';
+
+		// $attrs.
+		$attrs = [
+			'sizeSlug' => $size,
+		];
+		if ( $classname ) {
+			$attrs['className'] = $classname;
+		}
+		if ( $align ) {
+			$attrs['align'] = $align;
+		}
 
 		return [
 			'blockName'    => 'core/image',
@@ -452,14 +540,13 @@ AUDIO;
 	 * @param string $text_color             Paragraph text color (black, blue, green, red, yellow, gray, dark-gray, medium-gray, light-gray, white).
 	 * @param string $font_size              Paragraph font size (small, normal, medium, large, huge).
 	 * @param array  $additional_css_classes Additional paragraph classes.
+	 * @param array  $attrs                  Paragraph attributes.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_paragraph( $paragraph_content, $anchor = '', $text_color = '', $font_size = '', array $additional_css_classes = [] ) {
-
+	public function get_paragraph( $paragraph_content, $anchor = '', $text_color = '', $font_size = '', array $additional_css_classes = [], $attrs = [] ) {
 		// Paragraph can have both <p class=""> classes, and <!-- wp:paragraph {"className":""} --> className attributes (called "Additional CSS classes" in Gutenberg).
 		$paragraph_element_classes = [];
-		$attrs                     = [];
 		if ( ! empty( $text_color ) ) {
 			$paragraph_element_classes[] = 'has-' . $text_color . '-color has-text-color';
 			$attrs['fontSize']           = $text_color;
@@ -498,27 +585,16 @@ AUDIO;
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
 	public function get_quote( $quote_content, $cite_content = '' ) {
-		$content = '<p>' . $quote_content . '</p>';
-		$cite    = ! empty( $cite_content ) ? "<cite>$cite_content</cite>" : '';
+		$cite = ! empty( $cite_content ) ? "<cite>$cite_content</cite>" : '';
+
+		$inner_html = '<figure class="wp-block-pullquote"><blockquote><p>' . $quote_content . '</p>' . $cite . '</blockquote></figure>';
 
 		return [
-			'blockName'    => 'core/quote',
+			'blockName'    => 'core/pullquote',
 			'attrs'        => [],
-			'innerBlocks'  => [
-				[
-					'blockName'    => 'core/paragraph',
-					'attrs'        => [],
-					'innerBlocks'  => [],
-					'innerHTML'    => $content,
-					'innerContent' => [ $content ],
-				],
-			],
-			'innerHTML'    => '<blockquote class="wp-block-quote">' . $cite . '</blockquote>',
-			'innerContent' => [
-				'<blockquote class="wp-block-quote">',
-				null,
-				$cite . '</blockquote>',
-			],
+			'innerBlocks'  => [],
+			'innerHTML'    => $inner_html,
+			'innerContent' => [ $inner_html ],
 		];
 	}
 
@@ -661,9 +737,8 @@ AUDIO;
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_columns( $columns, $style = '', $is_stacked_on_mobile = true ) {
-		$attrs      = [];
-		$classnames = [ 'wp-block-columns' ];
+	public function get_columns( $columns, $style = '', $is_stacked_on_mobile = true, $attrs = [] ) {
+		$classnames = isset( $attrs['className'] ) ? array_merge( [ 'wp-block-columns' ], explode( ' ', $attrs['className'] ) ) : [ 'wp-block-columns' ];
 
 		if ( ! $is_stacked_on_mobile ) {
 			$attrs['isStackedOnMobile'] = false;
@@ -671,13 +746,14 @@ AUDIO;
 		}
 
 		if ( ! empty( $style ) ) {
-			$attrs['className'] = $style;
-			$classnames[]       = $style;
+			$classnames[] = $style;
 		}
+
+		$attrs['className'] = implode( ' ', $classnames );
 
 		// Inner content.
 		$inner_content = array_fill( 1, count( $columns ), null );
-		array_unshift( $inner_content, '<div class="wp-block-columns">' );
+		array_unshift( $inner_content, '<div class="' . join( ' ', $classnames ) . '">' );
 		array_push( $inner_content, '</div>' );
 
 		return [
@@ -697,9 +773,9 @@ AUDIO;
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_column( $blocks, $width = '' ) {
-		$attrs  = [];
-		$styles = [];
+	public function get_column( $blocks, $width = '', $attrs = [] ) {
+		$styles     = [];
+		$classnames = isset( $attrs['className'] ) ? array_merge( [ 'wp-block-column' ], explode( ' ', $attrs['className'] ) ) : [ 'wp-block-column' ];
 
 		if ( ! empty( $width ) ) {
 			$attrs['width'] = $width;
@@ -710,14 +786,46 @@ AUDIO;
 
 		// Inner content.
 		$inner_content = array_fill( 1, count( $blocks ), null );
-		array_unshift( $inner_content, '<div class="wp-block-column"' . $styles_attribute . '>' );
+		array_unshift( $inner_content, '<div class="' . join( ' ', $classnames ) . '"' . $styles_attribute . '>' );
 		array_push( $inner_content, '</div>' );
 
 		return [
 			'blockName'    => 'core/column',
 			'attrs'        => $attrs,
 			'innerBlocks'  => $blocks,
-			'innerHTML'    => '<div class="wp-block-column"' . $styles_attribute . '></div>',
+			'innerHTML'    => '<div class="' . join( ' ', $classnames ) . '"' . $styles_attribute . '></div>',
+			'innerContent' => $inner_content,
+		];
+	}
+
+	/**
+	 * Generate a Group Block.
+	 * Since Group block can have three different layouts with different markup and behavior, splitting these into separate methods.
+	 *
+	 * @param array $inner_blocks   Inner blocks.
+	 * @param array $custom_classes Custom classes to be added to the group block.
+	 * @param array $attrs          Attributes to be added to the group block.
+	 *
+	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 */
+	public function get_group( $inner_blocks, $custom_classes = [], $attrs = [] ) {
+
+		$class_append_custom = ! empty( $custom_classes ) ? implode( ' ', $custom_classes ) : '';
+
+		$inner_content   = [];
+		$inner_content[] = ' <div class="wp-block-group' . ( ! empty( $class_append_custom ) ? ' ' . implode( ' ', $custom_classes ) : '' ) . '">';
+		$inner_content   = array_merge( $inner_content, array_fill( 1, count( $inner_blocks ), null ) );
+		$inner_content[] = '</div> ';
+
+		if ( ! empty( $custom_classes ) ) {
+			$attrs['className'] = implode( ' ', $custom_classes );
+		}
+
+		return [
+			'blockName'    => 'core/group',
+			'attrs'        => $attrs,
+			'innerBlocks'  => $inner_blocks,
+			'innerHTML'    => ' <div class="wp-block-group' . ( ! empty( $class_append_custom ) ? ' ' . implode( ' ', $custom_classes ) : '' ) . '">  </div> ',
 			'innerContent' => $inner_content,
 		];
 	}
@@ -732,12 +840,13 @@ AUDIO;
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_group_constrained( $inner_blocks, $custom_classes = [], $attrs = [] ) {
+	public function get_group_constrained( $inner_blocks, $custom_classes = [], $attrs = [], $styles = '' ) {
 
 		$class_append_custom = ! empty( $custom_classes ) ? implode( ' ', $custom_classes ) : '';
+		$styles_attribute    = ! empty( $styles ) ? ' style="' . $styles . '"' : '';
 
 		$inner_content   = [];
-		$inner_content[] = ' <div class="wp-block-group' . ( ! empty( $class_append_custom ) ? ' ' . implode( ' ', $custom_classes ) : '' ) . '">';
+		$inner_content[] = ' <div class="wp-block-group' . ( ! empty( $class_append_custom ) ? ' ' . implode( ' ', $custom_classes ) : '' ) . '"' . $styles_attribute . '>';
 		$inner_content   = array_merge( $inner_content, array_fill( 1, count( $inner_blocks ), null ) );
 		$inner_content[] = '</div> ';
 
@@ -757,7 +866,7 @@ AUDIO;
 			'blockName'    => 'core/group',
 			'attrs'        => $attrs,
 			'innerBlocks'  => $inner_blocks,
-			'innerHTML'    => ' <div class="wp-block-group' . ( ! empty( $class_append_custom ) ? ' ' . implode( ' ', $custom_classes ) : '' ) . '">  </div> ',
+			'innerHTML'    => ' <div class="wp-block-group' . ( ! empty( $class_append_custom ) ? ' ' . implode( ' ', $custom_classes ) : '' ) . '"' . $styles_attribute . '>  </div> ',
 			'innerContent' => $inner_content,
 		];
 	}
@@ -830,9 +939,11 @@ AUDIO;
 			}
 		}
 
-		$inner_html = '<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper">
-		' . $youtube_video_url . '
-		</div></figure>';
+		$inner_html = <<<HTML
+<figure class="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio"><div class="wp-block-embed__wrapper">
+$youtube_video_url
+</div></figure>
+HTML;
 
 		return [
 			'blockName'    => 'core/embed',
@@ -991,6 +1102,66 @@ HTML;
 	}
 
 	/**
+	 * Generate a Buttons Block.
+	 *
+	 * @param array  $inner_blocks Inner blocks.
+	 * @param array  $custom_classes Custom classes.
+	 * @param array  $attrs Attributes.
+	 * @param string $styles Styles.
+	 *
+	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 */
+	public function get_buttons( $inner_blocks, $custom_classes = [], $attrs = [], $styles = '' ) {
+		$class_append_custom = ! empty( $custom_classes ) ? implode( ' ', $custom_classes ) : '';
+		$styles_attribute    = ! empty( $styles ) ? ' style="' . $styles . '"' : '';
+
+		$inner_content   = [];
+		$inner_content[] = ' <div class="wp-block-buttons' . ( ! empty( $class_append_custom ) ? ' ' . implode( ' ', $custom_classes ) : '' ) . '"' . $styles_attribute . '>';
+		$inner_content   = array_merge( $inner_content, array_fill( 1, count( $inner_blocks ), null ) );
+		$inner_content[] = '</div> ';
+
+		if ( ! empty( $custom_classes ) ) {
+			$attrs['className'] = implode( ' ', $custom_classes );
+		}
+
+		return [
+			'blockName'    => 'core/buttons',
+			'attrs'        => $attrs,
+			'innerBlocks'  => $inner_blocks,
+			'innerHTML'    => ' <div class="wp-block-buttons' . ( ! empty( $class_append_custom ) ? ' ' . implode( ' ', $custom_classes ) : '' ) . '"' . $styles_attribute . '>  </div> ',
+			'innerContent' => $inner_content,
+		];
+	}
+
+	/**
+	 * Generate a Button Block.
+	 *
+	 * @param string $button_content Button content.
+	 * @param string $url            Button URL.
+	 * @param array  $custom_classes Custom classes.
+	 * @param array  $custom_link_classes Custom link classes.
+	 * @param array  $attrs          Button attributes.
+	 *
+	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 */
+	public function get_button( $button_content, $url = '', $custom_classes = [], $custom_link_classes = [], $attrs = [] ) {
+		$class_append_custom = ! empty( $custom_classes ) ? implode( ' ', $custom_classes ) : '';
+		$content             = '<div class="wp-block-button' . ( ! empty( $class_append_custom ) ? ' ' . implode( ' ', $custom_classes ) : '' ) . '"><a class="wp-block-button__link' . ( ! empty( $custom_link_classes ) ? ' ' . implode( ' ', $custom_link_classes ) . ' ' : '' ) . 'wp-element-button" href="' . $url . '">' . $button_content . '</a></div>';
+
+		if ( ! empty( $custom_classes ) ) {
+			$attrs['className'] = implode( ' ', $custom_classes );
+		}
+
+		return [
+			'blockName'    => 'core/button',
+			'attrs'        => $attrs,
+			'innerBlocks'  => [],
+			'innerHTML'    => $content,
+			'innerContent' => [ $content ],
+		];
+	}
+
+	/**
 	 * Generate a List Block item.
 	 *
 	 * @param string $content Item content.
@@ -1104,6 +1275,7 @@ HTML;
 
 			return [];
 		}
+		$args['specificMode']  = true;
 		$args['specificPosts'] = $post_ids;
 		if ( is_array( $args['className'] ?? false ) ) {
 			$args['className'] = implode( ' ', $args['className'] );

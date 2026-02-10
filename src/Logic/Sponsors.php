@@ -36,7 +36,7 @@ class Sponsors {
 			[
 				CliLog::get_logger( 'Sponsors' ),
 				FileLog::get_logger( 'Sponsors', 'sponsors.log' ),
-			] 
+			]
 		);
 	}
 
@@ -97,6 +97,130 @@ class Sponsors {
 
 		clean_post_cache( $sponsor_post->ID );
 
+		return true;
+	}
+
+	/**
+	 * Get or add a sponsor by name
+	 *
+	 * @param string $sponsor_name The name of the sponsor.
+	 * @param array  $sponsor_data Optional array of sponsor data to set when creating a new sponsor.
+	 *                              Supported fields: 'content', 'url', 'byline_prefix', 'flag_override', 'disclaimer_override', 'sponsorship_scope'.
+	 *
+	 * @return int|false The sponsor post ID if successful, false on failure.
+	 */
+	public function get_or_add_sponsor( $sponsor_name, $sponsor_data = [] ) {
+		if ( empty( $sponsor_name ) ) {
+			$this->logger->error( 'Sponsor name cannot be empty' );
+			return false;
+		}
+
+		// Sanitize the sponsor name
+		$sponsor_name = sanitize_text_field( $sponsor_name );
+
+		// Try to find existing sponsor by name
+		// phpcs:ignore WordPress.WP.DeprecatedFunctions.get_page_by_titleFound
+		$existing_sponsor = get_page_by_title( $sponsor_name, OBJECT, self::SPONSORS_POST_TYPE );
+
+		if ( $existing_sponsor ) {
+			$this->logger->info( sprintf( 'Found existing sponsor: %s (ID: %d)', $sponsor_name, $existing_sponsor->ID ) );
+			return $existing_sponsor->ID;
+		}
+
+		// Create new sponsor post
+		$sponsor_post_data = [
+			'post_title'   => $sponsor_name,
+			'post_name'    => sanitize_title( $sponsor_name ),
+			'post_content' => isset( $sponsor_data['content'] ) ? $sponsor_data['content'] : '',
+			'post_status'  => 'publish',
+			'post_type'    => self::SPONSORS_POST_TYPE,
+		];
+
+		$sponsor_id = wp_insert_post( $sponsor_post_data );
+
+		if ( is_wp_error( $sponsor_id ) ) {
+			$this->logger->error( sprintf( 'Failed to create sponsor "%s": %s', $sponsor_name, $sponsor_id->get_error_message() ) );
+			return false;
+		}
+
+		$this->logger->info( sprintf( 'Created new sponsor: %s (ID: %d)', $sponsor_name, $sponsor_id ) );
+
+		// Set sponsor meta fields if provided
+		if ( ! empty( $sponsor_data ) ) {
+			$this->set_sponsor_meta( $sponsor_id, $sponsor_data );
+		}
+
+		// Create the shadow taxonomy term
+		$this->create_shadow_term( $sponsor_id );
+
+		return $sponsor_id;
+	}
+
+	/**
+	 * Set sponsor meta fields
+	 *
+	 * @param int   $sponsor_id The sponsor post ID.
+	 * @param array $meta_data  Array of meta data to set.
+	 *
+	 * @return bool True if successful, false on failure.
+	 */
+	private function set_sponsor_meta( $sponsor_id, $meta_data ) {
+		$meta_fields = [
+			'url'                 => 'newspack_sponsor_url',
+			'byline_prefix'       => 'newspack_sponsor_byline_prefix',
+			'flag_override'       => 'newspack_sponsor_flag_override',
+			'disclaimer_override' => 'newspack_sponsor_disclaimer_override',
+			'sponsorship_scope'   => 'newspack_sponsor_sponsorship_scope',
+		];
+
+		foreach ( $meta_fields as $data_key => $meta_key ) {
+			if ( isset( $meta_data[ $data_key ] ) ) {
+				$result = update_post_meta( $sponsor_id, $meta_key, sanitize_text_field( $meta_data[ $data_key ] ) );
+				if ( false === $result ) {
+					$this->logger->warning( sprintf( 'Failed to set meta field %s for sponsor %d', $meta_key, $sponsor_id ) );
+				}
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Create shadow taxonomy term for a sponsor
+	 *
+	 * @param int $sponsor_id The sponsor post ID.
+	 *
+	 * @return bool True if successful, false on failure.
+	 */
+	private function create_shadow_term( $sponsor_id ) {
+		$sponsor_post = get_post( $sponsor_id );
+		if ( ! is_a( $sponsor_post, 'WP_Post' ) || self::SPONSORS_POST_TYPE !== $sponsor_post->post_type ) {
+			$this->logger->error( sprintf( 'Invalid sponsor post ID: %d', $sponsor_id ) );
+			return false;
+		}
+
+		// Check if shadow term already exists
+		$existing_term = get_term_by( 'name', $sponsor_post->post_title, self::SPONSORS_TAXONOMY );
+		if ( $existing_term ) {
+			$this->logger->info( sprintf( 'Shadow term already exists for sponsor %s', $sponsor_post->post_title ) );
+			return true;
+		}
+
+		// Create new shadow term
+		$term_result = wp_insert_term(
+			$sponsor_post->post_title,
+			self::SPONSORS_TAXONOMY,
+			[
+				'slug' => $sponsor_post->post_name,
+			]
+		);
+
+		if ( is_wp_error( $term_result ) ) {
+			$this->logger->error( sprintf( 'Failed to create shadow term for sponsor %s: %s', $sponsor_post->post_title, $term_result->get_error_message() ) );
+			return false;
+		}
+
+		$this->logger->info( sprintf( 'Created shadow term for sponsor %s (term ID: %d)', $sponsor_post->post_title, $term_result['term_id'] ) );
 		return true;
 	}
 }

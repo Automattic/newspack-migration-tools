@@ -63,6 +63,17 @@ class MultiLog implements LoggerInterface {
 	}
 
 	/**
+	 * Get a logger that logs to both the CLI and the file.
+	 *
+	 * @param string $name    The name of the logger.
+	 *
+	 * @throws InvalidArgumentException If any of the loggers do not implement the LoggerInterface.
+	 */
+	public static function get_cli_and_file_logger( string $name ): LoggerInterface {
+		return self::get_logger( $name, [ CliLog::get_logger( $name ), FileLog::get_logger( $name ) ] );
+	}
+
+	/**
 	 * {@inheritDoc}
 	 */
 	public function log( $level, Stringable|string $message, array $context = [] ): void {
