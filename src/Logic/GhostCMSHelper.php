@@ -557,10 +557,15 @@ class GhostCMSHelper {
 				$user_nicename                   = $user['user_nicename'];
 				$post_content_before_replacement = $post_content_updated;
 
-				// Replace all strings in content from `//{hostname}/author/{ghost_slug}"` to `//{hostname}/author/{user_nicename}"`.
+				// Replace author URL, with or without trailing slash.
 				$post_content_updated = str_replace(
 					sprintf( '//%s/author/%s"', $hostname, $ghost_slug ),
 					sprintf( '//%s/author/%s"', $hostname, $user_nicename ),
+					$post_content_updated
+				);
+				$post_content_updated = str_replace(
+					sprintf( '//%s/author/%s/"', $hostname, $ghost_slug ),
+					sprintf( '//%s/author/%s/"', $hostname, $user_nicename ),
 					$post_content_updated
 				);
 

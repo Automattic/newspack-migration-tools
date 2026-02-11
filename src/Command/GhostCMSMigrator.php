@@ -96,6 +96,13 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 					'shortdesc' => "After the content has been imported, run this command to check the imported posts for yet unvalidated/unsupported custom HTML content/syntax from the Ghost Koenig editor (such as different custom embeds, or Ghost's equivalents to Gutenberg blocks). This scans all HTML elements with kg-* classes.",
 				],
 			],
+			[
+				'newspack-migration-tools ghostcms-rewrite-author-urls',
+				[ __CLASS__, 'cmd_rewrite_ghost_author_urls' ],
+				[
+					'shortdesc' => 'Rewrite Ghost author URLs in imported post content. When users are imported from Ghost, their WordPress user_nicename (URL slug) may differ from the original Ghost slug if a collision occurred. This command finds all such users and rewrites author URLs in post content from the old Ghost slug to the new WordPress nicename.',
+				],
+			],
 		];
 	}
 	
@@ -135,5 +142,20 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 
 		$ghost = new GhostCMSHelper();
 		$ghost->check_imported_posts_for_custom_html_content( $log_slug );
+	}
+
+	/**
+	 * Callable for the 'newspack-migration-tools ghostcms-rewrite-author-urls' command.
+	 * 
+	 * @param array $pos_args The positional arguments.
+	 * @param array $assoc_args The associative arguments.
+	 */
+	public static function cmd_rewrite_ghost_author_urls( array $pos_args, array $assoc_args ): void {
+		$log_slug = __FUNCTION__;
+		$logger   = MultiLog::get_cli_and_file_logger( $log_slug );
+		$logger->info( 'Starting CLI - Rewriting Ghost author URLs in post content...' );
+
+		$ghost = new GhostCMSHelper();
+		$ghost->rewrite_ghost_author_urls_in_content( $log_slug );
 	}
 }
