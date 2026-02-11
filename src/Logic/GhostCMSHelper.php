@@ -671,9 +671,11 @@ class GhostCMSHelper {
 		}
 
 		// Create Guest Contributor.
-		$user_data = [
-			'display_name' => $display_name,
-			'user_login'   => $json_author_user->slug ?? sanitize_title( $display_name ),
+		$desired_slug = $json_author_user->slug ?? sanitize_title( $display_name );
+		$user_data    = [
+			'display_name'  => $display_name,
+			'user_login'    => $desired_slug,
+			'user_nicename' => $desired_slug, // Try and preserve same user slug for author URLs.
 		];
 		if ( ! empty( $json_author_user->email ) ) {
 			$user_data['user_email'] = $json_author_user->email;
