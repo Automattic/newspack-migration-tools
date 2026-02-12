@@ -72,7 +72,7 @@
                         "uuid": "00000000-0000-0000-0000-000000000005",
                         "title": "Gallery Test",
                         "slug": "gallery-test",
-                        "html": "<p>start</p>TODO<p>end</p>",
+                        "html": "<p>start</p><figure class=\"kg-card kg-gallery-card\"><div class=\"kg-gallery-container\"><div class=\"kg-gallery-row\"><div class=\"kg-gallery-image\"><img src=\"__GHOST_URL__/content/images/2023/12/20231211-IMG_2964.jpg\"></div></div></div></figure><p>end</p>",
                         "type": "post",
                         "status": "published",
                         "visibility": "public",

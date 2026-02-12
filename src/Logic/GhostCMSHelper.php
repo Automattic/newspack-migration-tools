@@ -1474,6 +1474,8 @@ class GhostCMSHelper {
 		/** @var GutenbergBlockGenerator $block_generator */
 		$block_generator = new GutenbergBlockGenerator();
 
+		$galleries_replaced = 0;
+
 		foreach ( $galleries as $gallery ) {
 			// Find all images within this gallery.
 			$images         = $gallery->find( 'div.kg-gallery-image img' );
@@ -1535,10 +1537,11 @@ class GhostCMSHelper {
 			}
 
 			$gallery->outertext = $replacement;
+			++$galleries_replaced;
 		}
 
 		$this->log(
-			sprintf( 'Replaced %d galleries in Ghost ID %s.', count( $galleries ), $ghost_id ),
+			sprintf( 'Replaced %d galleries in Ghost ID %s.', $galleries_replaced, $ghost_id ),
 			LogLevel::INFO
 		);
 		$this->log(
