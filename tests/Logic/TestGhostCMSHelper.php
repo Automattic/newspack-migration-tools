@@ -1118,20 +1118,22 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 			$posts[0]->post_content
 		);
 
+		/* phpcs:ignore Squiz.PHP.CommentedOutCode.Found
 		// TODO:
 		// Gallery.
-		// $posts = get_posts(
-		// 	[
-		// 		'title'       => 'Gallery Test',
-		// 		'numberposts' => 1,
-		// 	]
-		// );
-		// $this->assertIsArray( $posts );
-		// $this->assertCount( 1, $posts );
-		// $this->assertStringContainsString( 
-		// 	'<p>start</p><p>end</p>',
-		// 	$posts[0]->post_content
-		// );
+		$posts = get_posts(
+			[
+				'title'       => 'Gallery Test',
+				'numberposts' => 1,
+			]
+		);
+		$this->assertIsArray( $posts );
+		$this->assertCount( 1, $posts );
+		$this->assertStringContainsString( 
+			'<p>start</p><p>end</p>',
+			$posts[0]->post_content
+		);
+		*/
 
 		// Video.
 		$posts = get_posts(
@@ -1149,5 +1151,4 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 			$posts[0]->post_content
 		);
 	}
-
 }
