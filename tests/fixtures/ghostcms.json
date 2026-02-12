@@ -4,14 +4,14 @@
             "data": {
                 "posts": [
                     {
-                        "id": "000000000000000000000001",
-                        "uuid": "00000000-0000-0000-0000-000000000001",
+                        "id": "65ea49ad7b6cf900014e661c",
+                        "uuid": "f64e0b96-02da-4d60-b618-f3d0388b1a9f",
                         "title": "The Title",
                         "slug": "the-title",
                         "mobiledoc": null,
                         "lexical": "{}",
                         "html": "<p>The content.</p>",
-                        "comment_id": "000000000000000000000001",
+                        "comment_id": "65ea49ad7b6cf900014e661c",
                         "plaintext": "The content.",
                         "feature_image": "__GHOST_URL__/content/images/2024/04/image.jpeg",
                         "featured": 0,
@@ -95,7 +95,7 @@
                 "posts_authors": [
                     {
                         "id": "65ea49b97b6cf900014e6622",
-                        "post_id": "000000000000000000000001",
+                        "post_id": "65ea49ad7b6cf900014e661c",
                         "author_id": "6387a43e354f5f003ddbe55f",
                         "sort_order": 0
                     }
@@ -103,7 +103,7 @@
                 "posts_meta": [
                     {
                         "id": "65ea4a1b7b6cf900014e668d",
-                        "post_id": "000000000000000000000001",
+                        "post_id": "65ea49ad7b6cf900014e661c",
                         "og_image": null,
                         "og_title": null,
                         "og_description": null,
@@ -122,7 +122,7 @@
                 "posts_tags": [
                     {
                         "id": "65ea49cf7b6cf900014e6624",
-                        "post_id": "000000000000000000000001",
+                        "post_id": "65ea49ad7b6cf900014e661c",
                         "tag_id": "6387a43f354f5f003ddbe565",
                         "sort_order": 0
                     }
