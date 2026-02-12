@@ -4,14 +4,14 @@
             "data": {
                 "posts": [
                     {
-                        "id": "65ea49ad7b6cf900014e661c",
-                        "uuid": "f64e0b96-02da-4d60-b618-f3d0388b1a9f",
+                        "id": "000000000000000000000001",
+                        "uuid": "00000000-0000-0000-0000-000000000001",
                         "title": "The Title",
                         "slug": "the-title",
                         "mobiledoc": null,
                         "lexical": "{}",
                         "html": "<p>The content.</p>",
-                        "comment_id": "65ea49ad7b6cf900014e661c",
+                        "comment_id": "000000000000000000000001",
                         "plaintext": "The content.",
                         "feature_image": "__GHOST_URL__/content/images/2024/04/image.jpeg",
                         "featured": 0,
@@ -30,12 +30,72 @@
                         "canonical_url": null,
                         "newsletter_id": "634d9d2778516800318062d9",
                         "show_title_and_feature_image": 1
+                    },
+                    {
+                        "id": "000000000000000000000002",
+                        "uuid": "00000000-0000-0000-0000-000000000002",
+                        "title": "Audio Test",
+                        "slug": "audio-test",
+                        "html": "<p>start</p><div class=\"kg-audio-card\"><audio src=\"https://example.com/audio.mp3\"></audio></div><p>end</p>",
+                        "type": "post",
+                        "status": "published",
+                        "visibility": "public",
+                        "created_at": "2024-04-07T23:11:41.000Z",
+                        "published_at": "2024-04-07T23:12:17.000Z"
+                    },
+                    {
+                        "id": "000000000000000000000003",
+                        "uuid": "00000000-0000-0000-0000-000000000003",
+                        "title": "Blockquote Test",
+                        "slug": "blockquote-test",
+                        "html": "<p>start</p><blockquote class=\"kg-blockquote-alt\"><em>Text</em></blockquote><p>end</p>",
+                        "type": "post",
+                        "status": "published",
+                        "visibility": "public",
+                        "created_at": "2024-04-07T23:11:41.000Z",
+                        "published_at": "2024-04-07T23:12:17.000Z"
+                    },
+                    {
+                        "id": "000000000000000000000004",
+                        "uuid": "00000000-0000-0000-0000-000000000004",
+                        "title": "Callout Card Test",
+                        "slug": "callout-card-test",
+                        "html": "<p>start</p><div class=\"kg-card kg-callout-card kg-callout-card-white\"><div class=\"kg-callout-text\"><b><strong style=\"white-space: pre-wrap;\">Callout: </strong></b><a href=\"http://example.com/slug/\" rel=\"noreferrer\">Text</a></div></div><p>end</p>",
+                        "type": "post",
+                        "status": "published",
+                        "visibility": "public",
+                        "created_at": "2024-04-07T23:11:41.000Z",
+                        "published_at": "2024-04-07T23:12:17.000Z"
+                    },
+                    {
+                        "id": "000000000000000000000005",
+                        "uuid": "00000000-0000-0000-0000-000000000005",
+                        "title": "Gallery Test",
+                        "slug": "gallery-test",
+                        "html": "<p>start</p>TODO<p>end</p>",
+                        "type": "post",
+                        "status": "published",
+                        "visibility": "public",
+                        "created_at": "2024-04-07T23:11:41.000Z",
+                        "published_at": "2024-04-07T23:12:17.000Z"
+                    },
+                    {
+                        "id": "000000000000000000000006",
+                        "uuid": "00000000-0000-0000-0000-000000000006",
+                        "title": "Video Test",
+                        "slug": "video-test",
+                        "html": "<p>start</p><div class=\"kg-video-container\"><video src=\"https://example.com/video.mp4\"></video></div><p>end</p>",
+                        "type": "post",
+                        "status": "published",
+                        "visibility": "public",
+                        "created_at": "2024-04-07T23:11:41.000Z",
+                        "published_at": "2024-04-07T23:12:17.000Z"
                     }
-               ],
+                ],
                 "posts_authors": [
                     {
                         "id": "65ea49b97b6cf900014e6622",
-                        "post_id": "65ea49ad7b6cf900014e661c",
+                        "post_id": "000000000000000000000001",
                         "author_id": "6387a43e354f5f003ddbe55f",
                         "sort_order": 0
                     }
@@ -43,7 +103,7 @@
                 "posts_meta": [
                     {
                         "id": "65ea4a1b7b6cf900014e668d",
-                        "post_id": "65ea49ad7b6cf900014e661c",
+                        "post_id": "000000000000000000000001",
                         "og_image": null,
                         "og_title": null,
                         "og_description": null,
@@ -62,7 +122,7 @@
                 "posts_tags": [
                     {
                         "id": "65ea49cf7b6cf900014e6624",
-                        "post_id": "65ea49ad7b6cf900014e661c",
+                        "post_id": "000000000000000000000001",
                         "tag_id": "6387a43f354f5f003ddbe565",
                         "sort_order": 0
                     }

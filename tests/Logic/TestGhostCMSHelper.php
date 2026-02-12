@@ -1056,4 +1056,98 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$this->assertIsObject( $category );
 		$this->assertEquals( 'news', $category->slug );
 	}
+
+	/**
+	 * Test that GhostCMS Helper will import from JSON file with KG replacements.
+	 *
+	 * @return void
+	 */
+	public function test_ghostcms_import_replace_kg_elements(): void {
+
+		// Run import.
+		$test_ghostcms_helper = new GhostCMSHelper();
+		$test_ghostcms_helper->ghostcms_import( 
+			[], 
+			[
+				'json-file'       => 'tests/fixtures/ghostcms.json',
+				'ghost-url'       => 'https://newspack.com/',
+				'default-user-id' => 1,
+			],
+			''
+		);
+
+		// Audio.
+		$posts = get_posts(
+			[
+				'title'       => 'Audio Test',
+				'numberposts' => 1,
+			]
+		);
+		$this->assertIsArray( $posts );
+		$this->assertCount( 1, $posts );
+		$this->assertStringContainsString( 
+			'<p>start</p><audio src="https://example.com/audio.mp3" controls></audio><p>end</p>',
+			$posts[0]->post_content
+		);
+
+		// Blockquote.
+		$posts = get_posts(
+			[
+				'title'       => 'Blockquote Test',
+				'numberposts' => 1,
+			]
+		);
+		$this->assertIsArray( $posts );
+		$this->assertCount( 1, $posts );
+		$this->assertStringContainsString( 
+			'<p>start</p><!-- wp:pullquote --><figure class="wp-block-pullquote"><blockquote><p><em>Text</em></p></blockquote></figure><!-- /wp:pullquote --><p>end</p>',
+			$posts[0]->post_content
+		);
+
+		// Callout card.
+		$posts = get_posts(
+			[
+				'title'       => 'Callout Card Test',
+				'numberposts' => 1,
+			]
+		);
+		$this->assertIsArray( $posts );
+		$this->assertCount( 1, $posts );
+		$this->assertStringContainsString( 
+			'<p>start</p><!-- wp:paragraph {"style":{"color":{"background":"#FFFFFF"}},"className":"has-background"} --><p class="has-background" style="background-color:#FFFFFF"><b><strong style="white-space: pre-wrap">Callout: </strong></b><a href="http://example.com/slug/" rel="noreferrer">Text</a></p><!-- /wp:paragraph --><p>end</p>',
+			$posts[0]->post_content
+		);
+
+		// TODO:
+		// Gallery.
+		// $posts = get_posts(
+		// 	[
+		// 		'title'       => 'Gallery Test',
+		// 		'numberposts' => 1,
+		// 	]
+		// );
+		// $this->assertIsArray( $posts );
+		// $this->assertCount( 1, $posts );
+		// $this->assertStringContainsString( 
+		// 	'<p>start</p><p>end</p>',
+		// 	$posts[0]->post_content
+		// );
+
+		// Video.
+		$posts = get_posts(
+			[
+				'title'       => 'Video Test',
+				'numberposts' => 1,
+			]
+		);
+		$this->assertIsArray( $posts );
+		$this->assertCount( 1, $posts );
+		// tests above show: width: 100%; height: auto;">
+		// this test shows:  width: 100%;height: auto">
+		$this->assertStringContainsString( 
+			'<p>start</p><video src="https://example.com/video.mp4" controls style="width: 100%;height: auto"></video><p>end</p>',
+			$posts[0]->post_content
+		);
+	}
+
 }
