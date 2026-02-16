@@ -572,28 +572,6 @@ class Attachments {
 	}
 
 	/**
-	 * Find an attachment by its filename.
-	 *
-	 * @param string $filename The filename.
-	 * @return int The attachment ID.
-	 */
-	public static function get_attachment_by_filename( $filename ) {
-		global $wpdb;
-
-		$filename = esc_sql( $filename );
-		// phpcs:disable -- $filename is properly sanitized.
-		$attachment_id = $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT post_id FROM $wpdb->postmeta WHERE meta_key = '_wp_attached_file' AND meta_value LIKE '%s'",
-				'%' . $filename,
-			),
-		);
-		// phpcs:enable
-
-		return $attachment_id;
-	}
-
-	/**
 	 * This helper wraps the `wp_get_attachment_image_src()` function to bypass Jetpack's Photon.
 	 *
 	 * We don't want the CDN urls in migration data because they are harder to replace later.
