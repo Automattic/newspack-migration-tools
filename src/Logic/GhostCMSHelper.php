@@ -345,7 +345,7 @@ class GhostCMSHelper {
 		$this->log( 'Done importing posts from Ghost.', LogLevel::INFO );
 
 		// Rewrite author URLs in content if any nicenames changed during import.
-		$this->rewrite_ghost_author_urls_in_content( $this->log_slug );
+		$this->rewrite_ghost_author_urls_in_content( $this->log_slug, $this->ghost_url );
 
 		// Run command to check for custom Ghost HTML content.
 		$this->check_imported_posts_for_custom_html_content( $this->log_slug );
@@ -495,17 +495,18 @@ class GhostCMSHelper {
 	 * 
 	 * This method finds all such users and rewrites author URLs in post content from the old Ghost slug to the new nicename.
 	 *
-	 * @param string $log_slug The logger slug.
+	 * @param string $log_slug  The logger slug.
+	 * @param string $ghost_url The Ghost site URL (e.g., https://www.liveghost.com).
 	 */
-	public function rewrite_ghost_author_urls_in_content( string $log_slug ): void {
+	public function rewrite_ghost_author_urls_in_content( string $log_slug, string $ghost_url ): void {
 		global $wpdb;
 
 		// Init logger usage in this class.
 		$this->set_log_slug( $log_slug );
 
-		$hostname = wp_parse_url( home_url(), PHP_URL_HOST );
+		$hostname = wp_parse_url( $ghost_url, PHP_URL_HOST );
 		if ( empty( $hostname ) ) {
-			$this->log( 'Could not determine site hostname from home_url() -- no author URL rewrites have been done. Please attempt to run the self-standing command `wp newspack-migration-tools ghostcms-rewrite-author-urls` to check if author URLs are rewritten correctly.', LogLevel::ERROR );
+			$this->log( 'Could not determine hostname from provided Ghost URL.', LogLevel::ERROR );
 			return;
 		}
 
