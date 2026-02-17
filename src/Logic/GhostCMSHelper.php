@@ -557,17 +557,17 @@ class GhostCMSHelper {
 				$user_nicename                   = $user['user_nicename'];
 				$post_content_before_replacement = $post_content_updated;
 
-				// Replace author URL, with or without trailing slash.
-				$post_content_updated = str_replace(
-					sprintf( '//%s/author/%s"', $hostname, $ghost_slug ),
-					sprintf( '//%s/author/%s"', $hostname, $user_nicename ),
-					$post_content_updated
+				// Replace author URLs pointing to the Ghost slug with URLs pointing to the mapped user_nicename.
+				// This handles absolute URLs with optional scheme (http/https), protocol-relative URLs, and relative `/author/slug` URLs,
+				// with or without a trailing slash (e.g. https://host/author/slug, /author/slug/).
+				// Use word boundary \b after slug to prevent partial matches (e.g., 'jo' won't match inside 'joe').
+				$pattern     = sprintf(
+					'~((?:https?:)?//%s)?/author/%s\b(/?)~',
+					preg_quote( $hostname, '~' ),
+					preg_quote( $ghost_slug, '~' )
 				);
-				$post_content_updated = str_replace(
-					sprintf( '//%s/author/%s/"', $hostname, $ghost_slug ),
-					sprintf( '//%s/author/%s/"', $hostname, $user_nicename ),
-					$post_content_updated
-				);
+				$replacement = '$1/author/' . $user_nicename . '$2';
+				$post_content_updated = preg_replace( $pattern, $replacement, $post_content_updated );
 
 				// Note if a replacement was made.
 				if ( $post_content_before_replacement !== $post_content_updated ) {
