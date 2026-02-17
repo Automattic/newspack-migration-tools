@@ -197,7 +197,11 @@ class CommandSupervisor implements WpCliCommandInterface {
 		$this->logger->info( sprintf( 'Finished after %d attempt(s), %d failure(s). Final exit code: %d.', $attempt, $fail_count, $final_exit_code ) );
 
 		if ( $notify_email ) {
-			$this->send_notification( $notify_email, $final_exit_code, $command, $attempt );
+			if ( ! is_email( $notify_email ) ) {
+				$this->logger->error( sprintf( 'Invalid notify-email address provided: %s', $notify_email ) );
+			} else {
+				$this->send_notification( $notify_email, $final_exit_code, $command, $attempt );
+			}
 		}
 
 		if ( 0 !== $final_exit_code ) {
