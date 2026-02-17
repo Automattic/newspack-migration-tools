@@ -52,9 +52,16 @@ class CommandSupervisor implements WpCliCommandInterface {
 						[
 							'type'        => 'assoc',
 							'name'        => 'max-fail-retries',
-							'description' => 'Maximum number of consecutive or total failed attempts before giving up. Successful runs do not count toward this limit.',
+							'description' => 'Maximum number of failed attempts before giving up. Successful runs do not count toward this limit.',
 							'optional'    => true,
 							'default'     => 3,
+						],
+						[
+							'type'        => 'assoc',
+							'name'        => 'max-consecutive-fail-retries',
+							'description' => 'Maximum number of consecutive failed attempts before giving up. Successful runs do not count toward this limit.',
+							'optional'    => true,
+							'default'     => 2,
 						],
 						[
 							'type'        => 'assoc',
@@ -106,11 +113,12 @@ class CommandSupervisor implements WpCliCommandInterface {
 	 * @param array $args Positional arguments.
 	 * @param array $assoc_args Associative arguments.
 	 *
-	 * @throws ExitException If an error occurs during command execution.
+	 * @throws ExitException Thrown if the command fails beyond or equal to the maximum number of retries.
 	 */
 	public function cmd_supervise( array $args, array $assoc_args ): void {
 		$command              = $assoc_args['command'];
 		$max_fail_retries     = intval( $assoc_args['max-fail-retries'] ?? 3 );
+		$max_consecutive_fail_retries = intval( $assoc_args['max-consecutive-fail-retries'] ?? 2 );
 		$max_success_retries  = intval( $assoc_args['max-success-retries'] ?? 10 );
 		$retry_delay          = intval( $assoc_args['retry-delay'] ?? 5 );
 		$restart_on_success   = isset( $assoc_args['restart-on-success'] );
@@ -135,9 +143,11 @@ class CommandSupervisor implements WpCliCommandInterface {
 		);
 
 		$attempt         = 0;
-		$fail_count      = 0;
-		$success_count   = 0;
+		$total_fail_count = 0;
+		$consecutive_fail_count = 0;
+		$total_success_count = 0;
 		$final_exit_code = null;
+		$operation_status_stack = [ null, null ];
 
 		while ( true ) {
 			++$attempt;
@@ -147,13 +157,17 @@ class CommandSupervisor implements WpCliCommandInterface {
 			$process         = $this->execute_command( $command );
 			$final_exit_code = $process->return_code;
 			$success         = ( 0 === $process->return_code );
+			if ( $operation_status_stack[0] !== null ) {
+				$operation_status_stack[1] = $operation_status_stack[0];
+			}
+			$operation_status_stack[0] = $success;
 
 			if ( ! empty( $process->stdout ) ) {
 				$this->logger->info( $process->stdout );
 			}
 
 			if ( $success ) {
-				++$success_count;
+				++$total_success_count;
 				$this->logger->info( "Command succeeded on attempt #{$attempt} (exit code 0)." );
 
 				if ( ! $restart_on_success ) {
@@ -167,22 +181,28 @@ class CommandSupervisor implements WpCliCommandInterface {
 						$this->logger->info( "Completion criteria \"{$completion_criteria}\" found in output. Stopping." );
 						break;
 					}
-				} elseif ( $success_count >= $max_success_retries ) {
+				} elseif ( $total_success_count >= $max_success_retries ) {
 					$this->logger->info( "Max success retries ({$max_success_retries}) reached. Stopping." );
 					break;
 				}
 
-				$this->logger->info( "--restart-on-success is set; will restart after delay (success {$success_count}" . ( empty( $completion_criteria ) ? "/{$max_success_retries})." : ').' ) );
+				$this->logger->info( "--restart-on-success is set; will restart after delay (success {$total_success_count}" . ( empty( $completion_criteria ) ? "/{$max_success_retries})." : ').' ) );
 			} else {
-				++$fail_count;
+				++$total_fail_count;
+
+				if ( false === $operation_status_stack[1] ) {
+					++$consecutive_fail_count;
+				} else {
+					$consecutive_fail_count = 1;
+				}
 
 				if ( ! empty( $process->stderr ) ) {
 					$this->logger->error( $process->stderr );
 				}
-				$this->logger->warning( "Command failed with exit code {$process->return_code} on attempt #{$attempt} (failure {$fail_count}/{$max_fail_retries})." );
+				$this->logger->warning( "Command failed with exit code {$process->return_code} on attempt #{$attempt} (consecutive failures {$consecutive_fail_count}/{$max_consecutive_fail_retries} failure {$total_fail_count}/{$max_fail_retries})." );
 
 				// Check whether we've exhausted failure retries.
-				if ( $fail_count >= $max_fail_retries ) {
+				if ( $total_fail_count >= $max_fail_retries ) {
 					$this->logger->warning( "Max fail retries ({$max_fail_retries}) reached. Stopping." );
 					break;
 				}
@@ -194,7 +214,7 @@ class CommandSupervisor implements WpCliCommandInterface {
 
 		// Final summary.
 		$this->logger->info( '========== Supervision Complete ==========' );
-		$this->logger->info( sprintf( 'Finished after %d attempt(s), %d failure(s). Final exit code: %d.', $attempt, $fail_count, $final_exit_code ) );
+		$this->logger->info( sprintf( 'Finished after %d attempt(s), %d failure(s). Final exit code: %d.', $attempt, $total_fail_count, $final_exit_code ) );
 
 		if ( $notify_email ) {
 			if ( ! is_email( $notify_email ) ) {
@@ -204,10 +224,14 @@ class CommandSupervisor implements WpCliCommandInterface {
 			}
 		}
 
-		if ( 0 !== $final_exit_code ) {
-			$this->logger->error( sprintf( 'Command did not complete successfully after %d failure(s).', $fail_count ) );
+		if ( $total_success_count >= $max_success_retries ) {
+			$this->logger->info( 'Command succeeded after max success retries.' );
+		} elseif ( $consecutive_fail_count >= $max_consecutive_fail_retries || $total_fail_count >= $max_fail_retries ) {
+			$this->logger->error( 'Command failed after max consecutive failures or max fail retries.' );
 			WP_CLI::halt( 1 );
 		}
+
+		$this->logger->info( 'Command supervision completed successfully.' );
 	}
 
 	/**
