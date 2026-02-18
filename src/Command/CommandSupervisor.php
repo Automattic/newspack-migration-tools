@@ -92,7 +92,7 @@ class CommandSupervisor implements WpCliCommandInterface {
 						[
 							'type'        => 'assoc',
 							'name'        => 'active-plugins',
-							'description' => 'Comma-separated list of additional plugin slugs to keep active. newspack-custom-content-migrator is always kept active. All other plugins are skipped via --skip-plugins for memory optimization.',
+							'description' => 'Comma-separated list of additional plugin slugs to keep active. Plugins that depend on newspack-migration-tools are automatically kept active. All other plugins are skipped via --skip-plugins for memory optimization.',
 							'optional'    => true,
 						],
 						[
@@ -306,16 +306,18 @@ class CommandSupervisor implements WpCliCommandInterface {
 	/**
 	 * Builds the list of plugin slugs to skip.
 	 *
-	 * All active plugins are included except newspack-custom-content-migrator and any additional
-	 * plugins specified by the caller.
+	 * All active plugins are skipped except the host plugin(s) that depend on
+	 * newspack-migration-tools and any additional plugins specified by the caller.
 	 *
 	 * @param string $active_plugins_arg Comma-separated list of additional plugin slugs to keep active.
 	 *
 	 * @return string[] Plugin slugs to pass to --skip-plugins.
 	 */
 	private function get_plugins_to_skip( string $active_plugins_arg ): array {
-		// Build the whitelist of plugins that should remain active.
-		$whitelist = [ 'newspack-custom-content-migrator' ];
+		$all_active = get_option( 'active_plugins', [] );
+
+		// Build the whitelist: host plugin(s) + caller-specified plugins.
+		$whitelist = $this->get_host_plugin_slugs( $all_active );
 		if ( ! empty( $active_plugins_arg ) ) {
 			$whitelist = array_merge(
 				$whitelist,
@@ -325,7 +327,6 @@ class CommandSupervisor implements WpCliCommandInterface {
 		$whitelist = array_unique( $whitelist );
 
 		// Determine which active plugins to skip.
-		$all_active   = get_option( 'active_plugins', [] );
 		$skip_plugins = [];
 
 		foreach ( $all_active as $plugin_path ) {
@@ -342,6 +343,52 @@ class CommandSupervisor implements WpCliCommandInterface {
 		}
 
 		return $skip_plugins;
+	}
+
+	/**
+	 * Detects which active plugins depend on newspack-migration-tools.
+	 *
+	 * Checks each plugin's composer.json for the automattic/newspack-migration-tools
+	 * dependency. These plugins must remain active for the supervised command to work.
+	 *
+	 * @param string[] $active_plugins Active plugin paths from the active_plugins option.
+	 *
+	 * @return string[] Plugin slugs that depend on newspack-migration-tools.
+	 */
+	private function get_host_plugin_slugs( array $active_plugins ): array {
+		$host_plugins = [];
+
+		foreach ( $active_plugins as $plugin_path ) {
+			$plugin_slug = dirname( $plugin_path );
+
+			// Single-file plugins won't have a composer.json.
+			if ( '.' === $plugin_slug ) {
+				continue;
+			}
+
+			$composer_file = WP_PLUGIN_DIR . '/' . $plugin_slug . '/composer.json';
+			if ( ! file_exists( $composer_file ) ) {
+				continue;
+			}
+
+			$composer_json = file_get_contents( $composer_file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$composer      = json_decode( $composer_json, true );
+			if ( ! is_array( $composer ) ) {
+				continue;
+			}
+
+			if ( isset( $composer['require']['automattic/newspack-migration-tools'] ) ) {
+				$host_plugins[] = $plugin_slug;
+			}
+		}
+
+		if ( empty( $host_plugins ) ) {
+			$this->logger->warning( 'Could not detect host plugin for newspack-migration-tools. No plugins will be whitelisted automatically.' );
+		} else {
+			$this->logger->info( sprintf( 'Detected host plugin(s): %s', implode( ', ', $host_plugins ) ) );
+		}
+
+		return $host_plugins;
 	}
 
 	/**
