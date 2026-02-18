@@ -117,10 +117,10 @@ class CommandSupervisor implements WpCliCommandInterface {
 	 */
 	public function cmd_supervise( array $args, array $assoc_args ): void {
 		$command              = $assoc_args['command'];
-		$max_fail_retries     = intval( $assoc_args['max-fail-retries'] ?? 3 );
-		$max_consecutive_fail_retries = intval( $assoc_args['max-consecutive-fail-retries'] ?? 2 );
-		$max_success_retries  = intval( $assoc_args['max-success-retries'] ?? 10 );
-		$retry_delay          = intval( $assoc_args['retry-delay'] ?? 5 );
+		$max_fail_retries     = abs( intval( $assoc_args['max-fail-retries'] ?? 3 ) );
+		$max_consecutive_fail_retries = abs( intval( $assoc_args['max-consecutive-fail-retries'] ?? 2 ) );
+		$max_success_retries  = abs( intval( $assoc_args['max-success-retries'] ?? 10 ) );
+		$retry_delay          = abs( intval( $assoc_args['retry-delay'] ?? 5 ) );
 		$restart_on_success   = isset( $assoc_args['restart-on-success'] );
 		$completion_criteria  = $assoc_args['completion-criteria'] ?? null;
 		$active_plugins_arg   = $assoc_args['active-plugins'] ?? '';
