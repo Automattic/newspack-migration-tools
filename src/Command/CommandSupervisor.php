@@ -132,7 +132,7 @@ class CommandSupervisor implements WpCliCommandInterface {
 		$command = preg_replace( '/^\S*wp\s+/', '', $command );
 		$command = $this->inject_wp_cli_global_flags( $command, $active_plugins_arg );
 
-		$this->logger->info( "Starting supervision of: {$command}" );
+		$this->logger->info( sprintf( 'Starting supervision of: %s', $command ) );
 		$this->logger->info(
 			sprintf(
 				'Config: max-fail-retries=%d, retry-delay=%ds, restart-on-success=%s',
@@ -152,7 +152,7 @@ class CommandSupervisor implements WpCliCommandInterface {
 		while ( true ) {
 			++$attempt;
 
-			$this->logger->info( "========== Attempt #{$attempt} ==========" );
+			$this->logger->info( sprintf( '========== Attempt #%d ==========', $attempt ) );
 
 			$process         = $this->execute_command( $command );
 			$final_exit_code = $process->return_code;
@@ -168,7 +168,7 @@ class CommandSupervisor implements WpCliCommandInterface {
 
 			if ( $success ) {
 				++$total_success_count;
-				$this->logger->info( "Command succeeded on attempt #{$attempt} (exit code 0)." );
+				$this->logger->info( sprintf( 'Command succeeded on attempt #%d (exit code 0).', $attempt ) );
 
 				if ( ! $restart_on_success ) {
 					break;
@@ -178,15 +178,19 @@ class CommandSupervisor implements WpCliCommandInterface {
 					// Check if the output contains the completion criteria string.
 					$output = ( $process->stdout ?? '' ) . ( $process->stderr ?? '' );
 					if ( false !== strpos( $output, $completion_criteria ) ) {
-						$this->logger->info( "Completion criteria \"{$completion_criteria}\" found in output. Stopping." );
+						$this->logger->info( sprintf( 'Completion criteria "%s" found in output. Stopping.', $completion_criteria ) );
 						break;
 					}
 				} elseif ( $total_success_count >= $max_success_retries ) {
-					$this->logger->info( "Max success retries ({$max_success_retries}) reached. Stopping." );
+					$this->logger->info( sprintf( 'Max success retries (%d) reached. Stopping.', $max_success_retries ) );
 					break;
 				}
 
-				$this->logger->info( "--restart-on-success is set; will restart after delay (success {$total_success_count}" . ( empty( $completion_criteria ) ? "/{$max_success_retries})." : ').' ) );
+				$this->logger->info(
+					empty( $completion_criteria )
+						? sprintf( '--restart-on-success is set; will restart after delay (success %d/%d).', $total_success_count, $max_success_retries )
+						: sprintf( '--restart-on-success is set; will restart after delay (success %d).', $total_success_count )
+				);
 			} else {
 				++$total_fail_count;
 
@@ -199,16 +203,16 @@ class CommandSupervisor implements WpCliCommandInterface {
 				if ( ! empty( $process->stderr ) ) {
 					$this->logger->error( $process->stderr );
 				}
-				$this->logger->warning( "Command failed with exit code {$process->return_code} on attempt #{$attempt} (consecutive failures {$consecutive_fail_count}/{$max_consecutive_fail_retries} failure {$total_fail_count}/{$max_fail_retries})." );
+				$this->logger->warning( sprintf( 'Command failed with exit code %d on attempt #%d (consecutive failures %d/%d, failure %d/%d).', $process->return_code, $attempt, $consecutive_fail_count, $max_consecutive_fail_retries, $total_fail_count, $max_fail_retries ) );
 
 				// Check whether we've exhausted failure retries.
 				if ( $total_fail_count >= $max_fail_retries ) {
-					$this->logger->warning( "Max fail retries ({$max_fail_retries}) reached. Stopping." );
+					$this->logger->warning( sprintf( 'Max fail retries (%d) reached. Stopping.', $max_fail_retries ) );
 					break;
 				}
 			}
 
-			$this->logger->info( "Retrying in {$retry_delay} seconds..." );
+			$this->logger->info( sprintf( 'Retrying in %d seconds...', $retry_delay ) );
 			sleep( $retry_delay );
 		}
 
@@ -354,20 +358,20 @@ class CommandSupervisor implements WpCliCommandInterface {
 		$body    = implode(
 			"\n",
 			[
-				"Command:  {$command}",
-				"Status:   {$status}",
-				"Exit code: {$exit_code}",
-				"Attempts: {$attempts}",
-				'Time:     ' . gmdate( 'Y-m-d H:i:s' ),
+				sprintf( 'Command:   %s', $command ),
+				sprintf( 'Status:    %s', $status ),
+				sprintf( 'Exit code: %d', $exit_code ),
+				sprintf( 'Attempts:  %d', $attempts ),
+				sprintf( 'Time:      %s', gmdate( 'Y-m-d H:i:s' ) ),
 			]
 		);
 
 		$sent = wp_mail( $email, $subject, $body );
 
 		if ( $sent ) {
-			$this->logger->info( "Notification sent to {$email}." );
+			$this->logger->info( sprintf( 'Notification sent to %s.', $email ) );
 		} else {
-			$this->logger->warning( "Failed to send notification to {$email}." );
+			$this->logger->warning( sprintf( 'Failed to send notification to %s.', $email ) );
 		}
 	}
 }
