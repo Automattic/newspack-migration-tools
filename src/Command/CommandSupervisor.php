@@ -168,6 +168,7 @@ class CommandSupervisor implements WpCliCommandInterface {
 
 			if ( $success ) {
 				++$total_success_count;
+				$consecutive_fail_count = 0;
 				$this->logger->info( sprintf( 'Command succeeded on attempt #%d (exit code 0).', $attempt ) );
 
 				if ( ! $restart_on_success ) {
@@ -210,6 +211,11 @@ class CommandSupervisor implements WpCliCommandInterface {
 					$this->logger->warning( sprintf( 'Max fail retries (%d) reached. Stopping.', $max_fail_retries ) );
 					break;
 				}
+
+				if ( $consecutive_fail_count >= $max_consecutive_fail_retries ) {
+					$this->logger->warning( sprintf( 'Max consecutive fail retries (%d) reached. Stopping.', $max_consecutive_fail_retries ) );
+					break;
+				}
 			}
 
 			$this->logger->info( sprintf( 'Retrying in %d seconds...', $retry_delay ) );
@@ -228,9 +234,7 @@ class CommandSupervisor implements WpCliCommandInterface {
 			}
 		}
 
-		if ( $total_success_count >= $max_success_retries ) {
-			$this->logger->info( 'Command succeeded after max success retries.' );
-		} elseif ( $consecutive_fail_count >= $max_consecutive_fail_retries || $total_fail_count >= $max_fail_retries ) {
+		if ( $consecutive_fail_count >= $max_consecutive_fail_retries || $total_fail_count >= $max_fail_retries ) {
 			$this->logger->error( 'Command failed after max consecutive failures or max fail retries.' );
 			WP_CLI::halt( 1 );
 		}
