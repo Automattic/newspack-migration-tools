@@ -36,6 +36,15 @@ class TestCommandSupervisor extends WP_UnitTestCase {
 	private array $temp_plugin_dirs = [];
 
 	/**
+	 * Filters registered during tests that need to be removed in tearDown.
+	 *
+	 * Each entry is [ hook, callback, priority ].
+	 *
+	 * @var array[]
+	 */
+	private array $filters_to_remove = [];
+
+	/**
 	 * {@inheritDoc}
 	 */
 	public function setUp(): void {
@@ -69,6 +78,11 @@ class TestCommandSupervisor extends WP_UnitTestCase {
 		}
 		$this->temp_plugin_dirs = [];
 
+		foreach ( $this->filters_to_remove as list( $hook, $callback, $priority ) ) {
+			remove_filter( $hook, $callback, $priority );
+		}
+		$this->filters_to_remove = [];
+
 		parent::tearDown();
 	}
 
@@ -97,12 +111,11 @@ class TestCommandSupervisor extends WP_UnitTestCase {
 	 * @param array $plugins The active plugins array to use.
 	 */
 	private function set_active_plugins( array $plugins ): void {
-		add_filter(
-			'pre_option_active_plugins',
-			function () use ( $plugins ) {
-				return $plugins;
-			}
-		);
+		$callback = function () use ( $plugins ) {
+			return $plugins;
+		};
+		add_filter( 'pre_option_active_plugins', $callback );
+		$this->filters_to_remove[] = [ 'pre_option_active_plugins', $callback, 10 ];
 	}
 
 	/**
@@ -579,15 +592,12 @@ class TestCommandSupervisor extends WP_UnitTestCase {
 	 */
 	public function test_send_notification_sends_success_email(): void {
 		$captured_atts = null;
-		add_filter(
-			'pre_wp_mail',
-			function ( $no_value, $atts ) use ( &$captured_atts ) {
-				$captured_atts = $atts;
-				return true;
-			},
-			10,
-			2
-		);
+		$callback      = function ( $no_value, $atts ) use ( &$captured_atts ) {
+			$captured_atts = $atts;
+			return true;
+		};
+		add_filter( 'pre_wp_mail', $callback, 10, 2 );
+		$this->filters_to_remove[] = [ 'pre_wp_mail', $callback, 10 ];
 
 		$this->invoke_private_method(
 			'send_notification',
@@ -606,15 +616,12 @@ class TestCommandSupervisor extends WP_UnitTestCase {
 	 */
 	public function test_send_notification_sends_failure_email(): void {
 		$captured_atts = null;
-		add_filter(
-			'pre_wp_mail',
-			function ( $no_value, $atts ) use ( &$captured_atts ) {
-				$captured_atts = $atts;
-				return true;
-			},
-			10,
-			2
-		);
+		$callback      = function ( $no_value, $atts ) use ( &$captured_atts ) {
+			$captured_atts = $atts;
+			return true;
+		};
+		add_filter( 'pre_wp_mail', $callback, 10, 2 );
+		$this->filters_to_remove[] = [ 'pre_wp_mail', $callback, 10 ];
 
 		$this->invoke_private_method(
 			'send_notification',
@@ -631,15 +638,12 @@ class TestCommandSupervisor extends WP_UnitTestCase {
 	 */
 	public function test_send_notification_email_body_content(): void {
 		$captured_atts = null;
-		add_filter(
-			'pre_wp_mail',
-			function ( $no_value, $atts ) use ( &$captured_atts ) {
-				$captured_atts = $atts;
-				return true;
-			},
-			10,
-			2
-		);
+		$callback      = function ( $no_value, $atts ) use ( &$captured_atts ) {
+			$captured_atts = $atts;
+			return true;
+		};
+		add_filter( 'pre_wp_mail', $callback, 10, 2 );
+		$this->filters_to_remove[] = [ 'pre_wp_mail', $callback, 10 ];
 
 		$this->invoke_private_method(
 			'send_notification',
