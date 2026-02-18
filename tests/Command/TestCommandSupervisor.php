@@ -114,7 +114,7 @@ class TestCommandSupervisor extends WP_UnitTestCase {
 	private function create_temp_plugin( string $slug, ?array $composer_data = null ): void {
 		$plugin_dir = WP_PLUGIN_DIR . '/' . $slug;
 		if ( ! is_dir( $plugin_dir ) ) {
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir,WordPressVIPMinimum.Functions.RestrictedFunctions.directory_mkdir
 			mkdir( $plugin_dir, 0755, true );
 		}
 		if ( null !== $composer_data ) {
@@ -148,8 +148,8 @@ class TestCommandSupervisor extends WP_UnitTestCase {
 	 * Test that all expected synopsis parameters are present.
 	 */
 	public function test_get_cli_commands_has_all_synopsis_params(): void {
-		$commands   = CommandSupervisor::get_cli_commands();
-		$synopsis   = $commands[0][2]['synopsis'];
+		$commands    = CommandSupervisor::get_cli_commands();
+		$synopsis    = $commands[0][2]['synopsis'];
 		$param_names = array_column( $synopsis, 'name' );
 
 		$expected = [
@@ -463,7 +463,7 @@ class TestCommandSupervisor extends WP_UnitTestCase {
 	public function test_get_host_plugin_slugs_handles_invalid_json(): void {
 		$plugin_dir = WP_PLUGIN_DIR . '/invalid-json-plugin';
 		if ( ! is_dir( $plugin_dir ) ) {
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir,WordPressVIPMinimum.Functions.RestrictedFunctions.directory_mkdir
 			mkdir( $plugin_dir, 0755, true );
 		}
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
@@ -547,23 +547,23 @@ class TestCommandSupervisor extends WP_UnitTestCase {
 	 */
 	public function data_wp_prefix_stripping(): array {
 		return [
-			'simple wp prefix'          => [
+			'simple wp prefix'         => [
 				'wp some-command --flag',
 				'some-command --flag',
 			],
-			'full path wp prefix'       => [
+			'full path wp prefix'      => [
 				'/usr/local/bin/wp some-command --flag',
 				'some-command --flag',
 			],
-			'no wp prefix'              => [
+			'no wp prefix'             => [
 				'some-command --flag',
 				'some-command --flag',
 			],
-			'wp in middle of word'      => [
+			'wp in middle of word'     => [
 				'newspack-wp-migrator some-command',
 				'newspack-wp-migrator some-command',
 			],
-			'wp with extra whitespace'  => [
+			'wp with extra whitespace' => [
 				'wp   some-command',
 				'some-command',
 			],
@@ -581,7 +581,7 @@ class TestCommandSupervisor extends WP_UnitTestCase {
 		$captured_atts = null;
 		add_filter(
 			'pre_wp_mail',
-			function ( $null, $atts ) use ( &$captured_atts ) {
+			function ( $no_value, $atts ) use ( &$captured_atts ) {
 				$captured_atts = $atts;
 				return true;
 			},
@@ -608,7 +608,7 @@ class TestCommandSupervisor extends WP_UnitTestCase {
 		$captured_atts = null;
 		add_filter(
 			'pre_wp_mail',
-			function ( $null, $atts ) use ( &$captured_atts ) {
+			function ( $no_value, $atts ) use ( &$captured_atts ) {
 				$captured_atts = $atts;
 				return true;
 			},
@@ -633,7 +633,7 @@ class TestCommandSupervisor extends WP_UnitTestCase {
 		$captured_atts = null;
 		add_filter(
 			'pre_wp_mail',
-			function ( $null, $atts ) use ( &$captured_atts ) {
+			function ( $no_value, $atts ) use ( &$captured_atts ) {
 				$captured_atts = $atts;
 				return true;
 			},
