@@ -116,15 +116,15 @@ class CommandSupervisor implements WpCliCommandInterface {
 	 * @throws ExitException Thrown if the command fails beyond or equal to the maximum number of retries.
 	 */
 	public function cmd_supervise( array $args, array $assoc_args ): void {
-		$command              = $assoc_args['command'];
-		$max_fail_retries     = abs( intval( $assoc_args['max-fail-retries'] ?? 3 ) );
+		$command                      = $assoc_args['command'];
+		$max_fail_retries             = abs( intval( $assoc_args['max-fail-retries'] ?? 3 ) );
 		$max_consecutive_fail_retries = abs( intval( $assoc_args['max-consecutive-fail-retries'] ?? 2 ) );
-		$max_success_retries  = abs( intval( $assoc_args['max-success-retries'] ?? 10 ) );
-		$retry_delay          = abs( intval( $assoc_args['retry-delay'] ?? 5 ) );
-		$restart_on_success   = isset( $assoc_args['restart-on-success'] );
-		$completion_criteria  = $assoc_args['completion-criteria'] ?? null;
-		$active_plugins_arg   = $assoc_args['active-plugins'] ?? '';
-		$notify_email         = $assoc_args['notify-email'] ?? null;
+		$max_success_retries          = abs( intval( $assoc_args['max-success-retries'] ?? 10 ) );
+		$retry_delay                  = abs( intval( $assoc_args['retry-delay'] ?? 5 ) );
+		$restart_on_success           = isset( $assoc_args['restart-on-success'] );
+		$completion_criteria          = $assoc_args['completion-criteria'] ?? null;
+		$active_plugins_arg           = $assoc_args['active-plugins'] ?? '';
+		$notify_email                 = $assoc_args['notify-email'] ?? null;
 
 		$this->logger = MultiLog::get_cli_and_file_logger( 'CommandSupervisor' );
 
@@ -142,11 +142,11 @@ class CommandSupervisor implements WpCliCommandInterface {
 			)
 		);
 
-		$attempt         = 0;
-		$total_fail_count = 0;
+		$attempt                = 0;
+		$total_fail_count       = 0;
 		$consecutive_fail_count = 0;
-		$total_success_count = 0;
-		$final_exit_code = null;
+		$total_success_count    = 0;
+		$final_exit_code        = null;
 		$operation_status_stack = [ null, null ];
 
 		while ( true ) {
@@ -157,7 +157,7 @@ class CommandSupervisor implements WpCliCommandInterface {
 			$process         = $this->execute_command( $command );
 			$final_exit_code = $process->return_code;
 			$success         = ( 0 === $process->return_code );
-			if ( $operation_status_stack[0] !== null ) {
+			if ( null !== $operation_status_stack[0] ) {
 				$operation_status_stack[1] = $operation_status_stack[0];
 			}
 			$operation_status_stack[0] = $success;
@@ -371,7 +371,8 @@ class CommandSupervisor implements WpCliCommandInterface {
 				continue;
 			}
 
-			$composer_json = file_get_contents( $composer_file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents,WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+			$composer_json = file_get_contents( $composer_file );
 			$composer      = json_decode( $composer_json, true );
 			if ( ! is_array( $composer ) ) {
 				continue;
@@ -413,6 +414,7 @@ class CommandSupervisor implements WpCliCommandInterface {
 			]
 		);
 
+		// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.wp_mail_wp_mail
 		$sent = wp_mail( $email, $subject, $body );
 
 		if ( $sent ) {
