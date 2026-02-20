@@ -221,9 +221,9 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 	 */
 	public static function post_list( array $pos_args, array $assoc_args ): void {
 		$source_domain = $assoc_args['source-domain'] ?? '';
-		$posts_data    = OriginalValueCommands::get_posts_data_for_key( OriginalPermalink::KEY, $assoc_args );
+		$posts_data    = OriginalValueCommands::get_posts_data_for_key( OriginalPermalink::KEY, $assoc_args, 'publish' );
 
-		if ( empty( $posts_data['total'] ) ) {
+		if ( empty( $posts_data['results'] ) ) {
 			WP_CLI::warning( 'No posts found with source permalinks.' );
 			return;
 		}
@@ -323,12 +323,12 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 		$source_domain = $assoc_args['source-domain'] ?? '';
 		$terms_data    = OriginalValueCommands::get_terms_data_for_key( OriginalPermalink::KEY, $assoc_args );
 
-		if ( empty( $terms_data['total'] ) ) {
+		if ( empty( $terms_data['results'] ) ) {
 			WP_CLI::warning( 'No terms found with source permalinks.' );
 			return;
 		}
 
-		WP_CLI::line( sprintf( 'Showing terms %d to %d of %d total.', $terms_data['batch_args']['start'], min( $terms_data['batch_args']['end'] - 1, $terms_data['total'] ), $terms_data['total'] ) );
+		WP_CLI::line( sprintf( 'Found %d terms with source permalinks.', count( $terms_data['results'] ) ) );
 
 		// Build data array with additional fields.
 		$data = [];
@@ -386,9 +386,9 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 	public static function post_list_mismatches( array $pos_args, array $assoc_args ): void {
 		$source_domain   = $assoc_args['source-domain'] ?? '';
 		$check_redirects = isset( $assoc_args['check-redirects'] ) && $assoc_args['check-redirects'];
-		$posts_data      = OriginalValueCommands::get_posts_data_for_key( OriginalPermalink::KEY, $assoc_args );
+		$posts_data      = OriginalValueCommands::get_posts_data_for_key( OriginalPermalink::KEY, $assoc_args, 'publish' );
 
-		if ( empty( $posts_data['total'] ) ) {
+		if ( empty( $posts_data['results'] ) ) {
 			WP_CLI::warning( 'No posts found with source permalinks.' );
 			return;
 		}
@@ -435,7 +435,6 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 		$fields = $assoc_args['fields'] ?? 'post_id,wp_path,source_permalink_path';
 		WP_CLI\Utils\format_items( $format, $data, explode( ',', $fields ) );
 
-
 		WP_CLI::line(
 			sprintf(
 				'Found %d mismatches',
@@ -469,7 +468,7 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 		$source_domain = $assoc_args['source-domain'] ?? '';
 		$terms_data    = OriginalValueCommands::get_terms_data_for_key( OriginalPermalink::KEY, $assoc_args );
 
-		if ( empty( $terms_data['total'] ) ) {
+		if ( empty( $terms_data['results'] ) ) {
 			WP_CLI::warning( 'No terms found with source permalinks.' );
 			return;
 		}
@@ -508,12 +507,9 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 
 		WP_CLI::line(
 			sprintf(
-				'Found %d mismatches in batch (showing terms %d to %d of %d total).',
+				'Found %d term mismatches',
 				count( $data ),
-				$terms_data['batch_args']['start'],
-				min( $terms_data['batch_args']['end'] - 1, $terms_data['total'] ),
-				$terms_data['total'] 
-			) 
+			)
 		);
 
 		$format = $assoc_args['format'] ?? 'table';

@@ -207,35 +207,41 @@ class OriginalValueCommands implements WpCliCommandInterface {
 	 * This is a reusable method that handles the querying logic for posts with a specific key.
 	 * Other command classes can use this to get the base data and then add their own fields.
 	 *
-	 * @param string $key        The original value key.
-	 * @param array  $assoc_args Associative arguments (batch args, etc).
+	 * @param string $key         The original value key.
+	 * @param array  $assoc_args  Associative arguments (batch args, etc).
+	 * @param string $post_status Post status to filter by. Pass an empty string to include all statuses.
 	 *
-	 * @return array Array with 'total', 'results', 'batch_args' keys.
+	 * @return array Array with 'results', 'batch_args' keys.
 	 */
-	public static function get_posts_data_for_key( string $key, array $assoc_args ): array {
+	public static function get_posts_data_for_key( string $key, array $assoc_args, string $post_status ): array {
 		global $wpdb;
 
 		$meta_key   = OriginalValueStore::key_for( $key );
 		$batch_args = BatchLogic::validate_and_get_batch_args( $assoc_args );
 
+		$status_clause = '';
+		if ( in_array( $post_status, get_post_stati(), true ) ) {
+			$status_clause = $wpdb->prepare( "AND {$wpdb->posts}.post_status = %s", $post_status );
+		}
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$results = $wpdb->get_results(
+			// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $status_clause is already prepared.
 			$wpdb->prepare(
-				"SELECT post_id, meta_value 
+				"SELECT post_id, meta_value
 						FROM {$wpdb->postmeta}
 						JOIN {$wpdb->posts} ON {$wpdb->posts}.ID = {$wpdb->postmeta}.post_id
-						WHERE 
-						    meta_key = %s
-							AND {$wpdb->posts}.post_status = 'publish'
+						WHERE meta_key = %s
+						{$status_clause}
 						ORDER BY post_id LIMIT %d OFFSET %d",
 				$meta_key,
 				$batch_args['total'],
 				$batch_args['start'] - 1
 			)
+			// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		);
 
 		return [
-			'total'      => count( $results ),
 			'results'    => $results,
 			'batch_args' => $batch_args,
 		];
@@ -251,9 +257,9 @@ class OriginalValueCommands implements WpCliCommandInterface {
 	 */
 	public static function post_list( array $pos_args, array $assoc_args ): void {
 		$key        = $pos_args[0];
-		$posts_data = self::get_posts_data_for_key( $key, $assoc_args );
+		$posts_data = self::get_posts_data_for_key( $key, $assoc_args, '' );
 
-		if ( empty( $posts_data['total'] ) ) {
+		if ( empty( $posts_data['results'] ) ) {
 			WP_CLI::warning( sprintf( 'No posts found with key "%s".', $key ) );
 			return;
 		}
@@ -330,7 +336,6 @@ class OriginalValueCommands implements WpCliCommandInterface {
 		);
 
 		return [
-			'total'      => count( $results ),
 			'results'    => $results,
 			'batch_args' => $batch_args,
 		];
@@ -348,7 +353,7 @@ class OriginalValueCommands implements WpCliCommandInterface {
 		$key        = $pos_args[0];
 		$terms_data = self::get_terms_data_for_key( $key, $assoc_args );
 
-		if ( empty( $terms_data['total'] ) ) {
+		if ( empty( $terms_data['results'] ) ) {
 			WP_CLI::warning( sprintf( 'No terms found with key "%s".', $key ) );
 			return;
 		}
