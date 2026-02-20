@@ -120,7 +120,7 @@ wp newspack-migration-tools original-permalink term list-mismatches
 
 **Default: Fast string comparison**
 
-By default, the command uses exact string comparison (after normalizing trailing slashes). So `/news/article` and `/blog/article` would show up as a mismatch, but `/news/article` and `/news/article/` are considered the same.
+By default, the command uses case-insensitive string comparison (after normalizing trailing slashes). So `/news/article` and `/blog/article` would show up as a mismatch, but `/News/Article` and `/news/article/` are considered the same.
 
 This is fast and shows all URL differences, but may flag URLs that actually work fine due to WordPress's canonical redirect system.
 
