@@ -297,6 +297,14 @@ $json_iterator->items( $file, [ 'pointer' => '/data/posts' ] );
 2. Add tests in `tests/Util/`
 3. Document in `docs/` if the class has a non-trivial API
 
+## Before submitting
+
+After writing or modifying code, always run these checks:
+
+1. `composer phpcs` -- fix any errors with `composer phpcbf` or manually
+2. `composer phpunit` -- ensure all tests pass
+3. Add or update tests for any new or changed functionality
+
 ## Documentation
 
 Detailed docs for specific helpers live in `docs/`. See [README.md](README.md) for the full index.
