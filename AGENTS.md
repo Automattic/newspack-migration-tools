@@ -51,11 +51,14 @@ After creating the file, add the class to the list in `WpCliCommands::get_classe
 
 ### Pattern 2: instance methods via WpCliCommandTrait
 
-Used by 7 existing commands (PostsMigrator, ShortcodesMigrator, etc.). Uses `self::get_command_closure('method_name')` for lazy singleton instantiation. The trait declares a `private __construct()`, so you cannot define your own constructor.
+Used by 7 existing commands (PostsMigrator, ShortcodesMigrator, etc.). Uses `self::get_command_closure('method_name')` for lazy singleton instantiation. The trait declares a `private __construct()`. You can shadow it with your own constructor in the class, but keep it lightweight.
 
 ### Command naming
 
-NMT commands use the `newspack-migration-tools` prefix (e.g., `newspack-migration-tools ghostcms-import`). The consuming plugin NCCM uses `newspack-content-migrator`.
+Commands in this library register under two prefixes:
+
+- `newspack-migration-tools` -- generic, reusable migration tooling (e.g., `newspack-migration-tools ghostcms-import`). Use this prefix for new commands.
+- `newspack-content-migrator` -- commands consumed by the NCCM plugin (e.g., `CampaignsMigrator`, `PostsMigrator`, `SettingsMigrator`). Some existing commands use this prefix even though their code lives in this repo.
 
 ## Linting
 
@@ -80,8 +83,8 @@ Tests require a WordPress test environment with MySQL. The bootstrap activates t
 
 Two base classes are used depending on whether you need WordPress:
 
-- **`WP_UnitTestCase`** for tests that need WordPress (posts, meta, users, plugins). Use `set_up()`/`tear_down()` (WordPress snake_case style). Use `$this->factory()->post->create()` for test data.
-- **`PHPUnit\Framework\TestCase`** for pure unit tests (CsvWriter, JsonWriter). Use `setUp()`/`tearDown()` (PHPUnit camelCase style).
+- **`WP_UnitTestCase`** for tests that need WordPress (posts, meta, users, plugins). Existing tests use both `set_up()`/`tear_down()` (WordPress snake_case) and `setUp()`/`tearDown()` (PHPUnit camelCase). Follow the convention in the surrounding test file. Use `$this->factory()->post->create()` for test data.
+- **`PHPUnit\Framework\TestCase`** for pure unit tests (CsvWriter, JsonWriter). Use `setUp()`/`tearDown()`.
 
 ```php
 <?php
@@ -95,9 +98,9 @@ class ExampleTest extends WP_UnitTestCase {
 
 	public function set_up() {
 		parent::set_up();
-		// Disable logging noise in tests.
-		add_filter( 'newspack_migration_tools_log_file_logger_disable', '__return_true' );
-		add_filter( 'newspack_migration_tools_log_clilog_disable', '__return_true' );
+		// Logging is disabled by default. Only enable if your test needs it:
+		// add_filter( 'newspack_migration_tools_enable_cli_log', '__return_true' );
+		// add_filter( 'newspack_migration_tools_enable_file_log', '__return_true' );
 	}
 
 	public function test_something() {
@@ -139,7 +142,7 @@ find src/Util -name '*.php' -not -path '*/Log/*'
 
 ## Idempotency pattern
 
-Four classes share a unique-identifier pattern for re-runnable migrations. Each stores a meta key on the created entity so subsequent runs find existing records instead of creating duplicates:
+Four classes (five methods) share a unique-identifier pattern for re-runnable migrations. Each stores a meta key on the created entity so subsequent runs find existing records instead of creating duplicates:
 
 | Method | Meta key | Returns |
 |--------|----------|---------|
@@ -162,7 +165,7 @@ Helpers use inconsistent patterns for static vs instance methods and error handl
 | `Posts` | Mixed. `create_or_get_post()`, `update_post_*()` are static. `get_all_posts_ids()`, `throttled_posts_loop()` require `new Posts()` | Returns `WP_Error` |
 | `Attachments` | All static | Returns `int\|WP_Error` |
 | `UsersHelper` | All static | Returns `WP_Error` AND throws `InvalidArgumentException`/`Exception` |
-| `CoAuthorsPlusHelper` | `new CoAuthorsPlusHelper()`. Constructor **throws** if CAP plugin is not active | Throws `RuntimeException`, `UnexpectedValueException` |
+| `CoAuthorsPlusHelper` | `new CoAuthorsPlusHelper()`. Constructor **throws** if CAP plugin is not active | Constructor throws `Exception`; methods throw `RuntimeException`, `UnexpectedValueException` |
 | `Taxonomy` | `new Taxonomy()` | Newer methods return `WP_Error`, older `get_or_create_category_by_name_and_parent_id()` throws `RuntimeException` |
 | `GutenbergBlockGenerator` | `new GutenbergBlockGenerator()` | N/A (returns arrays) |
 | `GutenbergBlockManipulator` | All static | N/A (returns arrays) |
@@ -269,14 +272,13 @@ $json_iterator->items( $file, [ 'pointer' => '/data/posts' ] );
 - `Posts::throttled_posts_loop()` uses recursion, not iteration. Could hit stack depth limits on very large datasets.
 - `OriginalPermalink` has `save_for_term()` but no `get_term_source_permalink()`. Use `OriginalValueStore::get_for_term( $id, 'permalink' )` directly.
 - Tests need `./bin/install-wp-tests.sh` run first. Missing plugin errors are verbose by design (see `bootstrap.php`).
-- Two different filter names disable logs: `newspack_migration_tools_enable_cli_log` (production enable) vs `newspack_migration_tools_log_clilog_disable` (test disable).
 
 ## Recipes
 
 ### Add a new WP-CLI command to NMT
 
 1. Create `src/Command/MyMigrator.php` implementing `WpCliCommandInterface`
-2. Use the static method pattern (Pattern 1 above) with `newspack-migration-tools` prefix
+2. Use the static method pattern (Pattern 1 above). Use `newspack-migration-tools` prefix for new library commands, or `newspack-content-migrator` if the command integrates with the NCCM plugin
 3. Add the class to the array in `WpCliCommands::get_classes_with_cli_commands()`
 4. Add a test in `tests/Command/`
 
@@ -284,7 +286,7 @@ $json_iterator->items( $file, [ 'pointer' => '/data/posts' ] );
 
 1. Create `src/Logic/MyHelper.php` in the `Newspack\MigrationTools\Logic` namespace
 2. Use static methods for stateless operations, instance methods when state is needed
-3. Do not check plugin dependencies in the constructor (see `docs/coding-conventions-and-standards.md`)
+3. Lightweight plugin-activation checks in constructors are allowed (see `docs/coding-conventions-and-standards.md`). Avoid heavy work or cascading dependencies
 4. Add tests in `tests/Logic/`
 
 ### Add a new Util class
