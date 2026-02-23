@@ -1,6 +1,8 @@
-# AI agent guidelines for newspack-migration-tools
+# AI agent guidelines for newspack-migration-tools (NMT)
 
-Shared PHP library (Composer package) providing migration helpers, WP-CLI commands, and utilities for migrating content to WordPress. No frontend code. Consumed as a dependency by `newspack-custom-content-migrator` and other migration plugins.
+Shared PHP library (Composer package) providing migration helpers, WP-CLI commands, and utilities for migrating content to WordPress. No frontend code. Consumed as a dependency by `newspack-custom-content-migrator` (NCCM) and other migration plugins.
+
+**Abbreviations used in these docs:** NMT = newspack-migration-tools (this library), NCCM = newspack-custom-content-migrator (consuming plugin).
 
 ## Core architecture
 
