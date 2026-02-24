@@ -129,7 +129,7 @@ class CommandSupervisor implements WpCliCommandInterface {
 		$this->logger = MultiLog::get_cli_and_file_logger( 'CommandSupervisor' );
 
 		// Strip the "wp" prefix if the caller included it.
-		$command = preg_replace( '/^\S*wp\s+/', '', $command );
+		$command = preg_replace( '/^wp\s+/', '', $command );
 		$command = $this->inject_wp_cli_global_flags( $command, $active_plugins_arg );
 
 		$this->logger->info( sprintf( 'Starting supervision of: %s', $command ) );
