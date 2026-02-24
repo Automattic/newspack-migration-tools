@@ -316,8 +316,17 @@ class CommandSupervisor implements WpCliCommandInterface {
 	private function get_plugins_to_skip( string $active_plugins_arg ): array {
 		$all_active = get_option( 'active_plugins', [] );
 
-		// Build the whitelist: host plugin(s) + caller-specified plugins.
+		// Build the whitelist: host plugin(s) + default active plugins + caller-specified plugins.
 		$whitelist = $this->get_host_plugin_slugs( $all_active );
+
+		// Allow default active plugins to be configured via constant or filter.
+		$default_active_plugins = [];
+		if ( defined( 'NMT_DEFAULT_ACTIVE_PLUGINS' ) ) {
+			$default_active_plugins = array_map( 'trim', explode( ',', NMT_DEFAULT_ACTIVE_PLUGINS ) );
+		}
+		$default_active_plugins = apply_filters( 'newspack_migration_tools_default_active_plugins', $default_active_plugins );
+		$whitelist              = array_merge( $whitelist, $default_active_plugins );
+
 		if ( ! empty( $active_plugins_arg ) ) {
 			$whitelist = array_merge(
 				$whitelist,
