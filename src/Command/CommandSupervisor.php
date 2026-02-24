@@ -283,15 +283,11 @@ class CommandSupervisor implements WpCliCommandInterface {
 
 		$flags = [];
 
-		if ( $has_skip_themes ) {
-			$this->logger->info( '--skip-themes already present in command; skipping.' );
-		} else {
+		if ( ! $has_skip_themes ) {
 			$flags[] = '--skip-themes';
 		}
 
-		if ( $has_skip_plugins ) {
-			$this->logger->info( '--skip-plugins already present in command; skipping.' );
-		} else {
+		if ( ! $has_skip_plugins ) {
 			$skip_plugins_list = $this->get_plugins_to_skip( $active_plugins_arg );
 			if ( ! empty( $skip_plugins_list ) ) {
 				$flags[] = '--skip-plugins=' . implode( ',', $skip_plugins_list );
