@@ -17,6 +17,16 @@ defined( 'ABSPATH' ) || exit;
 class NMT {
 
 	/**
+	 * Exit code that commands can use to signal "done, no more work."
+	 *
+	 * Used by CommandSupervisor: when --restart-on-success is set, exit 0 means
+	 * "succeeded, restart" and EXIT_DONE means "succeeded, stop."
+	 *
+	 * Usage in a migration command: WP_CLI::halt( NMT::EXIT_DONE );
+	 */
+	public const EXIT_DONE = 2;
+
+	/**
 	 * Log level.
 	 *
 	 * @see \Monolog\Level
