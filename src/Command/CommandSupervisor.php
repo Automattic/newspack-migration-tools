@@ -2,6 +2,7 @@
 
 namespace Newspack\MigrationTools\Command;
 
+use Newspack\MigrationTools\NMT;
 use Newspack\MigrationTools\Util\Log\MultiLog;
 use Psr\Log\LoggerInterface;
 use WP_CLI;
@@ -73,13 +74,13 @@ class CommandSupervisor implements WpCliCommandInterface {
 						[
 							'type'        => 'flag',
 							'name'        => 'restart-on-success',
-							'description' => 'Also restart the command after a successful exit (exit code 0). Useful for batch-processing commands that need to run multiple passes. Requires --completion-criteria or --max-success-retries.',
+							'description' => 'Also restart the command after a successful exit (exit code 0). The supervised command can signal completion by exiting with code 2 (EXIT_DONE). Optionally use --completion-criteria or --max-success-retries as alternative stop conditions.',
 							'optional'    => true,
 						],
 						[
 							'type'        => 'assoc',
 							'name'        => 'completion-criteria',
-							'description' => 'A string to look for in the command output that indicates processing is complete and the supervisor should stop restarting. When set, --max-success-retries is ignored.',
+							'description' => 'A string to look for in the command output that indicates processing is complete. Fallback for commands that cannot use exit code 2 (EXIT_DONE) to signal completion. When set, --max-success-retries is ignored.',
 							'optional'    => true,
 						],
 						[
@@ -92,7 +93,7 @@ class CommandSupervisor implements WpCliCommandInterface {
 						[
 							'type'        => 'assoc',
 							'name'        => 'active-plugins',
-							'description' => 'Comma-separated list of additional plugin slugs to keep active. Plugins that depend on newspack-migration-tools are automatically kept active. All other plugins are skipped via --skip-plugins for memory optimization.',
+							'description' => 'Comma-separated list of additional plugin slugs to keep active. Co-Authors Plus, Simple Local Avatars, Yoast, and Newspack are kept active by default, along with any plugin that depends on newspack-migration-tools. All other plugins are skipped via --skip-plugins for memory optimization.',
 							'optional'    => true,
 						],
 						[
@@ -154,9 +155,16 @@ class CommandSupervisor implements WpCliCommandInterface {
 
 			$this->logger->info( sprintf( '========== Attempt #%d ==========', $attempt ) );
 
-			$process         = $this->execute_command( $command );
-			$final_exit_code = $process->return_code;
-			$success         = ( 0 === $process->return_code );
+			$process = $this->execute_command( $command );
+			// If return code is 2 (EXIT_DONE) is received, the command has fully completed its task.
+			$done = ( NMT::EXIT_DONE === $process->return_code );
+			// Want to know if the command has succeeded or not. A return code of 1 (EXIT_ERROR) means an error occurred.
+			// A return code of 1 is ignored if EXIT_DONE is received.
+			$success = ( 0 === $process->return_code || $done );
+			// If EXIT_DONE is received, we convert the final exit code to 0, indicating success. Otherwise, fallback to whatever the final exit code is.
+			$final_exit_code = $done ? 0 : $process->return_code;
+			// Track the success/failure status for the current and previous attempts.
+			// This is used to determine consecutive successes or failures.
 			if ( null !== $operation_status_stack[0] ) {
 				$operation_status_stack[1] = $operation_status_stack[0];
 			}
@@ -169,6 +177,12 @@ class CommandSupervisor implements WpCliCommandInterface {
 			if ( $success ) {
 				++$total_success_count;
 				$consecutive_fail_count = 0;
+
+				if ( $done ) {
+					$this->logger->info( sprintf( 'Command signaled completion (exit code %d) on attempt #%d. Stopping.', NMT::EXIT_DONE, $attempt ) );
+					break;
+				}
+
 				$this->logger->info( sprintf( 'Command succeeded on attempt #%d (exit code 0).', $attempt ) );
 
 				if ( ! $restart_on_success ) {
@@ -251,7 +265,7 @@ class CommandSupervisor implements WpCliCommandInterface {
 	 * @param string $command WP-CLI command without the "wp" prefix.
 	 * @return object{stdout: string, stderr: string, return_code: int} Process result.
 	 */
-	private function execute_command( string $command ): object {
+	protected function execute_command( string $command ): object {
 		return WP_CLI::runcommand(
 			$command,
 			[
@@ -319,12 +333,13 @@ class CommandSupervisor implements WpCliCommandInterface {
 		// Build the whitelist: host plugin(s) + default active plugins + caller-specified plugins.
 		$whitelist = $this->get_host_plugin_slugs( $all_active );
 
-		// Allow default active plugins to be configured via constant or filter.
-		$default_active_plugins = [];
-		if ( defined( 'NMT_DEFAULT_ACTIVE_PLUGINS' ) ) {
-			$default_active_plugins = array_map( 'trim', explode( ',', NMT_DEFAULT_ACTIVE_PLUGINS ) );
-		}
-		$default_active_plugins = apply_filters( 'newspack_migration_tools_default_active_plugins', $default_active_plugins );
+		// Plugins commonly used during migrations that should remain active by default.
+		$default_active_plugins = [
+			'co-authors-plus',
+			'simple-local-avatars',
+			'wordpress-seo',
+			'newspack-plugin',
+		];
 		$whitelist              = array_merge( $whitelist, $default_active_plugins );
 
 		if ( ! empty( $active_plugins_arg ) ) {

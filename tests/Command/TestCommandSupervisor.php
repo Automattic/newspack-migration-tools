@@ -3,6 +3,7 @@
 namespace Newspack\MigrationTools\Tests\Command;
 
 use Newspack\MigrationTools\Command\CommandSupervisor;
+use Newspack\MigrationTools\NMT;
 use Newspack\MigrationTools\Util\Log\MultiLog;
 use ReflectionClass;
 use WP_UnitTestCase;
@@ -135,6 +136,17 @@ class TestCommandSupervisor extends WP_UnitTestCase {
 			file_put_contents( $plugin_dir . '/composer.json', wp_json_encode( $composer_data ) );
 		}
 		$this->temp_plugin_dirs[] = $plugin_dir;
+	}
+
+	// ==========================================================================
+	// Tests for EXIT_DONE constant.
+	// ==========================================================================
+
+	/**
+	 * Test that EXIT_DONE constant is defined on NMT and equals 2.
+	 */
+	public function test_exit_done_constant_is_defined(): void {
+		$this->assertSame( 2, NMT::EXIT_DONE );
 	}
 
 	// ==========================================================================
@@ -370,6 +382,29 @@ class TestCommandSupervisor extends WP_UnitTestCase {
 		$result = $this->invoke_private_method( 'get_plugins_to_skip', [ '' ] );
 
 		$this->assertEmpty( $result );
+	}
+
+	/**
+	 * Test that default migration plugins (Co-Authors Plus, Simple Local Avatars, Yoast, Newspack) are whitelisted.
+	 */
+	public function test_get_plugins_to_skip_whitelists_default_migration_plugins(): void {
+		$this->set_active_plugins(
+			[
+				'co-authors-plus/co-authors-plus.php',
+				'simple-local-avatars/simple-local-avatars.php',
+				'wordpress-seo/wp-seo.php',
+				'newspack-plugin/newspack.php',
+				'some-other-plugin/some-other-plugin.php',
+			]
+		);
+
+		$result = $this->invoke_private_method( 'get_plugins_to_skip', [ '' ] );
+
+		$this->assertNotContains( 'co-authors-plus', $result );
+		$this->assertNotContains( 'simple-local-avatars', $result );
+		$this->assertNotContains( 'wordpress-seo', $result );
+		$this->assertNotContains( 'newspack-plugin', $result );
+		$this->assertContains( 'some-other-plugin', $result );
 	}
 
 	/**
@@ -655,5 +690,241 @@ class TestCommandSupervisor extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'succeeded', $body );
 		$this->assertStringContainsString( 'Exit code: 0', $body );
 		$this->assertStringContainsString( 'Attempts:  2', $body );
+	}
+
+	// ==========================================================================
+	// Tests for cmd_supervise() supervision loop.
+	// ==========================================================================
+
+	/**
+	 * Create a process result object for use with TestableCommandSupervisor.
+	 *
+	 * @param int    $return_code Exit code.
+	 * @param string $stdout      Standard output.
+	 * @param string $stderr      Standard error.
+	 *
+	 * @return object Process result.
+	 */
+	private function make_process_result( int $return_code, string $stdout = '', string $stderr = '' ): object {
+		return (object) [
+			'stdout'      => $stdout,
+			'stderr'      => $stderr,
+			'return_code' => $return_code,
+		];
+	}
+
+	/**
+	 * Create a TestableCommandSupervisor with pre-configured process results.
+	 *
+	 * @param object[] $process_results Sequence of process results to return.
+	 *
+	 * @return TestableCommandSupervisor
+	 */
+	private function create_testable_supervisor( array $process_results ): TestableCommandSupervisor {
+		$supervisor                  = new TestableCommandSupervisor();
+		$supervisor->process_results = $process_results;
+
+		return $supervisor;
+	}
+
+	/**
+	 * Build assoc_args for cmd_supervise() with sensible test defaults.
+	 *
+	 * @param array $overrides Key-value pairs to merge into defaults.
+	 *
+	 * @return array
+	 */
+	private function get_default_supervise_args( array $overrides = [] ): array {
+		return array_merge(
+			[
+				'command'     => 'some-command --batch-size=100',
+				'retry-delay' => 0,
+			],
+			$overrides
+		);
+	}
+
+	/**
+	 * Test that EXIT_DONE stops the loop even when --restart-on-success is set.
+	 */
+	public function test_cmd_supervise_stops_on_exit_done_with_restart_on_success(): void {
+		$this->set_active_plugins( [] );
+		$supervisor = $this->create_testable_supervisor(
+			[
+				$this->make_process_result( 0 ),
+				$this->make_process_result( NMT::EXIT_DONE ),
+			]
+		);
+
+		$supervisor->cmd_supervise(
+			[],
+			$this->get_default_supervise_args( [ 'restart-on-success' => true ] )
+		);
+
+		$this->assertSame( 2, $supervisor->execute_count );
+	}
+
+	/**
+	 * Test that EXIT_DONE stops the loop when --restart-on-success is not set.
+	 */
+	public function test_cmd_supervise_stops_on_exit_done_without_restart_on_success(): void {
+		$this->set_active_plugins( [] );
+		$supervisor = $this->create_testable_supervisor(
+			[
+				$this->make_process_result( NMT::EXIT_DONE ),
+			]
+		);
+
+		$supervisor->cmd_supervise(
+			[],
+			$this->get_default_supervise_args()
+		);
+
+		$this->assertSame( 1, $supervisor->execute_count );
+	}
+
+	/**
+	 * Test that exit 0 continues the loop with --restart-on-success until EXIT_DONE.
+	 */
+	public function test_cmd_supervise_continues_on_exit_0_with_restart_on_success(): void {
+		$this->set_active_plugins( [] );
+		$supervisor = $this->create_testable_supervisor(
+			[
+				$this->make_process_result( 0 ),
+				$this->make_process_result( 0 ),
+				$this->make_process_result( NMT::EXIT_DONE ),
+			]
+		);
+
+		$supervisor->cmd_supervise(
+			[],
+			$this->get_default_supervise_args( [ 'restart-on-success' => true ] )
+		);
+
+		$this->assertSame( 3, $supervisor->execute_count );
+	}
+
+	/**
+	 * Test that exit 0 stops the loop when --restart-on-success is not set.
+	 */
+	public function test_cmd_supervise_stops_on_exit_0_without_restart_on_success(): void {
+		$this->set_active_plugins( [] );
+		$supervisor = $this->create_testable_supervisor(
+			[
+				$this->make_process_result( 0 ),
+			]
+		);
+
+		$supervisor->cmd_supervise(
+			[],
+			$this->get_default_supervise_args()
+		);
+
+		$this->assertSame( 1, $supervisor->execute_count );
+	}
+
+	/**
+	 * Test that EXIT_DONE normalizes the final exit code to 0 (notification says "succeeded").
+	 */
+	public function test_cmd_supervise_exit_done_sends_success_notification(): void {
+		$this->set_active_plugins( [] );
+		$captured_atts = null;
+		$callback      = function ( $no_value, $atts ) use ( &$captured_atts ) {
+			$captured_atts = $atts;
+			return true;
+		};
+		add_filter( 'pre_wp_mail', $callback, 10, 2 );
+		$this->filters_to_remove[] = [ 'pre_wp_mail', $callback, 10 ];
+
+		$supervisor = $this->create_testable_supervisor(
+			[
+				$this->make_process_result( NMT::EXIT_DONE ),
+			]
+		);
+
+		$supervisor->cmd_supervise(
+			[],
+			$this->get_default_supervise_args( [ 'notify-email' => 'test@example.com' ] )
+		);
+
+		$this->assertNotNull( $captured_atts );
+		$this->assertStringContainsString( 'succeeded', $captured_atts['subject'] );
+	}
+
+	/**
+	 * Test that --restart-on-success stops at max-success-retries when no EXIT_DONE is received.
+	 */
+	public function test_cmd_supervise_stops_at_max_success_retries(): void {
+		$this->set_active_plugins( [] );
+		$supervisor = $this->create_testable_supervisor(
+			[
+				$this->make_process_result( 0 ),
+				$this->make_process_result( 0 ),
+				$this->make_process_result( 0 ),
+			]
+		);
+
+		$supervisor->cmd_supervise(
+			[],
+			$this->get_default_supervise_args(
+				[
+					'restart-on-success'  => true,
+					'max-success-retries' => 3,
+				]
+			)
+		);
+
+		$this->assertSame( 3, $supervisor->execute_count );
+	}
+}
+
+/**
+ * Test double for CommandSupervisor that returns pre-configured process results.
+ *
+ * Overrides execute_command() to avoid real subprocess execution, allowing
+ * the supervision loop in cmd_supervise() to be tested in isolation.
+ */
+class TestableCommandSupervisor extends CommandSupervisor {
+
+	/**
+	 * Sequence of process results to return from execute_command().
+	 *
+	 * @var object[]
+	 */
+	public array $process_results = [];
+
+	/**
+	 * Number of times execute_command() has been called.
+	 *
+	 * @var int
+	 */
+	public int $execute_count = 0;
+
+	/**
+	 * Constructor — replaces the private constructor from WpCliCommandTrait.
+	 */
+	public function __construct() {
+		// Intentionally empty.
+	}
+
+	/**
+	 * Returns the next pre-configured process result instead of running a real command.
+	 *
+	 * Falls back to a successful result (exit code 0) if the sequence is exhausted.
+	 *
+	 * @param string $command Ignored.
+	 *
+	 * @return object Process result with stdout, stderr, and return_code.
+	 */
+	protected function execute_command( string $command ): object {
+		$result = $this->process_results[ $this->execute_count ]
+			?? (object) [
+				'stdout'      => '',
+				'stderr'      => '',
+				'return_code' => 0,
+			];
+		++$this->execute_count;
+
+		return $result;
 	}
 }
