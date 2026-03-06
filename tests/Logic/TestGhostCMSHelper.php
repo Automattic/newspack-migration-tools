@@ -1056,4 +1056,42 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$this->assertIsObject( $category );
 		$this->assertEquals( 'news', $category->slug );
 	}
+
+	/**
+	 * Test that GhostCMS Helper will import from JSON file and rewrite author urls.
+	 *
+	 * @return void
+	 */
+	public function test_ghostcms_import_and_rewrite_author_urls(): void {
+
+		// Run test.
+		$test_ghostcms_helper = new GhostCMSHelper();
+		$test_ghostcms_helper->ghostcms_import( 
+			[], 
+			[
+				'json-file'       => 'tests/fixtures/ghostcms.json',
+				'ghost-url'       => 'https://newspack.com/',
+				'default-user-id' => 1,
+			],
+			''
+		);
+
+		// Posts.
+		$posts = get_posts(
+			[
+				'title'       => 'Author Slug Test',
+				'numberposts' => 1,
+			]
+		);
+		$this->assertIsArray( $posts );
+		$this->assertCount( 1, $posts );
+		$this->assertEquals( 'author-slug-test', $posts[0]->post_name );
+
+		
+		// Author url fixed.
+		$this->assertStringContainsString(
+			'/author/user-with-really-long-name-over-user_nicename-50-c">Click to see all my posts',
+			$posts[0]->post_content
+		);
+	}
 }
