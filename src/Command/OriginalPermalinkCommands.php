@@ -137,6 +137,13 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 						$source_domain_arg,
 						$format_arg,
 						...BatchLogic::get_batch_args(),
+						[
+							'type'        => 'flag',
+							'name'        => 'check-redirects',
+							'description' => 'Check if URLs resolve correctly via WordPress canonical redirects (slower). By default, uses fast string comparison.',
+							'optional'    => true,
+							'repeating'   => false,
+						],
 					],
 				],
 			],
@@ -214,14 +221,12 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 	 */
 	public static function post_list( array $pos_args, array $assoc_args ): void {
 		$source_domain = $assoc_args['source-domain'] ?? '';
-		$posts_data    = OriginalValueCommands::get_posts_data_for_key( OriginalPermalink::KEY, $assoc_args );
+		$posts_data    = OriginalValueCommands::get_posts_data_for_key( OriginalPermalink::KEY, $assoc_args, 'publish' );
 
-		if ( null === $posts_data ) {
+		if ( empty( $posts_data['results'] ) ) {
 			WP_CLI::warning( 'No posts found with source permalinks.' );
 			return;
 		}
-
-		WP_CLI::line( sprintf( 'Showing posts %d to %d of %d total.', $posts_data['batch_args']['start'], min( $posts_data['batch_args']['end'] - 1, $posts_data['total'] ), $posts_data['total'] ) );
 
 		// Build data array with additional fields.
 		$data = [];
@@ -318,12 +323,12 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 		$source_domain = $assoc_args['source-domain'] ?? '';
 		$terms_data    = OriginalValueCommands::get_terms_data_for_key( OriginalPermalink::KEY, $assoc_args );
 
-		if ( null === $terms_data ) {
+		if ( empty( $terms_data['results'] ) ) {
 			WP_CLI::warning( 'No terms found with source permalinks.' );
 			return;
 		}
 
-		WP_CLI::line( sprintf( 'Showing terms %d to %d of %d total.', $terms_data['batch_args']['start'], min( $terms_data['batch_args']['end'] - 1, $terms_data['total'] ), $terms_data['total'] ) );
+		WP_CLI::line( sprintf( 'Found %d terms with source permalinks.', count( $terms_data['results'] ) ) );
 
 		// Build data array with additional fields.
 		$data = [];
@@ -366,23 +371,24 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 	 * the source path differs from the current WordPress path. Useful for debugging
 	 * URL changes and identifying redirect opportunities.
 	 *
-	 * Uses exact string comparison. Future enhancements could include:
-	 * - Case-insensitive comparison
-	 * - Ignoring trailing slashes
-	 * - Partial/fuzzy matching
+	 * By default, uses fast string comparison to flag any URL differences. This is quick
+	 * but may show URLs that actually work via WordPress's canonical redirect system.
+	 *
+	 * Use --check-redirects to verify if URLs actually resolve correctly via WordPress's
+	 * url_to_postid(). This is slower but only flags URLs that genuinely don't work.
 	 *
 	 * @param array $pos_args   Positional arguments (unused).
 	 * @param array $assoc_args Associative arguments. Optional: 'source-domain', 'field', 'format',
-	 *                          'start', 'end', 'num-items'.
+	 *                          'start', 'end', 'num-items', 'check-redirects'.
 	 *
 	 * @return void
-	 * @todo Consider adding fuzzy matching options (case-insensitive, trailing slash handling).
 	 */
 	public static function post_list_mismatches( array $pos_args, array $assoc_args ): void {
-		$source_domain = $assoc_args['source-domain'] ?? '';
-		$posts_data    = OriginalValueCommands::get_posts_data_for_key( OriginalPermalink::KEY, $assoc_args );
+		$source_domain   = $assoc_args['source-domain'] ?? '';
+		$check_redirects = isset( $assoc_args['check-redirects'] ) && $assoc_args['check-redirects'];
+		$posts_data      = OriginalValueCommands::get_posts_data_for_key( OriginalPermalink::KEY, $assoc_args, 'publish' );
 
-		if ( null === $posts_data ) {
+		if ( empty( $posts_data['results'] ) ) {
 			WP_CLI::warning( 'No posts found with source permalinks.' );
 			return;
 		}
@@ -390,17 +396,27 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 		// Build data array and filter to mismatches.
 		$data = [];
 		foreach ( $posts_data['results'] as $row ) {
-			$post = get_post( $row->post_id );
-			if ( empty( $post ) ) {
-				continue;
-			}
-
 			$source_permalink = $row->meta_value;
-			$wp_permalink     = get_permalink( $post->ID );
+			$wp_permalink     = get_permalink( $row->post_id );
 			$wp_path          = OriginalPermalink::ensure_path_format( $wp_permalink );
 
-			// Only include if paths don't match (exact comparison, normalized).
-			if ( untrailingslashit( $source_permalink ) !== untrailingslashit( $wp_path ) ) {
+			if ( $check_redirects ) {
+				// Check redirects mode: Only flag if source URL doesn't resolve to the correct post.
+				// WordPress's canonical redirect system can handle many URL variations.
+				// Use current site's domain since url_to_postid() only works with current site URLs.
+				$source_path     = OriginalPermalink::ensure_path_format( $source_permalink );
+				$source_path_url = untrailingslashit( home_url( $source_path ) );
+				// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.url_to_postid_url_to_postid
+				$resolved_post_id = url_to_postid( $source_path_url );
+
+				// Flag as mismatch if source URL doesn't resolve to this post.
+				$is_mismatch = $resolved_post_id !== (int) $row->post_id;
+			} else {
+				// Default mode: Fast string comparison, flag any differences.
+				$is_mismatch = mb_strtolower( untrailingslashit( $source_permalink ) ) !== mb_strtolower( untrailingslashit( $wp_path ) );
+			}
+
+			if ( $is_mismatch ) {
 				$data[] = [
 					'post_id'               => $row->post_id,
 					'wp_path'               => empty( $source_domain ) ? untrailingslashit( $wp_path ) : $wp_permalink,
@@ -410,23 +426,24 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 		}
 
 		if ( empty( $data ) ) {
-			WP_CLI::success( 'No mismatches found in this batch.' );
+			$mode_text = $check_redirects ? ' (checked canonical redirects)' : ' (string comparison)';
+			WP_CLI::success( 'No mismatches found in this batch' . $mode_text . '.' );
 			return;
 		}
-
-		WP_CLI::line(
-			sprintf(
-				'Found %d mismatches in batch (showing posts %d to %d of %d total).',
-				count( $data ),
-				$posts_data['batch_args']['start'],
-				min( $posts_data['batch_args']['end'] - 1, $posts_data['total'] ),
-				$posts_data['total'] 
-			) 
-		);
 
 		$format = $assoc_args['format'] ?? 'table';
 		$fields = $assoc_args['fields'] ?? 'post_id,wp_path,source_permalink_path';
 		WP_CLI\Utils\format_items( $format, $data, explode( ',', $fields ) );
+
+		WP_CLI::line(
+			sprintf(
+				'Found %d mismatches',
+				count( $data ),
+			)
+		);
+		WP_CLI::line(
+			$check_redirects ? '(URLs that resolve correctly via canonical redirect are not shown)' : '(string comparison - some URLs may work via canonical redirect)'
+		);
 	}
 
 	/**
@@ -446,13 +463,12 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 	 *                          'start', 'end', 'num-items'.
 	 *
 	 * @return void
-	 * @todo Consider adding fuzzy matching options (case-insensitive, trailing slash handling).
 	 */
 	public static function term_list_mismatches( array $pos_args, array $assoc_args ): void {
 		$source_domain = $assoc_args['source-domain'] ?? '';
 		$terms_data    = OriginalValueCommands::get_terms_data_for_key( OriginalPermalink::KEY, $assoc_args );
 
-		if ( null === $terms_data ) {
+		if ( empty( $terms_data['results'] ) ) {
 			WP_CLI::warning( 'No terms found with source permalinks.' );
 			return;
 		}
@@ -491,12 +507,9 @@ class OriginalPermalinkCommands implements WpCliCommandInterface {
 
 		WP_CLI::line(
 			sprintf(
-				'Found %d mismatches in batch (showing terms %d to %d of %d total).',
+				'Found %d term mismatches',
 				count( $data ),
-				$terms_data['batch_args']['start'],
-				min( $terms_data['batch_args']['end'] - 1, $terms_data['total'] ),
-				$terms_data['total'] 
-			) 
+			)
 		);
 
 		$format = $assoc_args['format'] ?? 'table';

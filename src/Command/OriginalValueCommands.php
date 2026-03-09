@@ -207,49 +207,41 @@ class OriginalValueCommands implements WpCliCommandInterface {
 	 * This is a reusable method that handles the querying logic for posts with a specific key.
 	 * Other command classes can use this to get the base data and then add their own fields.
 	 *
-	 * @param string $key        The original value key.
-	 * @param array  $assoc_args Associative arguments (batch args, etc).
+	 * @param string $key         The original value key.
+	 * @param array  $assoc_args  Associative arguments (batch args, etc).
+	 * @param string $post_status Post status to filter by. Pass an empty string to include all statuses.
 	 *
-	 * @return array|null Array with 'total', 'results', 'batch_args' keys, or null if no data.
+	 * @return array Array with 'results', 'batch_args' keys.
 	 */
-	public static function get_posts_data_for_key( string $key, array $assoc_args ): ?array {
+	public static function get_posts_data_for_key( string $key, array $assoc_args, string $post_status ): array {
 		global $wpdb;
 
 		$meta_key   = OriginalValueStore::key_for( $key );
 		$batch_args = BatchLogic::validate_and_get_batch_args( $assoc_args );
 
-		// Get total count.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$total_posts = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = %s",
-				$meta_key
-			)
-		);
-
-		if ( 0 === $total_posts ) {
-			return null;
-		}
-
-		$offset = $batch_args['start'] - 1;
-		$limit  = min( $batch_args['end'], $total_posts ) - $batch_args['start'];
-
-		if ( $offset >= $total_posts ) {
-			return null;
+		$status_clause = '';
+		if ( in_array( $post_status, get_post_stati(), true ) ) {
+			$status_clause = $wpdb->prepare( "AND {$wpdb->posts}.post_status = %s", $post_status );
 		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$results = $wpdb->get_results(
+			// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $status_clause is already prepared.
 			$wpdb->prepare(
-				"SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s ORDER BY post_id LIMIT %d OFFSET %d",
+				"SELECT post_id, meta_value
+						FROM {$wpdb->postmeta}
+						JOIN {$wpdb->posts} ON {$wpdb->posts}.ID = {$wpdb->postmeta}.post_id
+						WHERE meta_key = %s
+						{$status_clause}
+						ORDER BY post_id LIMIT %d OFFSET %d",
 				$meta_key,
-				$limit,
-				$offset
+				$batch_args['total'],
+				$batch_args['start'] - 1
 			)
+			// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		);
 
 		return [
-			'total'      => $total_posts,
 			'results'    => $results,
 			'batch_args' => $batch_args,
 		];
@@ -265,14 +257,12 @@ class OriginalValueCommands implements WpCliCommandInterface {
 	 */
 	public static function post_list( array $pos_args, array $assoc_args ): void {
 		$key        = $pos_args[0];
-		$posts_data = self::get_posts_data_for_key( $key, $assoc_args );
+		$posts_data = self::get_posts_data_for_key( $key, $assoc_args, '' );
 
-		if ( null === $posts_data ) {
+		if ( empty( $posts_data['results'] ) ) {
 			WP_CLI::warning( sprintf( 'No posts found with key "%s".', $key ) );
 			return;
 		}
-
-		WP_CLI::line( sprintf( 'Showing posts %d to %d of %d total.', $posts_data['batch_args']['start'], min( $posts_data['batch_args']['end'] - 1, $posts_data['total'] ), $posts_data['total'] ) );
 
 		$data = [];
 		foreach ( $posts_data['results'] as $row ) {
@@ -327,46 +317,25 @@ class OriginalValueCommands implements WpCliCommandInterface {
 	 * @param string $key        The original value key.
 	 * @param array  $assoc_args Associative arguments (batch args, etc).
 	 *
-	 * @return array|null Array with 'total', 'results', 'batch_args' keys, or null if no data.
+	 * @return array Array with 'results', 'batch_args' keys.
 	 */
-	public static function get_terms_data_for_key( string $key, array $assoc_args ): ?array {
+	public static function get_terms_data_for_key( string $key, array $assoc_args ): array {
 		global $wpdb;
 
 		$meta_key   = OriginalValueStore::key_for( $key );
 		$batch_args = BatchLogic::validate_and_get_batch_args( $assoc_args );
-
-		// Get total count.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$total_terms = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$wpdb->termmeta} WHERE meta_key = %s",
-				$meta_key
-			)
-		);
-
-		if ( 0 === $total_terms ) {
-			return null;
-		}
-
-		$offset = $batch_args['start'] - 1;
-		$limit  = min( $batch_args['end'], $total_terms ) - $batch_args['start'];
-
-		if ( $offset >= $total_terms ) {
-			return null;
-		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT term_id, meta_value FROM {$wpdb->termmeta} WHERE meta_key = %s ORDER BY term_id LIMIT %d OFFSET %d",
 				$meta_key,
-				$limit,
-				$offset
+				$batch_args['total'],
+				$batch_args['start'] - 1
 			)
 		);
 
 		return [
-			'total'      => $total_terms,
 			'results'    => $results,
 			'batch_args' => $batch_args,
 		];
@@ -384,13 +353,10 @@ class OriginalValueCommands implements WpCliCommandInterface {
 		$key        = $pos_args[0];
 		$terms_data = self::get_terms_data_for_key( $key, $assoc_args );
 
-		if ( null === $terms_data ) {
+		if ( empty( $terms_data['results'] ) ) {
 			WP_CLI::warning( sprintf( 'No terms found with key "%s".', $key ) );
 			return;
 		}
-
-		WP_CLI::line( sprintf( 'Showing terms %d to %d of %d total.', $terms_data['batch_args']['start'], min( $terms_data['batch_args']['end'] - 1, $terms_data['total'] ), $terms_data['total'] ) );
-
 		$data = [];
 		foreach ( $terms_data['results'] as $row ) {
 			$data[] = [
@@ -450,39 +416,15 @@ class OriginalValueCommands implements WpCliCommandInterface {
 		$meta_key   = OriginalValueStore::key_for( $key );
 		$batch_args = BatchLogic::validate_and_get_batch_args( $assoc_args );
 
-		// Get total count.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$total_users = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$wpdb->usermeta} WHERE meta_key = %s",
-				$meta_key
-			)
-		);
-
-		if ( 0 === $total_users ) {
-			WP_CLI::warning( sprintf( 'No users found with key "%s".', $key ) );
-			return;
-		}
-
-		$offset = $batch_args['start'] - 1;
-		$limit  = min( $batch_args['end'], $total_users ) - $batch_args['start'];
-
-		if ( $offset >= $total_users ) {
-			WP_CLI::warning( sprintf( 'Start index %d exceeds total users %d.', $batch_args['start'], $total_users ) );
-			return;
-		}
-
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT user_id, meta_value FROM {$wpdb->usermeta} WHERE meta_key = %s ORDER BY user_id LIMIT %d OFFSET %d",
 				$meta_key,
-				$limit,
-				$offset
+				$batch_args['total'],
+				$batch_args['start'] - 1
 			)
 		);
-
-		WP_CLI::line( sprintf( 'Showing users %d to %d of %d total.', $batch_args['start'], min( $batch_args['end'] - 1, $total_users ), $total_users ) );
 
 		$data = [];
 		foreach ( $results as $row ) {

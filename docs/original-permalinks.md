@@ -103,6 +103,7 @@ You can also output as CSV for easy spreadsheet viewing:
 wp newspack-migration-tools original-permalink post list --format=csv > posts.csv
 ```
 
+
 ### Find URL mismatches
 
 These commands show only posts or terms where the source permalink doesn't match the current WordPress URL. Super useful for debugging URL changes or finding content that needs redirects.
@@ -115,9 +116,34 @@ wp newspack-migration-tools original-permalink post list-mismatches
 wp newspack-migration-tools original-permalink term list-mismatches
 ```
 
-The comparison is exact (after normalizing trailing slashes), so `/news/article` and `/blog/article` would show up as a mismatch, but `/news/article` and `/news/article/` are considered the same.
+#### Two comparison modes
 
-Like the regular list commands, these support all the same options:
+**Default: Fast string comparison**
+
+By default, the command uses case-insensitive string comparison (after normalizing trailing slashes). So `/news/article` and `/blog/article` would show up as a mismatch, but `/News/Article` and `/news/article/` are considered the same.
+
+This is fast and shows all URL differences, but may flag URLs that actually work fine due to WordPress's canonical redirect system.
+
+**Optional: Check canonical redirects (`--check-redirects`)**
+
+Add `--check-redirects` to verify if old URLs actually resolve correctly via WordPress's `url_to_postid()` function. This accounts for WordPress's built-in canonical redirect system, which can handle variations in categories and dates when the post slug matches.
+
+```bash
+# Only show URLs that genuinely don't work
+wp newspack-migration-tools original-permalink post list-mismatches --check-redirects
+```
+
+This mode is slower (URL parsing + database queries for each post) but more accurate - it only flags URLs that truly need redirect rules. It might be a good idea to use the `--start=<start>`, `--end=<end>`, or `--num-items=<num-items>` parameters to batch through large datasets.
+
+**When to use which mode:**
+- **Default (no flag):** Quick overview of all URL changes, useful for generating comprehensive redirect rules
+- **--check-redirects:** Find only problematic URLs that don't resolve automatically, helps prioritize what actually needs fixing
+
+**Note:** WordPress's canonical redirect is surprisingly good at resolving URLs when the post slug matches, even if the path structure is completely different. For example, an old URL like `/news/2024/01/my-article` will 301 redirect to `/uncategorized/2024/01/20/my-article/` as long as `my-article` is a unique slug. This means `--check-redirects` may filter out URLs that look very different but actually work fine. If slugs differ (like `post-slug` vs `post-slug-2`) or are not unique, canonical redirects won't help.
+
+#### Other options
+
+Like the regular list commands, these support batching and output formatting:
 
 ```bash
 # Batch through mismatches
@@ -126,11 +152,17 @@ wp newspack-migration-tools original-permalink post list-mismatches --num-items=
 # Show full URLs instead of paths
 wp newspack-migration-tools original-permalink post list-mismatches --source-domain=oldsite.com
 
+# Check redirects with full URLs
+wp newspack-migration-tools original-permalink post list-mismatches --source-domain=oldsite.com --check-redirects
+
 # Export to CSV
 wp newspack-migration-tools original-permalink post list-mismatches --format=csv > mismatches.csv
+
+# Combine: check redirects and export as JSON
+wp newspack-migration-tools original-permalink post list-mismatches --check-redirects --format=json > genuine-issues.json
 ```
 
-If you get "No mismatches found in this batch" - great! That means your URLs stayed consistent during migration.
+If you get "No mismatches found in this batch" - great! That means your URLs stayed consistent during migration (or WordPress is handling the differences automatically with redirects).
 
 ### Delete source permalinks
 
