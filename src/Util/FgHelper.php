@@ -64,7 +64,10 @@ class FgHelper {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
 
-		if ( ! is_plugin_active( "fg-{$this->type}-to-wp-premium/fg-{$this->type}-to-wp-premium.php" ) ) {
+		// FG Drupal uses "to-wp-premium", while FG Joomla uses "to-wordpress-premium".
+		if ( ! is_plugin_active( "fg-{$this->type}-to-wp-premium/fg-{$this->type}-to-wp-premium.php" )
+			&& ! is_plugin_active( "fg-{$this->type}-to-wordpress-premium/fg-{$this->type}-to-wordpress-premium.php" )
+		) {
 			NMT::exit_with_message( "FG {$this->type} to WP Premium plugin not found. Install and activate it before using this class." );
 		}
 	}
