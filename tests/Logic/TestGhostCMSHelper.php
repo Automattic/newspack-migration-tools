@@ -1058,11 +1058,62 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that GhostCMS Helper will import from JSON file and rewrite author urls.
+	 *
+	 * @return void
+	 */
+	public function test_ghostcms_import_and_rewrite_author_urls(): void {
+
+		// Run test.
+		$test_ghostcms_helper = new GhostCMSHelper();
+		$test_ghostcms_helper->ghostcms_import( 
+			[], 
+			[
+				'json-file'       => 'tests/fixtures/ghostcms.json',
+				'ghost-url'       => 'https://newspack.com/',
+				'default-user-id' => 1,
+			],
+			''
+		);
+
+		// Posts.
+		$posts = get_posts(
+			[
+				'title'       => 'Author Slug Test',
+				'numberposts' => 1,
+			]
+		);
+		$this->assertIsArray( $posts );
+		$this->assertCount( 1, $posts );
+		$this->assertEquals( 'author-slug-test', $posts[0]->post_name );
+
+		
+		// Author url fixed.
+		$this->assertStringContainsString(
+			'/author/user-with-really-long-name-over-user_nicename-50-c">Click to see all my posts',
+			$posts[0]->post_content
+		);
+	}
+
+	/**
 	 * Test that GhostCMS Helper will import from JSON file with KG replacements.
 	 *
 	 * @return void
 	 */
 	public function test_ghostcms_import_replace_kg_elements(): void {
+
+		$ghost_url = 'http://npd18.local'; // don't use ssl for local.
+
+		// add filter to allow .local?
+		// how to change this to stream files from fixtures instead of having to have a real .local domain?
+		add_filter(
+			'http_request_args',
+			function( $r ) {
+				$r['sslverify']          = false;
+				$r['reject_unsafe_urls'] = false;
+				return $r;
+			}
+		);
 
 		// Run import.
 		$test_ghostcms_helper = new GhostCMSHelper();
@@ -1070,7 +1121,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 			[], 
 			[
 				'json-file'       => 'tests/fixtures/ghostcms.json',
-				'ghost-url'       => 'https://newspack.com/',
+				'ghost-url'       => $ghost_url,
 				'default-user-id' => 1,
 			],
 			''
@@ -1086,7 +1137,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$this->assertIsArray( $posts );
 		$this->assertCount( 1, $posts );
 		$this->assertStringContainsString( 
-			'<p>start</p><audio src="https://example.com/audio.mp3" controls></audio><p>end</p>',
+			'<p>start</p><audio src="' . $ghost_url .'/content/media/audio.m4a" controls></audio><p>end</p>',
 			$posts[0]->post_content
 		);
 
@@ -1114,12 +1165,13 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$this->assertIsArray( $posts );
 		$this->assertCount( 1, $posts );
 		$this->assertStringContainsString( 
-			'<p>start</p><!-- wp:paragraph {"style":{"color":{"background":"#FFFFFF"}},"className":"has-background"} --><p class="has-background" style="background-color:#FFFFFF"><b><strong style="white-space: pre-wrap">Callout: </strong></b><a href="http://example.com/slug/" rel="noreferrer">Text</a></p><!-- /wp:paragraph --><p>end</p>',
+			'<p>start</p><!-- wp:paragraph {"style":{"color":{"background":"#FFFFFF"}},"className":"has-background"} --><p class="has-background" style="background-color:#FFFFFF"><b><strong style="white-space: pre-wrap">Callout: </strong></b><a href="' . $ghost_url .'/some-other-page/" rel="noreferrer">Text</a></p><!-- /wp:paragraph --><p>end</p>',
 			$posts[0]->post_content
 		);
 
 		/* phpcs:ignore Squiz.PHP.CommentedOutCode.Found
 		// TODO:
+		*/
 		// Gallery.
 		$posts = get_posts(
 			[
@@ -1129,11 +1181,31 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		);
 		$this->assertIsArray( $posts );
 		$this->assertCount( 1, $posts );
+
+		$new_content = '
+			<p>start</p><!-- wp:jetpack/tiled-gallery {"columnWidths":[],"ids":[5],"linkTo":"media"} -->
+			<div class="wp-block-jetpack-tiled-gallery aligncenter is-style-rectangular">
+				<div class="tiled-gallery__gallery">
+					<div class="tiled-gallery__row">
+			
+								<div class="tiled-gallery__col" style="flex-basis: 66.79014%">
+								<a href="http://example.org/wp-content/uploads/2024/04/image-6.jpg"><figure class="tiled-gallery__item">
+									<img alt="http://npd18.local/content/images/image.jpg" data-id="5" data-link="http://example.org/wp-content/uploads/2024/04/image-6.jpg" data-url="http://example.org/wp-content/uploads/2024/04/image-6.jpg" src="http://example.org/wp-content/uploads/2024/04/image-6.jpg" data-amp-layout="responsive" />
+								</figure></a>
+								</div>
+					</div>
+				</div>
+			</div>
+			<!-- /wp:jetpack/tiled-gallery --><p>end</p>
+		';
+
+		// - 6 vs -9 for images after each test?  how to clean previous uploads?
+
+// for easier matching remove all spaces.
 		$this->assertStringContainsString( 
-			'<p>start</p><p>end</p>',
-			$posts[0]->post_content
+			preg_replace( '/\s+/', '', $new_content ),
+			preg_replace( '/\s+/', '', $posts[0]->post_content )
 		);
-		*/
 
 		// Video.
 		$posts = get_posts(
@@ -1147,7 +1219,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		// tests above show: width: 100%; height: auto;">
 		// this test shows:  width: 100%;height: auto">
 		$this->assertStringContainsString( 
-			'<p>start</p><video src="https://example.com/video.mp4" controls style="width: 100%;height: auto"></video><p>end</p>',
+			'<p>start</p><video src="' . $ghost_url .'/content/media/video.mp4" controls style="width: 100%;height: auto"></video><p>end</p>',
 			$posts[0]->post_content
 		);
 	}

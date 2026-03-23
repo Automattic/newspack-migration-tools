@@ -13,7 +13,7 @@
                         "html": "<p>The content.</p>",
                         "comment_id": "65ea49ad7b6cf900014e661c",
                         "plaintext": "The content.",
-                        "feature_image": "__GHOST_URL__/content/images/2024/04/image.jpeg",
+                        "feature_image": "__GHOST_URL__/content/images/image.jpg",
                         "featured": 0,
                         "type": "post",
                         "status": "published",
@@ -32,11 +32,11 @@
                         "show_title_and_feature_image": 1
                     },
                     {
-                        "id": "000000000000000000000002",
-                        "uuid": "00000000-0000-0000-0000-000000000002",
+                        "id": "post-0000000000000000002",
+                        "uuid": "post-000-0000-0000-0000-000000000002",
                         "title": "Audio Test",
                         "slug": "audio-test",
-                        "html": "<p>start</p><div class=\"kg-audio-card\"><audio src=\"https://example.com/audio.mp3\"></audio></div><p>end</p>",
+                        "html": "<p>start</p><div class=\"kg-audio-card\"><audio src=\"__GHOST_URL__/content/media/audio.m4a\"></audio></div><p>end</p>",
                         "type": "post",
                         "status": "published",
                         "visibility": "public",
@@ -44,8 +44,8 @@
                         "published_at": "2024-04-07T23:12:17.000Z"
                     },
                     {
-                        "id": "000000000000000000000003",
-                        "uuid": "00000000-0000-0000-0000-000000000003",
+                        "id": "post-0000000000000000003",
+                        "uuid": "post-000-0000-0000-0000-000000000003",
                         "title": "Blockquote Test",
                         "slug": "blockquote-test",
                         "html": "<p>start</p><blockquote class=\"kg-blockquote-alt\"><em>Text</em></blockquote><p>end</p>",
@@ -56,11 +56,11 @@
                         "published_at": "2024-04-07T23:12:17.000Z"
                     },
                     {
-                        "id": "000000000000000000000004",
-                        "uuid": "00000000-0000-0000-0000-000000000004",
+                        "id": "post-0000000000000000004",
+                        "uuid": "post-000-0000-0000-0000-000000000004",
                         "title": "Callout Card Test",
                         "slug": "callout-card-test",
-                        "html": "<p>start</p><div class=\"kg-card kg-callout-card kg-callout-card-white\"><div class=\"kg-callout-text\"><b><strong style=\"white-space: pre-wrap;\">Callout: </strong></b><a href=\"http://example.com/slug/\" rel=\"noreferrer\">Text</a></div></div><p>end</p>",
+                        "html": "<p>start</p><div class=\"kg-card kg-callout-card kg-callout-card-white\"><div class=\"kg-callout-text\"><b><strong style=\"white-space: pre-wrap;\">Callout: </strong></b><a href=\"__GHOST_URL__/some-other-page/\" rel=\"noreferrer\">Text</a></div></div><p>end</p>",
                         "type": "post",
                         "status": "published",
                         "visibility": "public",
@@ -68,11 +68,11 @@
                         "published_at": "2024-04-07T23:12:17.000Z"
                     },
                     {
-                        "id": "000000000000000000000005",
-                        "uuid": "00000000-0000-0000-0000-000000000005",
+                        "id": "post-0000000000000000005",
+                        "uuid": "post-000-0000-0000-0000-000000000005",
                         "title": "Gallery Test",
                         "slug": "gallery-test",
-                        "html": "<p>start</p><figure class=\"kg-card kg-gallery-card\"><div class=\"kg-gallery-container\"><div class=\"kg-gallery-row\"><div class=\"kg-gallery-image\"><img src=\"__GHOST_URL__/content/images/2023/12/20231211-IMG_2964.jpg\"></div></div></div></figure><p>end</p>",
+                        "html": "<p>start</p><figure class=\"kg-card kg-gallery-card\"><div class=\"kg-gallery-container\"><div class=\"kg-gallery-row\"><div class=\"kg-gallery-image\"><img src=\"__GHOST_URL__/content/images/image.jpg\"></div></div></div></figure><p>end</p>",
                         "type": "post",
                         "status": "published",
                         "visibility": "public",
@@ -80,11 +80,23 @@
                         "published_at": "2024-04-07T23:12:17.000Z"
                     },
                     {
-                        "id": "000000000000000000000006",
-                        "uuid": "00000000-0000-0000-0000-000000000006",
+                        "id": "post-0000000000000000006",
+                        "uuid": "post-000-0000-0000-0000-000000000006",
                         "title": "Video Test",
                         "slug": "video-test",
-                        "html": "<p>start</p><div class=\"kg-video-container\"><video src=\"https://example.com/video.mp4\"></video></div><p>end</p>",
+                        "html": "<p>start</p><div class=\"kg-video-container\"><video src=\"__GHOST_URL__/content/media/video.mp4\"></video></div><p>end</p>",
+                        "type": "post",
+                        "status": "published",
+                        "visibility": "public",
+                        "created_at": "2024-04-07T23:11:41.000Z",
+                        "published_at": "2024-04-07T23:12:17.000Z"
+                    },
+                    {
+                        "id": "post-0000000000000000007",
+                        "uuid": "post-000-0000-0000-0000-000000000007",
+                        "title": "Author Slug Test",
+                        "slug": "author-slug-test",
+                        "html": "<a href=\"__GHOST_URL__/author/user-with-really-long-name-over-user_nicename-50-char-limit\">Click to see all my posts</a>",
                         "type": "post",
                         "status": "published",
                         "visibility": "public",
@@ -97,6 +109,12 @@
                         "id": "65ea49b97b6cf900014e6622",
                         "post_id": "65ea49ad7b6cf900014e661c",
                         "author_id": "6387a43e354f5f003ddbe55f",
+                        "sort_order": 0
+                    },
+                    {
+                        "id": "post-author-000000000002",
+                        "post_id": "post-0000000000000000007",
+                        "author_id": "user-0000000000000000002",
                         "sort_order": 0
                     }
                 ],
@@ -174,11 +192,11 @@
                         "name": "Some User",
                         "slug": "some-user",
                         "password": "",
-                        "email": "noreply-nouser-migration-tools-tests@newspack.com",
+                        "email": "user-6387a43e354f5f003ddbe55f@example.com",
                         "profile_image": "",
                         "cover_image": null,
                         "bio": "Test author biography for unit tests.",
-                        "website": "https://newspack.com",
+                        "website": "https://example.com",
                         "location": null,
                         "facebook": null,
                         "twitter": "@someuser",
@@ -203,6 +221,13 @@
                         "milestone_notifications": 1,
                         "donation_notifications": 1,
                         "recommendation_notifications": 1
+                    },
+                    {
+                        "id": "user-0000000000000000002",
+                        "name": "User with really long name over user_nicename 50 char limit",
+                        "slug": "user-with-really-long-name-over-user_nicename-50-char-limit",
+                        "email": "user-0000000000000000002@example.com",
+                        "visibility": "public"
                     }
                ]
             },

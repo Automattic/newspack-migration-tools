@@ -344,6 +344,9 @@ class GhostCMSHelper {
 
 		$this->log( 'Done importing posts from Ghost.', LogLevel::INFO );
 
+		// Rewrite author URLs in content if any nicenames changed during import.
+		$this->rewrite_ghost_author_urls_in_content( $this->log_slug, $this->ghost_url );
+
 		// Run command to check for custom Ghost HTML content.
 		$this->check_imported_posts_for_custom_html_content( $this->log_slug );
 	}
@@ -481,6 +484,110 @@ class GhostCMSHelper {
 			$this->log( sprintf( "No unfamiliar/unhandled 'kg-*' elements found in total %d posts.", count( $post_ids ) ), LogLevel::INFO );
 		}
 		$this->log( 'Done checking for custom Ghost HTML content.', LogLevel::INFO );
+	}
+
+	/**
+	 * Rewrite Ghost author URLs in imported post content.
+	 *
+	 * When users are imported from Ghost, we try to preserve their original Ghost slug in `user_nicename`,
+	 * but that specific `user_nicename` may already be taken during user insertion, and so the resulting nicename may 
+	 * still differ from the original Ghost slug.
+	 * 
+	 * This method finds all such users and rewrites author URLs in post content from the old Ghost slug to the new nicename.
+	 *
+	 * @param string $log_slug  The logger slug.
+	 * @param string $ghost_url The Ghost site URL (e.g., https://www.liveghost.com).
+	 */
+	public function rewrite_ghost_author_urls_in_content( string $log_slug, string $ghost_url ): void {
+		global $wpdb;
+
+		// Init logger usage in this class.
+		$this->set_log_slug( $log_slug );
+
+		$hostname = wp_parse_url( $ghost_url, PHP_URL_HOST );
+		if ( empty( $hostname ) ) {
+			$this->log( 'Could not determine hostname from provided Ghost URL.', LogLevel::ERROR );
+			return;
+		}
+
+		// Get Ghost users where user_nicename differs from their original Ghost slug.
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPressVIPMinimum.Variables.RestrictedVariables.user_meta__wpdb__users
+		$users_to_update = $wpdb->get_results(
+			"SELECT u.ID, um.meta_value AS ghost_slug, u.user_nicename
+			FROM $wpdb->users u
+			JOIN $wpdb->usermeta um ON u.ID = um.user_id
+			WHERE um.meta_key = 'newspack_ghostcms_slug'
+			AND u.user_nicename <> um.meta_value",
+			ARRAY_A
+		);
+		// phpcs:enable
+		if ( empty( $users_to_update ) ) {
+			$this->log( 'No users with changed nicenames found. No author URL rewrites needed.', LogLevel::INFO );
+			return;
+		}
+
+		$this->log( sprintf( 'Found %d users with nicenames different from their original Ghost slugs.', count( $users_to_update ) ), LogLevel::INFO );
+
+		// Get all posts imported from Ghost.
+		$post_ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			"SELECT DISTINCT p.ID FROM $wpdb->posts p
+			JOIN $wpdb->postmeta pm ON pm.post_id = p.ID
+			WHERE p.post_type = 'post' AND p.post_status = 'publish'
+			AND pm.meta_key = 'newspack_ghostcms_id'"
+		);
+		if ( empty( $post_ids ) ) {
+			$this->log( 'No Ghost posts found.', LogLevel::WARNING );
+			return;
+		}
+
+		$this->log( sprintf( 'Scanning %d Ghost posts for author URL rewrites...', count( $post_ids ) ), LogLevel::INFO );
+
+		// Rewrite author URLs in content.
+		foreach ( $post_ids as $post_id ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$post_content = $wpdb->get_var( $wpdb->prepare( "SELECT post_content FROM $wpdb->posts WHERE ID = %d", $post_id ) );
+			if ( empty( $post_content ) ) {
+				continue;
+			}
+
+			$replaced_user_nicenames = [];
+			$post_content_updated    = $post_content;
+
+			foreach ( $users_to_update as $user ) {
+				$ghost_slug                      = $user['ghost_slug'];
+				$user_nicename                   = $user['user_nicename'];
+				$post_content_before_replacement = $post_content_updated;
+
+				// Replace author URL, with or without trailing slash.
+				$post_content_updated = str_replace(
+					sprintf( '//%s/author/%s"', $hostname, $ghost_slug ),
+					sprintf( '//%s/author/%s"', $hostname, $user_nicename ),
+					$post_content_updated
+				);
+				$post_content_updated = str_replace(
+					sprintf( '//%s/author/%s/"', $hostname, $ghost_slug ),
+					sprintf( '//%s/author/%s/"', $hostname, $user_nicename ),
+					$post_content_updated
+				);
+
+				// Note if a replacement was made.
+				if ( $post_content_before_replacement !== $post_content_updated ) {
+					$replaced_user_nicenames[] = $user_nicename;
+				}
+			}
+
+			if ( $post_content !== $post_content_updated ) {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$wpdb->update(
+					$wpdb->posts,
+					[ 'post_content' => $post_content_updated ],
+					[ 'ID' => $post_id ]
+				);
+				$this->log( sprintf( 'Updated post ID %d with URLs to user_nicename(s): %s', $post_id, implode( ', ', $replaced_user_nicenames ) ), LogLevel::INFO );
+			}
+		}
+
+		wp_cache_flush();
 	}
 
 	/**
@@ -671,9 +778,11 @@ class GhostCMSHelper {
 		}
 
 		// Create Guest Contributor.
-		$user_data = [
-			'display_name' => $display_name,
-			'user_login'   => $json_author_user->slug ?? sanitize_title( $display_name ),
+		$desired_slug = $json_author_user->slug ?? sanitize_title( $display_name );
+		$user_data    = [
+			'display_name'  => $display_name,
+			'user_login'    => $desired_slug,
+			'user_nicename' => $desired_slug, // Try and preserve same user slug for author URLs.
 		];
 		if ( ! empty( $json_author_user->email ) ) {
 			$user_data['user_email'] = $json_author_user->email;
@@ -1433,7 +1542,7 @@ class GhostCMSHelper {
 	 * @return int Attachment ID, or 0 if not found.
 	 */
 	protected function get_attachment_id_from_url( string $url ): int {
-
+		
 		// This function is called by: replace_galleries( string $content ...
 		// but the $content at this point is Ghost content, not WordPress.
 		// so this means the $url passed to this function
@@ -1467,6 +1576,7 @@ class GhostCMSHelper {
 		// 	$filename      = basename( wp_parse_url( $url, PHP_URL_PATH ) );
 		// 	$attachment_id = Attachments::get_attachment_id_by_filename( $filename );
 		// }
+		// return $attachment_id ? $attachment_id : 0;
 	}
 
 	/**
@@ -1516,7 +1626,8 @@ class GhostCMSHelper {
 				}
 
 				// Get WP attachment ID from the image URL.
-				$attachment_id = $this->get_attachment_id_from_url( $src );
+				// $attachment_id = $this->get_attachment_id_from_url( $src );
+				$attachment_id = $this->get_or_import_url( $src, $src );
 
 				if ( $attachment_id > 0 ) {
 					$attachment_ids[] = $attachment_id;
