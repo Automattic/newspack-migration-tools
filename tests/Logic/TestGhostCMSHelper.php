@@ -1094,4 +1094,133 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 			$posts[0]->post_content
 		);
 	}
+
+	/**
+	 * Test that GhostCMS Helper will import from JSON file with KG replacements.
+	 *
+	 * @return void
+	 */
+	public function test_ghostcms_import_replace_kg_elements(): void {
+
+		$ghost_url = 'http://npd18.local'; // don't use ssl for local.
+
+		// add filter to allow .local?
+		// how to change this to stream files from fixtures instead of having to have a real .local domain?
+		add_filter(
+			'http_request_args',
+			function( $r ) {
+				$r['sslverify']          = false;
+				$r['reject_unsafe_urls'] = false;
+				return $r;
+			}
+		);
+
+		// Run import.
+		$test_ghostcms_helper = new GhostCMSHelper();
+		$test_ghostcms_helper->ghostcms_import( 
+			[], 
+			[
+				'json-file'       => 'tests/fixtures/ghostcms.json',
+				'ghost-url'       => $ghost_url,
+				'default-user-id' => 1,
+			],
+			''
+		);
+
+		// Audio.
+		$posts = get_posts(
+			[
+				'title'       => 'Audio Test',
+				'numberposts' => 1,
+			]
+		);
+		$this->assertIsArray( $posts );
+		$this->assertCount( 1, $posts );
+		$this->assertStringContainsString( 
+			'<p>start</p><audio src="' . $ghost_url .'/content/media/audio.m4a" controls></audio><p>end</p>',
+			$posts[0]->post_content
+		);
+
+		// Blockquote.
+		$posts = get_posts(
+			[
+				'title'       => 'Blockquote Test',
+				'numberposts' => 1,
+			]
+		);
+		$this->assertIsArray( $posts );
+		$this->assertCount( 1, $posts );
+		$this->assertStringContainsString( 
+			'<p>start</p><!-- wp:pullquote --><figure class="wp-block-pullquote"><blockquote><p><em>Text</em></p></blockquote></figure><!-- /wp:pullquote --><p>end</p>',
+			$posts[0]->post_content
+		);
+
+		// Callout card.
+		$posts = get_posts(
+			[
+				'title'       => 'Callout Card Test',
+				'numberposts' => 1,
+			]
+		);
+		$this->assertIsArray( $posts );
+		$this->assertCount( 1, $posts );
+		$this->assertStringContainsString( 
+			'<p>start</p><!-- wp:paragraph {"style":{"color":{"background":"#FFFFFF"}},"className":"has-background"} --><p class="has-background" style="background-color:#FFFFFF"><b><strong style="white-space: pre-wrap">Callout: </strong></b><a href="' . $ghost_url .'/some-other-page/" rel="noreferrer">Text</a></p><!-- /wp:paragraph --><p>end</p>',
+			$posts[0]->post_content
+		);
+
+		/* phpcs:ignore Squiz.PHP.CommentedOutCode.Found
+		// TODO:
+		*/
+		// Gallery.
+		$posts = get_posts(
+			[
+				'title'       => 'Gallery Test',
+				'numberposts' => 1,
+			]
+		);
+		$this->assertIsArray( $posts );
+		$this->assertCount( 1, $posts );
+
+		$new_content = '
+			<p>start</p><!-- wp:jetpack/tiled-gallery {"columnWidths":[],"ids":[5],"linkTo":"media"} -->
+			<div class="wp-block-jetpack-tiled-gallery aligncenter is-style-rectangular">
+				<div class="tiled-gallery__gallery">
+					<div class="tiled-gallery__row">
+			
+								<div class="tiled-gallery__col" style="flex-basis: 66.79014%">
+								<a href="http://example.org/wp-content/uploads/2024/04/image-6.jpg"><figure class="tiled-gallery__item">
+									<img alt="http://npd18.local/content/images/image.jpg" data-id="5" data-link="http://example.org/wp-content/uploads/2024/04/image-6.jpg" data-url="http://example.org/wp-content/uploads/2024/04/image-6.jpg" src="http://example.org/wp-content/uploads/2024/04/image-6.jpg" data-amp-layout="responsive" />
+								</figure></a>
+								</div>
+					</div>
+				</div>
+			</div>
+			<!-- /wp:jetpack/tiled-gallery --><p>end</p>
+		';
+
+		// - 6 vs -9 for images after each test?  how to clean previous uploads?
+
+// for easier matching remove all spaces.
+		$this->assertStringContainsString( 
+			preg_replace( '/\s+/', '', $new_content ),
+			preg_replace( '/\s+/', '', $posts[0]->post_content )
+		);
+
+		// Video.
+		$posts = get_posts(
+			[
+				'title'       => 'Video Test',
+				'numberposts' => 1,
+			]
+		);
+		$this->assertIsArray( $posts );
+		$this->assertCount( 1, $posts );
+		// tests above show: width: 100%; height: auto;">
+		// this test shows:  width: 100%;height: auto">
+		$this->assertStringContainsString( 
+			'<p>start</p><video src="' . $ghost_url .'/content/media/video.mp4" controls style="width: 100%;height: auto"></video><p>end</p>',
+			$posts[0]->post_content
+		);
+	}
 }
