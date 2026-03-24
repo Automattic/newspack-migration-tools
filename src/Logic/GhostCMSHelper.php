@@ -1534,52 +1534,6 @@ class GhostCMSHelper {
 	}
 
 	/**
-	 * Get WP attachment ID from an image URL.
-	 * 
-	 * A wrapper method to allow overriding and mocking in tests.
-	 *
-	 * @param string $url The image URL.
-	 * @return int Attachment ID, or 0 if not found.
-	 */
-	protected function get_attachment_id_from_url( string $url ): int {
-		
-		// This function is called by: replace_galleries( string $content ...
-		// but the $content at this point is Ghost content, not WordPress.
-		// so this means the $url passed to this function
-		// will be a Ghost URL, not a wordpress url.
-		// But the code below expected a wordpress url.
-		// So instead:
-
-		// Import the image as attachment.
-		// Not sure this is still the best way to use $this->get_or_import_url but it's what already exists in this class....
-		$attachment_id = $this->get_or_import_url( $url, $url );
-		if ( is_wp_error( $attachment_id ) || ! is_numeric( $attachment_id ) || $attachment_id <= 0 ) {
-			$this->log( sprintf( 'Could not import: %s', $url ), LogLevel::WARNING );
-			return 0;
-		}
-
-		return $attachment_id;
-
-		// This was trying to lookup a postid from a Ghost URL.
-		// Dont use:
-		// $attachment_id = attachment_url_to_postid( $url ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.attachment_url_to_postid_attachment_url_to_postid.
-
-		// This technique of using just the basename is dangerous in Ron's opinion.  There are too many examples of urls like:
-		// "/2025/01/photo.jpg"
-        // "/2012/08/photo.jpg"
-		// or
-		// "/2025/01/untitled.png"
-		// "/2012/08/untitled.png"
-		// that are different files completely.
-		// Ron recommends against this:
-		// if ( ! $attachment_id ) {
-		// 	$filename      = basename( wp_parse_url( $url, PHP_URL_PATH ) );
-		// 	$attachment_id = Attachments::get_attachment_id_by_filename( $filename );
-		// }
-		// return $attachment_id ? $attachment_id : 0;
-	}
-
-	/**
 	 * Replace Ghost's "Koenig editor" galleries with Gutenberg galleries, and logs the updates.
 	 * 
 	 * Koenig editor gallery structure:
@@ -1626,10 +1580,9 @@ class GhostCMSHelper {
 				}
 
 				// Get WP attachment ID from the image URL.
-				// $attachment_id = $this->get_attachment_id_from_url( $src );
 				$attachment_id = $this->get_or_import_url( $src, $src );
 
-				if ( $attachment_id > 0 ) {
+				if ( ! is_wp_error( $attachment_id ) && $attachment_id > 0 ) {
 					$attachment_ids[] = $attachment_id;
 				} else {
 					$this->log(

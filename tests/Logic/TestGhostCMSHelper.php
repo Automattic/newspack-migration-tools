@@ -1102,7 +1102,61 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 	 */
 	public function test_ghostcms_import_replace_kg_elements(): void {
 
-		$ghost_url = 'http://npd18.local'; // don't use ssl for local.
+		$upload_dir = wp_upload_dir();
+        $base_dir   = $upload_dir['basedir'];
+
+        if ( ! is_dir( $base_dir ) ) {
+            return;
+        }
+
+        $it = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator( $base_dir, \RecursiveDirectoryIterator::SKIP_DOTS ),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ( $it as $file ) {
+			// var_dump( $file );
+
+            //     unlink($file->getPathname());
+        }
+		
+		
+		// exit();
+
+
+
+
+		$ghost_url = 'http://npd18.local'; // don't use ssl for local?
+
+		add_filter('pre_http_request', function ($pre, $args, $url) use( $ghost_url ) {
+
+			if ( strpos( $url, $ghost_url ) !== 0) {
+				return $pre;
+			}
+		
+			$file = 'tests/fixtures/koi.jpg';
+
+			if ( ! is_readable( $file ) ) {
+				die('missing_file');
+			}
+		
+			return [
+				'headers'  => [
+					'content-type'   => 'image/jpeg',
+					'content-length' => (string) filesize( $file ),
+				],
+				'body'     => file_get_contents( $file ),
+				'response' => [
+					'code'    => 200,
+					'message' => 'OK',
+				],
+				'cookies'  => [],
+				'filename' => null,
+			];
+			
+		}, 10, 3);
+
+
 
 		// add filter to allow .local?
 		// how to change this to stream files from fixtures instead of having to have a real .local domain?
@@ -1137,7 +1191,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$this->assertIsArray( $posts );
 		$this->assertCount( 1, $posts );
 		$this->assertStringContainsString( 
-			'<p>start</p><audio src="' . $ghost_url .'/content/media/audio.m4a" controls></audio><p>end</p>',
+			'<p>start</p><audio src="' . $ghost_url .'/content/ghost-test-audio.m4a" controls></audio><p>end</p>',
 			$posts[0]->post_content
 		);
 
@@ -1219,7 +1273,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		// tests above show: width: 100%; height: auto;">
 		// this test shows:  width: 100%;height: auto">
 		$this->assertStringContainsString( 
-			'<p>start</p><video src="' . $ghost_url .'/content/media/video.mp4" controls style="width: 100%;height: auto"></video><p>end</p>',
+			'<p>start</p><video src="' . $ghost_url .'/content/ghost-test-image.mp4" controls style="width: 100%;height: auto"></video><p>end</p>',
 			$posts[0]->post_content
 		);
 	}
