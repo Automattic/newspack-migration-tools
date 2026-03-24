@@ -3,6 +3,7 @@
 namespace Newspack\MigrationTools\Tests\Logic;
 
 use Newspack\MigrationTools\Logic\GhostCMSHelper;
+use WP_Error;
 
 /**
  * Testable subclass that allows mocking attachment lookups.
@@ -28,11 +29,8 @@ class TestableGhostCMSHelper extends GhostCMSHelper {
 
 	/**
 	 * Override to return mocked attachment IDs.
-	 *
-	 * @param string $url The image URL.
-	 * @return int Attachment ID from the mock map, or 0 if not found.
 	 */
-	protected function get_attachment_id_from_url( string $url ): int {
-		return $this->url_to_attachment_map[ $url ] ?? 0;
+	protected function get_or_import_url( string $path, string $title, ?string $caption = null, ?string $description = null, ?string $alt = null, int $post_id = 0 ): int|WP_Error {
+		return $this->url_to_attachment_map[ $path ] ?? 0;
 	}
 }

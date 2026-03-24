@@ -1018,7 +1018,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 			[], 
 			[
 				'json-file'       => 'tests/fixtures/ghostcms.json',
-				'ghost-url'       => 'https://newspack.com/',
+				'ghost-url'       => 'https://example.com/',
 				'default-user-id' => 1,
 			],
 			''
@@ -1043,7 +1043,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		// User data imported correctly.
 		$this->assertEquals( 'Test author biography for unit tests.', $user->description );
-		$this->assertEquals( 'https://newspack.com', $user->user_url );
+		$this->assertEquals( 'https://example.com', $user->user_url );
 
 		// Social links imported as user meta (twitter as handle, others as full URLs, as defined in Newspack theme, `function newspack_author_get_social_links()`).
 		$this->assertEquals( 'someuser', get_user_meta( $user->ID, 'twitter', true ) );
@@ -1070,7 +1070,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 			[], 
 			[
 				'json-file'       => 'tests/fixtures/ghostcms.json',
-				'ghost-url'       => 'https://newspack.com/',
+				'ghost-url'       => 'https://example.com/',
 				'default-user-id' => 1,
 			],
 			''

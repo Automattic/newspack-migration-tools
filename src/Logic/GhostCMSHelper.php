@@ -677,6 +677,8 @@ class GhostCMSHelper {
 
 	/**
 	 * Get attachment (based on URL) from database else import external file from URL
+	 * 
+	 * Function visibility set to `protected` to allow overriding and mocking in tests.
 	 *
 	 * @param string  $path URL.
 	 * @param string  $title URL or title string.
@@ -686,7 +688,7 @@ class GhostCMSHelper {
 	 * @param int     $post_id Post ID (optional).
 	 * @return int|WP_Error $attachment_id
 	 */
-	private function get_or_import_url( string $path, string $title, ?string $caption = null, ?string $description = null, ?string $alt = null, int $post_id = 0 ): int|WP_Error {
+	protected function get_or_import_url( string $path, string $title, ?string $caption = null, ?string $description = null, ?string $alt = null, int $post_id = 0 ): int|WP_Error {
 
 		global $wpdb;
 
