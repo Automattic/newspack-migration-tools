@@ -1276,5 +1276,10 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 			'<p>start</p><video src="' . $ghost_url .'/content/ghost-test-image.mp4" controls style="width: 100%;height: auto"></video><p>end</p>',
 			$posts[0]->post_content
 		);
+
+		// todo: KG unknown:
+		// "title": "KG Unknown Test",
+        //                 "slug": "kg-unknown-test",
+        //                 "html": "<p>start</p><div class=\"kg-unknown-class\">test</div><p>end</p>",
 	}
 }
