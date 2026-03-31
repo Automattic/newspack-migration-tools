@@ -677,6 +677,8 @@ class GhostCMSHelper {
 
 	/**
 	 * Get attachment (based on URL) from database else import external file from URL
+	 * 
+	 * Function visibility set to `protected` to allow overriding and mocking in tests.
 	 *
 	 * @param string  $path URL.
 	 * @param string  $title URL or title string.
@@ -686,7 +688,7 @@ class GhostCMSHelper {
 	 * @param int     $post_id Post ID (optional).
 	 * @return int|WP_Error $attachment_id
 	 */
-	private function get_or_import_url( string $path, string $title, ?string $caption = null, ?string $description = null, ?string $alt = null, int $post_id = 0 ): int|WP_Error {
+	protected function get_or_import_url( string $path, string $title, ?string $caption = null, ?string $description = null, ?string $alt = null, int $post_id = 0 ): int|WP_Error {
 
 		global $wpdb;
 
@@ -1534,23 +1536,6 @@ class GhostCMSHelper {
 	}
 
 	/**
-	 * Get WP attachment ID from an image URL.
-	 * 
-	 * A wrapper method to allow overriding and mocking in tests.
-	 *
-	 * @param string $url The image URL.
-	 * @return int Attachment ID, or 0 if not found.
-	 */
-	protected function get_attachment_id_from_url( string $url ): int {
-		$attachment_id = attachment_url_to_postid( $url ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.attachment_url_to_postid_attachment_url_to_postid.
-		if ( ! $attachment_id ) {
-			$filename      = basename( wp_parse_url( $url, PHP_URL_PATH ) );
-			$attachment_id = Attachments::get_attachment_id_by_filename( $filename );
-		}
-		return $attachment_id ? $attachment_id : 0;
-	}
-
-	/**
 	 * Replace Ghost's "Koenig editor" galleries with Gutenberg galleries, and logs the updates.
 	 * 
 	 * Koenig editor gallery structure:
@@ -1583,6 +1568,8 @@ class GhostCMSHelper {
 		/** @var GutenbergBlockGenerator $block_generator */
 		$block_generator = new GutenbergBlockGenerator();
 
+		$galleries_replaced = 0;
+
 		foreach ( $galleries as $gallery ) {
 			// Find all images within this gallery.
 			$images         = $gallery->find( 'div.kg-gallery-image img' );
@@ -1595,9 +1582,9 @@ class GhostCMSHelper {
 				}
 
 				// Get WP attachment ID from the image URL.
-				$attachment_id = $this->get_attachment_id_from_url( $src );
+				$attachment_id = $this->get_or_import_url( $src, $src );
 
-				if ( $attachment_id > 0 ) {
+				if ( ! is_wp_error( $attachment_id ) && $attachment_id > 0 ) {
 					$attachment_ids[] = $attachment_id;
 				} else {
 					$this->log(
@@ -1644,10 +1631,11 @@ class GhostCMSHelper {
 			}
 
 			$gallery->outertext = $replacement;
+			++$galleries_replaced;
 		}
 
 		$this->log(
-			sprintf( 'Replaced %d galleries in Ghost ID %s.', count( $galleries ), $ghost_id ),
+			sprintf( 'Replaced %d galleries in Ghost ID %s.', $galleries_replaced, $ghost_id ),
 			LogLevel::INFO
 		);
 		$this->log(
