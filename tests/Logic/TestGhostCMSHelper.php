@@ -2,8 +2,10 @@
 
 namespace Newspack\MigrationTools\Tests\Logic;
 
+use Newspack\MigrationTools\Tests\Logic\TestableGhostCMSHelper;
 use Newspack\Guest_Contributor_Role;
 use Newspack\MigrationTools\Logic\GhostCMSHelper;
+use Newspack\MigrationTools\Logic\GutenbergBlockGenerator;
 use ReflectionClass;
 use WP_UnitTestCase;
 
@@ -271,7 +273,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$input    = 'Before txt <div class="kg-video-container"><video src="https://example.com/video.mp4"></video></div> After txt';
 		$expected = 'Before txt <video src="https://example.com/video.mp4" controls style="width: 100%; height: auto;"></video> After txt';
 
-		$result = $helper->replace_video_embeds( $input );
+		$result = $helper->replace_video_embeds( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -287,7 +289,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$input    = 'First <div class="kg-video-container"><video src="https://example.com/video1.mp4"></video></div> Middle <div class="kg-video-container"><video src="https://example.com/video2.mp4"></video></div> Last';
 		$expected = 'First <video src="https://example.com/video1.mp4" controls style="width: 100%; height: auto;"></video> Middle <video src="https://example.com/video2.mp4" controls style="width: 100%; height: auto;"></video> Last';
 
-		$result = $helper->replace_video_embeds( $input );
+		$result = $helper->replace_video_embeds( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -302,7 +304,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		$input = 'Before txt <p>Some paragraph</p> After txt';
 
-		$result = $helper->replace_video_embeds( $input );
+		$result = $helper->replace_video_embeds( $input, '123' );
 
 		$this->assertSame( $input, $result );
 	}
@@ -317,7 +319,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		$input = 'Before txt <div class="kg-video-container"><p>No video here</p></div> After txt';
 
-		$result = $helper->replace_video_embeds( $input );
+		$result = $helper->replace_video_embeds( $input, '123' );
 
 		$this->assertSame( $input, $result );
 	}
@@ -332,7 +334,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		$input = 'Before txt <div class="kg-video-container"><video></video></div> After txt';
 
-		$result = $helper->replace_video_embeds( $input );
+		$result = $helper->replace_video_embeds( $input, '123' );
 
 		$this->assertSame( $input, $result );
 	}
@@ -351,8 +353,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		</div> More';
 		$expected  = 'Text <video src="https://example.com/video.mp4" controls style="width: 100%; height: auto;"></video> More';
 
-		$result_compact   = $helper->replace_video_embeds( $compact );
-		$result_formatted = $helper->replace_video_embeds( $formatted );
+		$result_compact   = $helper->replace_video_embeds( $compact, '123' );
+		$result_formatted = $helper->replace_video_embeds( $formatted, '123' );
 
 		$this->assertSame( $expected, $result_compact );
 		$this->assertSame( $expected, $result_formatted );
@@ -370,7 +372,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		// Note: HTML parser normalizes whitespace between block elements - this is expected behavior.
 		$expected = '<p>Before paragraph</p><video src="https://example.com/video.mp4" controls style="width: 100%; height: auto;"></video><p>After paragraph</p>';
 
-		$result = $helper->replace_video_embeds( $input );
+		$result = $helper->replace_video_embeds( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -386,7 +388,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$input    = 'Before txt <div class="kg-audio-card"><audio src="https://example.com/audio.mp3"></audio></div> After txt';
 		$expected = 'Before txt <audio src="https://example.com/audio.mp3" controls></audio> After txt';
 
-		$result = $helper->replace_audio_embeds( $input );
+		$result = $helper->replace_audio_embeds( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -402,7 +404,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$input    = 'First <div class="kg-audio-card"><audio src="https://example.com/audio1.mp3"></audio></div> Middle <div class="kg-audio-card"><audio src="https://example.com/audio2.mp3"></audio></div> Last';
 		$expected = 'First <audio src="https://example.com/audio1.mp3" controls></audio> Middle <audio src="https://example.com/audio2.mp3" controls></audio> Last';
 
-		$result = $helper->replace_audio_embeds( $input );
+		$result = $helper->replace_audio_embeds( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -417,7 +419,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		$input = 'Before txt <p>Some paragraph</p> After txt';
 
-		$result = $helper->replace_audio_embeds( $input );
+		$result = $helper->replace_audio_embeds( $input, '123' );
 
 		$this->assertSame( $input, $result );
 	}
@@ -432,7 +434,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		$input = 'Before txt <div class="kg-audio-card"><p>No audio here</p></div> After txt';
 
-		$result = $helper->replace_audio_embeds( $input );
+		$result = $helper->replace_audio_embeds( $input, '123' );
 
 		$this->assertSame( $input, $result );
 	}
@@ -447,7 +449,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		$input = 'Before txt <div class="kg-audio-card"><audio></audio></div> After txt';
 
-		$result = $helper->replace_audio_embeds( $input );
+		$result = $helper->replace_audio_embeds( $input, '123' );
 
 		$this->assertSame( $input, $result );
 	}
@@ -464,7 +466,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		// Note: HTML parser normalizes whitespace between block elements - this is expected behavior.
 		$expected = '<p>Before paragraph</p><audio src="https://example.com/audio.mp3" controls></audio><p>After paragraph</p>';
 
-		$result = $helper->replace_audio_embeds( $input );
+		$result = $helper->replace_audio_embeds( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -481,8 +483,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$expected = 'Start <video src="https://example.com/video.mp4" controls style="width: 100%; height: auto;"></video> Middle <audio src="https://example.com/audio.mp3" controls></audio> End';
 
 		// Apply both replacements as they would be in the import process.
-		$result = $helper->replace_video_embeds( $input );
-		$result = $helper->replace_audio_embeds( $result );
+		$result = $helper->replace_video_embeds( $input, '123' );
+		$result = $helper->replace_audio_embeds( $result, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -498,8 +500,507 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$input    = '<div><p>Text</p><div class="kg-video-container"><video src="https://example.com/video.mp4"></video></div><ul><li><div class="kg-audio-card"><audio src="https://example.com/audio.mp3"></audio></div></li></ul></div>';
 		$expected = '<div><p>Text</p><video src="https://example.com/video.mp4" controls style="width: 100%; height: auto;"></video><ul><li><audio src="https://example.com/audio.mp3" controls></audio></li></ul></div>';
 
-		$result = $helper->replace_video_embeds( $input );
-		$result = $helper->replace_audio_embeds( $result );
+		$result = $helper->replace_video_embeds( $input, '123' );
+		$result = $helper->replace_audio_embeds( $result, '123' );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test basic blockquote replacement.
+	 *
+	 * @return void
+	 */
+	public function test_replace_blockquotes_basic_replacement(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input    = 'Before txt <blockquote class="kg-blockquote-alt">"Some quotation"</blockquote> After txt';
+		$expected = 'Before txt ' . serialize_blocks( [ $block_generator->get_quote( '"Some quotation"' ) ] ) . ' After txt';
+
+		$result = $helper->replace_blockquotes( $input, '123' );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test blockquote with multiline content collapses whitespace.
+	 *
+	 * @return void
+	 */
+	public function test_replace_blockquotes_multiline_content(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input    = 'Before txt <blockquote class="kg-blockquote-alt">"Some
+    quotation"</blockquote> After txt';
+		$expected = 'Before txt ' . serialize_blocks( [ $block_generator->get_quote( '"Some quotation"' ) ] ) . ' After txt';
+
+		$result = $helper->replace_blockquotes( $input, '123' );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test multiple blockquotes are all replaced.
+	 *
+	 * @return void
+	 */
+	public function test_replace_blockquotes_multiple(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input     = 'First <blockquote class="kg-blockquote-alt">"Quote one"</blockquote> Middle <blockquote class="kg-blockquote-alt">"Quote two"</blockquote> Last';
+		$quote_one = serialize_blocks( [ $block_generator->get_quote( '"Quote one"' ) ] );
+		$quote_two = serialize_blocks( [ $block_generator->get_quote( '"Quote two"' ) ] );
+		$expected  = 'First ' . $quote_one . ' Middle ' . $quote_two . ' Last';
+
+		$result = $helper->replace_blockquotes( $input, '123' );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test content without kg-blockquote-alt returns unchanged.
+	 *
+	 * @return void
+	 */
+	public function test_replace_blockquotes_no_kg_blockquotes_returns_unchanged(): void {
+		$helper = new GhostCMSHelper();
+
+		$input = 'Before txt <blockquote>Regular quote</blockquote> After txt';
+
+		$result = $helper->replace_blockquotes( $input, '123' );
+
+		$this->assertSame( $input, $result );
+	}
+
+	/**
+	 * Test blockquote with empty content is skipped.
+	 *
+	 * @return void
+	 */
+	public function test_replace_blockquotes_empty_content_skipped(): void {
+		$helper = new GhostCMSHelper();
+
+		$input = 'Before txt <blockquote class="kg-blockquote-alt">   </blockquote> After txt';
+
+		$result = $helper->replace_blockquotes( $input, '123' );
+
+		$this->assertSame( $input, $result );
+	}
+
+	/**
+	 * Test blockquote replacement preserves surrounding content.
+	 *
+	 * @return void
+	 */
+	public function test_replace_blockquotes_preserves_surrounding_content(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input = '<p>Before paragraph</p> <blockquote class="kg-blockquote-alt">"A quote"</blockquote> <p>After paragraph</p>';
+		// Note: HTML parser normalizes whitespace between block elements - this is expected behavior (same as video/audio tests).
+		$expected = '<p>Before paragraph</p>' . serialize_blocks( [ $block_generator->get_quote( '"A quote"' ) ] ) . '<p>After paragraph</p>';
+
+		$result = $helper->replace_blockquotes( $input, '123' );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test basic callout card with emoji and text, no color class.
+	 *
+	 * @return void
+	 */
+	public function test_replace_callout_cards_basic_with_emoji_and_text(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input    = 'Before txt <div class="kg-card kg-callout-card"><div class="kg-callout-emoji">💡</div><div class="kg-callout-text">Important note</div></div> After txt';
+		$expected = 'Before txt ' . serialize_blocks( [ $block_generator->get_paragraph( '💡 Important note' ) ] ) . ' After txt';
+
+		$result = $helper->replace_callout_cards( $input, '123' );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test callout card with color class produces background-colored paragraph.
+	 *
+	 * @return void
+	 */
+	public function test_replace_callout_cards_with_color_class(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input    = 'Before txt <div class="kg-card kg-callout-card kg-callout-card-blue"><div class="kg-callout-emoji">💡</div><div class="kg-callout-text">Blue note</div></div> After txt';
+		$expected = 'Before txt ' . serialize_blocks(
+			[
+				$block_generator->get_paragraph(
+					'💡 Blue note',
+					'',
+					'',
+					'',
+					[ 'has-background' ],
+					[ 'style' => [ 'color' => [ 'background' => '#E3F2FD' ] ] ],
+					[ 'background-color' => '#E3F2FD' ]
+				),
+			] 
+		) . ' After txt';
+
+		$result = $helper->replace_callout_cards( $input, '123' );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test different color classes produce their respective background colors.
+	 *
+	 * @return void
+	 */
+	public function test_replace_callout_cards_different_colors(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		// Yellow callout.
+		$input_yellow    = '<div class="kg-card kg-callout-card kg-callout-card-yellow"><div class="kg-callout-emoji">⚠️</div><div class="kg-callout-text">Warning</div></div>';
+		$expected_yellow = serialize_blocks(
+			[
+				$block_generator->get_paragraph(
+					'⚠️ Warning',
+					'',
+					'',
+					'',
+					[ 'has-background' ],
+					[ 'style' => [ 'color' => [ 'background' => '#FFF9E6' ] ] ],
+					[ 'background-color' => '#FFF9E6' ]
+				),
+			] 
+		);
+
+		$result_yellow = $helper->replace_callout_cards( $input_yellow, '123' );
+		$this->assertSame( $expected_yellow, $result_yellow );
+
+		// White callout.
+		$input_white    = '<div class="kg-card kg-callout-card kg-callout-card-white"><div class="kg-callout-emoji">📝</div><div class="kg-callout-text">Note</div></div>';
+		$expected_white = serialize_blocks(
+			[
+				$block_generator->get_paragraph(
+					'📝 Note',
+					'',
+					'',
+					'',
+					[ 'has-background' ],
+					[ 'style' => [ 'color' => [ 'background' => '#FFFFFF' ] ] ],
+					[ 'background-color' => '#FFFFFF' ]
+				),
+			] 
+		);
+
+		$result_white = $helper->replace_callout_cards( $input_white, '123' );
+		$this->assertSame( $expected_white, $result_white );
+	}
+
+	/**
+	 * Test multiple callout cards are all replaced.
+	 *
+	 * @return void
+	 */
+	public function test_replace_callout_cards_multiple(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input = 'First <div class="kg-card kg-callout-card"><div class="kg-callout-emoji">💡</div><div class="kg-callout-text">Note one</div></div> Middle <div class="kg-card kg-callout-card kg-callout-card-blue"><div class="kg-callout-emoji">🔵</div><div class="kg-callout-text">Note two</div></div> Last';
+
+		$block_one = serialize_blocks( [ $block_generator->get_paragraph( '💡 Note one' ) ] );
+		$block_two = serialize_blocks(
+			[
+				$block_generator->get_paragraph(
+					'🔵 Note two',
+					'',
+					'',
+					'',
+					[ 'has-background' ],
+					[ 'style' => [ 'color' => [ 'background' => '#E3F2FD' ] ] ],
+					[ 'background-color' => '#E3F2FD' ]
+				),
+			] 
+		);
+		$expected  = 'First ' . $block_one . ' Middle ' . $block_two . ' Last';
+
+		$result = $helper->replace_callout_cards( $input, '123' );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test content without callout cards returns unchanged.
+	 *
+	 * @return void
+	 */
+	public function test_replace_callout_cards_no_callouts_returns_unchanged(): void {
+		$helper = new GhostCMSHelper();
+
+		$input = 'Before txt <p>Some paragraph</p> After txt';
+
+		$result = $helper->replace_callout_cards( $input, '123' );
+
+		$this->assertSame( $input, $result );
+	}
+
+	/**
+	 * Test callout card with empty emoji and empty text is skipped.
+	 *
+	 * @return void
+	 */
+	public function test_replace_callout_cards_empty_content_skipped(): void {
+		$helper = new GhostCMSHelper();
+
+		$input = 'Before txt <div class="kg-card kg-callout-card"><div class="kg-callout-emoji"></div><div class="kg-callout-text"></div></div> After txt';
+
+		$result = $helper->replace_callout_cards( $input, '123' );
+
+		$this->assertSame( $input, $result );
+	}
+
+	/**
+	 * Test callout with empty emoji div produces no leading space in output.
+	 *
+	 * @return void
+	 */
+	public function test_replace_callout_cards_empty_emoji_no_leading_space(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input = 'Before txt <div class="kg-card kg-callout-card"><div class="kg-callout-emoji"></div><div class="kg-callout-text">Just text</div></div> After txt';
+		// When emoji is empty, text should not have a leading space.
+		$expected = 'Before txt ' . serialize_blocks( [ $block_generator->get_paragraph( 'Just text' ) ] ) . ' After txt';
+
+		$result = $helper->replace_callout_cards( $input, '123' );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test callout with text containing inline HTML (bold, links) preserves it.
+	 *
+	 * @return void
+	 */
+	public function test_replace_callout_cards_text_with_inline_html(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input    = 'Before txt <div class="kg-card kg-callout-card"><div class="kg-callout-emoji">⚠️</div><div class="kg-callout-text">This is <strong>important</strong> and <a href="https://example.com">linked</a></div></div> After txt';
+		$expected = 'Before txt ' . serialize_blocks( [ $block_generator->get_paragraph( '⚠️ This is <strong>important</strong> and <a href="https://example.com">linked</a>' ) ] ) . ' After txt';
+
+		$result = $helper->replace_callout_cards( $input, '123' );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test callout replacement preserves surrounding content.
+	 *
+	 * @return void
+	 */
+	public function test_replace_callout_cards_preserves_surrounding_content(): void {
+		$helper          = new GhostCMSHelper();
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input = '<p>Before paragraph</p> <div class="kg-card kg-callout-card"><div class="kg-callout-emoji">💡</div><div class="kg-callout-text">A note</div></div> <p>After paragraph</p>';
+		// Note: HTML parser normalizes whitespace between block elements - this is expected behavior (same as video/audio/blockquote tests).
+		$expected = '<p>Before paragraph</p>' . serialize_blocks( [ $block_generator->get_paragraph( '💡 A note' ) ] ) . '<p>After paragraph</p>';
+
+		$result = $helper->replace_callout_cards( $input, '123' );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test content without galleries returns unchanged.
+	 *
+	 * @return void
+	 */
+	public function test_replace_galleries_no_galleries_returns_unchanged(): void {
+		$helper = new GhostCMSHelper();
+
+		$input = 'Before txt <p>Some paragraph</p> After txt';
+
+		$result = $helper->replace_galleries( $input, '123' );
+
+		$this->assertSame( $input, $result );
+	}
+
+	/**
+	 * Test gallery with no images is skipped (returns unchanged).
+	 *
+	 * @return void
+	 */
+	public function test_replace_galleries_empty_gallery_skipped(): void {
+		$helper = new GhostCMSHelper();
+
+		$input = 'Before txt <figure class="kg-card kg-gallery-card"><div class="kg-gallery-container"><div class="kg-gallery-row"></div></div></figure> After txt';
+
+		$result = $helper->replace_galleries( $input, '123' );
+
+		$this->assertSame( $input, $result );
+	}
+
+	/**
+	 * Test gallery images without src attribute are ignored.
+	 *
+	 * @return void
+	 */
+	public function test_replace_galleries_images_without_src_skipped(): void {
+		$helper = new GhostCMSHelper();
+
+		$input = 'Before txt <figure class="kg-card kg-gallery-card"><div class="kg-gallery-container"><div class="kg-gallery-row"><div class="kg-gallery-image"><img></div></div></div></figure> After txt';
+
+		$result = $helper->replace_galleries( $input, '123' );
+
+		// Gallery with images that have no src should be skipped.
+		$this->assertSame( $input, $result );
+	}
+
+	/**
+	 * Test gallery where no attachments resolve returns unchanged.
+	 *
+	 * @return void
+	 */
+	public function test_replace_galleries_unresolved_attachments_skipped(): void {
+		$helper = new TestableGhostCMSHelper();
+		// Empty map means no URLs will resolve to attachment IDs.
+		$helper->set_attachment_map( [] );
+
+		$input = 'Before txt <figure class="kg-card kg-gallery-card"><div class="kg-gallery-container"><div class="kg-gallery-row"><div class="kg-gallery-image"><img src="https://example.com/image1.jpg"></div></div></div></figure> After txt';
+
+		$result = $helper->replace_galleries( $input, '123' );
+
+		// Gallery with no resolved attachments should be skipped.
+		$this->assertSame( $input, $result );
+	}
+
+	/**
+	 * Test basic gallery replacement with mock attachments.
+	 *
+	 * @return void
+	 */
+	public function test_replace_galleries_basic_replacement(): void {
+		// Create real attachment using the factory.
+		$attachment_id = $this->factory()->attachment->create_upload_object( __DIR__ . '/../fixtures/koi.jpg' );
+
+		$helper = new TestableGhostCMSHelper();
+		$helper->set_attachment_map(
+			[
+				'https://example.com/image1.jpg' => $attachment_id,
+			] 
+		);
+
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input    = '<figure class="kg-card kg-gallery-card"><div class="kg-gallery-container"><div class="kg-gallery-row"><div class="kg-gallery-image"><img src="https://example.com/image1.jpg"></div></div></div></figure>';
+		$expected = serialize_blocks( [ $block_generator->get_jetpack_tiled_gallery( [ $attachment_id ], 'media' ) ] );
+
+		$result = $helper->replace_galleries( $input, '123' );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test gallery with caption appends centered italic paragraph.
+	 *
+	 * @return void
+	 */
+	public function test_replace_galleries_with_caption(): void {
+		// Create real attachment using the factory.
+		$attachment_id = $this->factory()->attachment->create_upload_object( __DIR__ . '/../fixtures/koi.jpg' );
+
+		$helper = new TestableGhostCMSHelper();
+		$helper->set_attachment_map(
+			[
+				'https://example.com/image1.jpg' => $attachment_id,
+			] 
+		);
+
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input = '<figure class="kg-card kg-gallery-card kg-card-hascaption"><div class="kg-gallery-container"><div class="kg-gallery-row"><div class="kg-gallery-image"><img src="https://example.com/image1.jpg"></div></div></div><figcaption>Photos by John Doe</figcaption></figure>';
+
+		// Build expected output: gallery block + caption paragraph.
+		$gallery_block = $block_generator->get_jetpack_tiled_gallery( [ $attachment_id ], 'media' );
+		// Caption block is built manually in the implementation to avoid className attr coupling.
+		$caption_block = [
+			'blockName'    => 'core/paragraph',
+			'attrs'        => [ 'align' => 'center' ],
+			'innerBlocks'  => [],
+			'innerHTML'    => '<p class="has-text-align-center"><em>Photos by John Doe</em></p>',
+			'innerContent' => [ '<p class="has-text-align-center"><em>Photos by John Doe</em></p>' ],
+		];
+		$expected      = serialize_blocks( [ $gallery_block ] ) . "\n" . serialize_blocks( [ $caption_block ] );
+
+		$result = $helper->replace_galleries( $input, '123' );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test multiple galleries in content are all processed.
+	 *
+	 * @return void
+	 */
+	public function test_replace_galleries_multiple_galleries(): void {
+		// Create real attachments using the factory.
+		$attachment_id_1 = $this->factory()->attachment->create_upload_object( __DIR__ . '/../fixtures/koi.jpg' );
+		$attachment_id_2 = $this->factory()->attachment->create_upload_object( __DIR__ . '/../fixtures/koi.jpg' );
+
+		$helper = new TestableGhostCMSHelper();
+		$helper->set_attachment_map(
+			[
+				'https://example.com/image1.jpg' => $attachment_id_1,
+				'https://example.com/image2.jpg' => $attachment_id_2,
+			] 
+		);
+
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input = 'First <figure class="kg-card kg-gallery-card"><div class="kg-gallery-container"><div class="kg-gallery-row"><div class="kg-gallery-image"><img src="https://example.com/image1.jpg"></div></div></div></figure> Middle <figure class="kg-card kg-gallery-card"><div class="kg-gallery-container"><div class="kg-gallery-row"><div class="kg-gallery-image"><img src="https://example.com/image2.jpg"></div></div></div></figure> Last';
+
+		// Build expected output.
+		$gallery_block_1 = serialize_blocks( [ $block_generator->get_jetpack_tiled_gallery( [ $attachment_id_1 ], 'media' ) ] );
+		$gallery_block_2 = serialize_blocks( [ $block_generator->get_jetpack_tiled_gallery( [ $attachment_id_2 ], 'media' ) ] );
+		// Note: HTML parser normalizes whitespace between block elements.
+		$expected = 'First ' . $gallery_block_1 . ' Middle ' . $gallery_block_2 . ' Last';
+
+		$result = $helper->replace_galleries( $input, '123' );
+
+		$this->assertSame( $expected, $result );
+	}
+
+	/**
+	 * Test gallery replacement preserves surrounding content.
+	 *
+	 * @return void
+	 */
+	public function test_replace_galleries_preserves_surrounding_content(): void {
+		// Create real attachment using the factory.
+		$attachment_id = $this->factory()->attachment->create_upload_object( __DIR__ . '/../fixtures/koi.jpg' );
+
+		$helper = new TestableGhostCMSHelper();
+		$helper->set_attachment_map(
+			[
+				'https://example.com/image1.jpg' => $attachment_id,
+			] 
+		);
+
+		$block_generator = new GutenbergBlockGenerator();
+
+		$input = '<p>Before paragraph</p> <figure class="kg-card kg-gallery-card"><div class="kg-gallery-container"><div class="kg-gallery-row"><div class="kg-gallery-image"><img src="https://example.com/image1.jpg"></div></div></div></figure> <p>After paragraph</p>';
+
+		// Note: HTML parser normalizes whitespace between block elements (same as video/audio/blockquote tests).
+		$expected = '<p>Before paragraph</p>' . serialize_blocks( [ $block_generator->get_jetpack_tiled_gallery( [ $attachment_id ], 'media' ) ] ) . '<p>After paragraph</p>';
+
+		$result = $helper->replace_galleries( $input, '123' );
 
 		$this->assertSame( $expected, $result );
 	}
@@ -517,7 +1018,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 			[], 
 			[
 				'json-file'       => 'tests/fixtures/ghostcms.json',
-				'ghost-url'       => 'https://newspack.com/',
+				'ghost-url'       => 'https://example.com/',
 				'default-user-id' => 1,
 			],
 			''
@@ -542,7 +1043,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 
 		// User data imported correctly.
 		$this->assertEquals( 'Test author biography for unit tests.', $user->description );
-		$this->assertEquals( 'https://newspack.com', $user->user_url );
+		$this->assertEquals( 'https://example.com', $user->user_url );
 
 		// Social links imported as user meta (twitter as handle, others as full URLs, as defined in Newspack theme, `function newspack_author_get_social_links()`).
 		$this->assertEquals( 'someuser', get_user_meta( $user->ID, 'twitter', true ) );
@@ -554,5 +1055,43 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 		$category = get_term_by( 'name', 'News', 'category' );
 		$this->assertIsObject( $category );
 		$this->assertEquals( 'news', $category->slug );
+	}
+
+	/**
+	 * Test that GhostCMS Helper will import from JSON file and rewrite author urls.
+	 *
+	 * @return void
+	 */
+	public function test_ghostcms_import_and_rewrite_author_urls(): void {
+
+		// Run test.
+		$test_ghostcms_helper = new GhostCMSHelper();
+		$test_ghostcms_helper->ghostcms_import( 
+			[], 
+			[
+				'json-file'       => 'tests/fixtures/ghostcms.json',
+				'ghost-url'       => 'https://example.com/',
+				'default-user-id' => 1,
+			],
+			''
+		);
+
+		// Posts.
+		$posts = get_posts(
+			[
+				'title'       => 'Author Slug Test',
+				'numberposts' => 1,
+			]
+		);
+		$this->assertIsArray( $posts );
+		$this->assertCount( 1, $posts );
+		$this->assertEquals( 'author-slug-test', $posts[0]->post_name );
+
+		
+		// Author url fixed.
+		$this->assertStringContainsString(
+			'/author/user-with-really-long-name-over-user_nicename-50-c">Click to see all my posts',
+			$posts[0]->post_content
+		);
 	}
 }

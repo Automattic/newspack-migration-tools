@@ -13,12 +13,11 @@ use Exception;
 use Newspack\Guest_Contributor_Role;
 use Newspack\MigrationTools\Logic\UsersHelper;
 use Newspack\MigrationTools\Logic\GuestContributorsHelper;
+use Newspack\MigrationTools\Logic\GutenbergBlockGenerator;
 use Newspack\MigrationTools\NMT;
-use Newspack\MigrationTools\Util\Log\CliLog;
 use Newspack\MigrationTools\Util\Log\FileLog;
 use Newspack\MigrationTools\Util\Log\MultiLog;
 use Monolog\Level;
-use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 use simplehtmldom\HtmlDocument;
 use UnhandledMatchError;
@@ -30,6 +29,46 @@ use WP_User;
  * GhostCMS Helper.
  */
 class GhostCMSHelper {
+
+	/**
+	 * List of approved HTML custom content elements from Ghost Koenig editor which render well enough in WordPress without any transformation.
+	 * These elements will be skipped by the check_imported_posts_for_custom_html_content() so they don't show up as "unfamiliar/unhandled".
+	 * 
+	 * Do NOT add here elements that are transformed or removed by custom content transformers during import (e.g. kg-video-container, kg-audio-card),
+	 * those should be transformed during the import and no longer exist in post_content, so detecting them is important to catch any transformer bugs.
+	 * 
+	 * @var array ACCEPTED_KG_ELEMENTS List of elements with "kg-*" classes which are kept in post_content without any transformation/replacement.
+	 *   - html_element: the HTML tag name of the element.
+	 *   - kg_classes: one or more kg-* classes which identify the element.
+	 */
+	// phpcs:disable -- Allow custom spacing in the const array for readability, WordPress.Arrays.ArrayDeclarationSpacing.AssociativeArrayFound.
+	const ACCEPTED_KG_ELEMENTS = [
+		// Bookmark elements.
+		[ 'html_element' => 'a',      'kg_classes' => [ 'kg-bookmark-container' ] ],
+		[ 'html_element' => 'div',    'kg_classes' => [ 'kg-bookmark-content' ] ],
+		[ 'html_element' => 'div',    'kg_classes' => [ 'kg-bookmark-description' ] ],
+		[ 'html_element' => 'div',    'kg_classes' => [ 'kg-bookmark-metadata' ] ],
+		[ 'html_element' => 'div',    'kg_classes' => [ 'kg-bookmark-thumbnail' ] ],
+		[ 'html_element' => 'div',    'kg_classes' => [ 'kg-bookmark-title' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-bookmark-card' ] ],
+		[ 'html_element' => 'img',    'kg_classes' => [ 'kg-bookmark-icon' ] ],
+		[ 'html_element' => 'span',   'kg_classes' => [ 'kg-bookmark-author' ] ],
+		[ 'html_element' => 'span',   'kg_classes' => [ 'kg-bookmark-publisher' ] ],
+		// Image elements.
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-image-card' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-image-card', 'kg-card-hascaption' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-image-card', 'kg-width-full', 'kg-card-hascaption' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-image-card', 'kg-width-wide', 'kg-card-hascaption' ] ],
+		[ 'html_element' => 'img',    'kg_classes' => [ 'kg-image' ] ],
+		// Video elements (some types of videos which render correctly on frontend).
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-video-card' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-video-card', 'kg-width-regular' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-video-card', 'kg-width-regular', 'kg-card-hascaption' ] ],
+		// Embed elements.
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-embed-card' ] ],
+		[ 'html_element' => 'figure', 'kg_classes' => [ 'kg-card', 'kg-embed-card', 'kg-card-hascaption' ] ],
+	];
+	// phpcs:enable
 
 	/**
 	 * Lookup to convert json authors to Guest Contributor user objects.
@@ -55,7 +94,7 @@ class GhostCMSHelper {
 	private ?object $data = null;
 
 	/**
-	 * Log slug.
+	 * Log slug. If left empty, logging is disabled (test-environment friendly).
 	 *
 	 * @var string $log_slug
 	 */
@@ -85,6 +124,15 @@ class GhostCMSHelper {
 	}
 
 	/**
+	 * Set log slug.
+	 * 
+	 * @param string $log_slug Log slug.
+	 */
+	public function set_log_slug( string $log_slug ): void {
+		$this->log_slug = $log_slug;
+	}
+
+	/**
 	 * Import GhostCMS Content from JSON file.
 	 * 
 	 * @param array  $pos_args Positional arguments.
@@ -94,7 +142,7 @@ class GhostCMSHelper {
 	public function ghostcms_import( array $pos_args, array $assoc_args, string $log_slug ): void {
 
 		// Set log slug from args.
-		$this->log_slug = $log_slug;
+		$this->set_log_slug( $log_slug );
 
 		// Validate dependencies.
 		$validate_cap = UsersHelper::validate_co_authors_plus();
@@ -233,11 +281,16 @@ class GhostCMSHelper {
 
 			}
 
-			// Post content processing.
+			/**
+			 * Post content processing.
+			 */
 			$post_content = str_replace( '__GHOST_URL__', $this->ghost_url, $json_post->html );
-			// Replace various syntax elements from Ghost's "Koenig editor" to compatible HTML.
-			$post_content = $this->replace_video_embeds( $post_content );
-			$post_content = $this->replace_audio_embeds( $post_content );
+			// Replace various HTML elements to compatible HTML.
+			$post_content = $this->replace_video_embeds( $post_content, $json_post->id );
+			$post_content = $this->replace_audio_embeds( $post_content, $json_post->id );
+			$post_content = $this->replace_blockquotes( $post_content, $json_post->id );
+			$post_content = $this->replace_callout_cards( $post_content, $json_post->id );
+			$post_content = $this->replace_galleries( $post_content, $json_post->id );
 
 			// Post.
 			$args = array(
@@ -291,6 +344,9 @@ class GhostCMSHelper {
 
 		$this->log( 'Done importing posts from Ghost.', LogLevel::INFO );
 
+		// Rewrite author URLs in content if any nicenames changed during import.
+		$this->rewrite_ghost_author_urls_in_content( $this->log_slug, $this->ghost_url );
+
 		// Run command to check for custom Ghost HTML content.
 		$this->check_imported_posts_for_custom_html_content( $this->log_slug );
 	}
@@ -304,12 +360,17 @@ class GhostCMSHelper {
 		global $wpdb;
 
 		// Init logger usage in this class.
-		$this->log_slug = $log_slug;
+		$this->set_log_slug( $log_slug );
 		
 		// Prepare output file.
 		$output_file = 'ghost_kg_elements.jsonl';
 		if ( file_exists( $output_file ) ) {
 			unlink( $output_file ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink.
+		}
+		$file_handle = fopen( $output_file, 'w' ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fopen.
+		if ( false === $file_handle ) {
+			$this->log( sprintf( 'Failed to open file "%s" for writing -- check file permissions and try running the custom Ghost content check command again.', $output_file ), LogLevel::ERROR );
+			return;
 		}
 
 		/**
@@ -371,6 +432,11 @@ class GhostCMSHelper {
 					sort( $kg_classes );
 					$grouping_key = $tag_name . '|' . implode( ',', $kg_classes );
 
+					// Skip accepted kg-* elements which are intentionally kept in post_content as-is.
+					if ( $this->is_accepted_kg_element( $tag_name, $kg_classes ) ) {
+						continue;
+					}
+
 					// Initialize array element if first time adding it.
 					if ( ! isset( $elements[ $grouping_key ] ) ) {
 						$elements[ $grouping_key ] = [
@@ -395,21 +461,16 @@ class GhostCMSHelper {
 		/**
 		 * Write results to JSONL file.
 		 */
-		$file_handle = fopen( $output_file, 'w' ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fopen.
-		if ( false === $file_handle ) {
-			$this->log( sprintf( 'Failed to open file "%s" for writing.', $output_file ), LogLevel::ERROR );
-		} else {
-			foreach ( $elements as $element_data ) {
-				$data = [
-					'html_element'           => $element_data['html_element'],
-					'kg_classes'             => $element_data['kg_classes'],
-					'first_example_full_tag' => $element_data['first_example_full_tag'],
-					'post_ids'               => $element_data['post_ids'],
-				];
-				fwrite( $file_handle, wp_json_encode( $data ) . PHP_EOL ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fwrite.
-			}
-			fclose( $file_handle ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fclose.
+		foreach ( $elements as $element_data ) {
+			$data = [
+				'html_element'           => $element_data['html_element'],
+				'kg_classes'             => $element_data['kg_classes'],
+				'first_example_full_tag' => $element_data['first_example_full_tag'],
+				'post_ids'               => $element_data['post_ids'],
+			];
+			fwrite( $file_handle, wp_json_encode( $data ) . PHP_EOL ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fwrite.
 		}
+		fclose( $file_handle ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fclose.
 
 		/**
 		 * Log summary.
@@ -418,11 +479,134 @@ class GhostCMSHelper {
 			$this->log( sprintf( 'Failed to parse %d posts: %s', count( $failed_posts ), implode( ', ', $failed_posts ) ), LogLevel::ERROR );
 		}
 		if ( ! empty( $elements ) ) {
-			$this->log( sprintf( "Found %d unfamiliar/unhandled 'kg-*' elements in total %d posts. Their tags and post IDs where they appear are saved to %s. Please QA these findings: if they display correctly/well enough in the WP frontend/backend, simply whitelist them in the GhostCMSHelper's constant; if they don't, write fixers/transformers for them.", count( $elements ), count( $post_ids ), $output_file ), LogLevel::WARNING );
+			$this->log( sprintf( "Found %d unfamiliar/unhandled 'kg-*' elements in total %d posts, full list was saved to %s. Please QA these findings: if they display correctly/well enough in WP frontend/backend, simply add them to ACCEPTED_KG_ELEMENTS constant in GhostCMSHelper; if they don't, write fixers/transformers for them.", count( $elements ), count( $post_ids ), $output_file ), LogLevel::WARNING );
 		} else {
 			$this->log( sprintf( "No unfamiliar/unhandled 'kg-*' elements found in total %d posts.", count( $post_ids ) ), LogLevel::INFO );
 		}
 		$this->log( 'Done checking for custom Ghost HTML content.', LogLevel::INFO );
+	}
+
+	/**
+	 * Rewrite Ghost author URLs in imported post content.
+	 *
+	 * When users are imported from Ghost, we try to preserve their original Ghost slug in `user_nicename`,
+	 * but that specific `user_nicename` may already be taken during user insertion, and so the resulting nicename may 
+	 * still differ from the original Ghost slug.
+	 * 
+	 * This method finds all such users and rewrites author URLs in post content from the old Ghost slug to the new nicename.
+	 *
+	 * @param string $log_slug  The logger slug.
+	 * @param string $ghost_url The Ghost site URL (e.g., https://www.liveghost.com).
+	 */
+	public function rewrite_ghost_author_urls_in_content( string $log_slug, string $ghost_url ): void {
+		global $wpdb;
+
+		// Init logger usage in this class.
+		$this->set_log_slug( $log_slug );
+
+		$hostname = wp_parse_url( $ghost_url, PHP_URL_HOST );
+		if ( empty( $hostname ) ) {
+			$this->log( 'Could not determine hostname from provided Ghost URL.', LogLevel::ERROR );
+			return;
+		}
+
+		// Get Ghost users where user_nicename differs from their original Ghost slug.
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPressVIPMinimum.Variables.RestrictedVariables.user_meta__wpdb__users
+		$users_to_update = $wpdb->get_results(
+			"SELECT u.ID, um.meta_value AS ghost_slug, u.user_nicename
+			FROM $wpdb->users u
+			JOIN $wpdb->usermeta um ON u.ID = um.user_id
+			WHERE um.meta_key = 'newspack_ghostcms_slug'
+			AND u.user_nicename <> um.meta_value",
+			ARRAY_A
+		);
+		// phpcs:enable
+		if ( empty( $users_to_update ) ) {
+			$this->log( 'No users with changed nicenames found. No author URL rewrites needed.', LogLevel::INFO );
+			return;
+		}
+
+		$this->log( sprintf( 'Found %d users with nicenames different from their original Ghost slugs.', count( $users_to_update ) ), LogLevel::INFO );
+
+		// Get all posts imported from Ghost.
+		$post_ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			"SELECT DISTINCT p.ID FROM $wpdb->posts p
+			JOIN $wpdb->postmeta pm ON pm.post_id = p.ID
+			WHERE p.post_type = 'post' AND p.post_status = 'publish'
+			AND pm.meta_key = 'newspack_ghostcms_id'"
+		);
+		if ( empty( $post_ids ) ) {
+			$this->log( 'No Ghost posts found.', LogLevel::WARNING );
+			return;
+		}
+
+		$this->log( sprintf( 'Scanning %d Ghost posts for author URL rewrites...', count( $post_ids ) ), LogLevel::INFO );
+
+		// Rewrite author URLs in content.
+		foreach ( $post_ids as $post_id ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$post_content = $wpdb->get_var( $wpdb->prepare( "SELECT post_content FROM $wpdb->posts WHERE ID = %d", $post_id ) );
+			if ( empty( $post_content ) ) {
+				continue;
+			}
+
+			$replaced_user_nicenames = [];
+			$post_content_updated    = $post_content;
+
+			foreach ( $users_to_update as $user ) {
+				$ghost_slug                      = $user['ghost_slug'];
+				$user_nicename                   = $user['user_nicename'];
+				$post_content_before_replacement = $post_content_updated;
+
+				// Replace author URL, with or without trailing slash.
+				$post_content_updated = str_replace(
+					sprintf( '//%s/author/%s"', $hostname, $ghost_slug ),
+					sprintf( '//%s/author/%s"', $hostname, $user_nicename ),
+					$post_content_updated
+				);
+				$post_content_updated = str_replace(
+					sprintf( '//%s/author/%s/"', $hostname, $ghost_slug ),
+					sprintf( '//%s/author/%s/"', $hostname, $user_nicename ),
+					$post_content_updated
+				);
+
+				// Note if a replacement was made.
+				if ( $post_content_before_replacement !== $post_content_updated ) {
+					$replaced_user_nicenames[] = $user_nicename;
+				}
+			}
+
+			if ( $post_content !== $post_content_updated ) {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$wpdb->update(
+					$wpdb->posts,
+					[ 'post_content' => $post_content_updated ],
+					[ 'ID' => $post_id ]
+				);
+				$this->log( sprintf( 'Updated post ID %d with URLs to user_nicename(s): %s', $post_id, implode( ', ', $replaced_user_nicenames ) ), LogLevel::INFO );
+			}
+		}
+
+		wp_cache_flush();
+	}
+
+	/**
+	 * Checks if an element matches any entry in ACCEPTED_KG_ELEMENTS.
+	 *
+	 * @param string $tag_name   HTML tag name.
+	 * @param array  $kg_classes Sorted array of kg-* classes.
+	 * @return bool True if this element is an accepted kg-* element.
+	 */
+	private function is_accepted_kg_element( string $tag_name, array $kg_classes ): bool {
+		foreach ( self::ACCEPTED_KG_ELEMENTS as $accepted ) {
+			$accepted_kg_classes = $accepted['kg_classes'];
+			sort( $accepted_kg_classes );
+			if ( $accepted['html_element'] === $tag_name && $accepted_kg_classes === $kg_classes ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -493,6 +677,8 @@ class GhostCMSHelper {
 
 	/**
 	 * Get attachment (based on URL) from database else import external file from URL
+	 * 
+	 * Function visibility set to `protected` to allow overriding and mocking in tests.
 	 *
 	 * @param string  $path URL.
 	 * @param string  $title URL or title string.
@@ -502,7 +688,7 @@ class GhostCMSHelper {
 	 * @param int     $post_id Post ID (optional).
 	 * @return int|WP_Error $attachment_id
 	 */
-	private function get_or_import_url( string $path, string $title, ?string $caption = null, ?string $description = null, ?string $alt = null, int $post_id = 0 ): int|WP_Error {
+	protected function get_or_import_url( string $path, string $title, ?string $caption = null, ?string $description = null, ?string $alt = null, int $post_id = 0 ): int|WP_Error {
 
 		global $wpdb;
 
@@ -594,9 +780,11 @@ class GhostCMSHelper {
 		}
 
 		// Create Guest Contributor.
-		$user_data = [
-			'display_name' => $display_name,
-			'user_login'   => $json_author_user->slug ?? sanitize_title( $display_name ),
+		$desired_slug = $json_author_user->slug ?? sanitize_title( $display_name );
+		$user_data    = [
+			'display_name'  => $display_name,
+			'user_login'    => $desired_slug,
+			'user_nicename' => $desired_slug, // Try and preserve same user slug for author URLs.
 		];
 		if ( ! empty( $json_author_user->email ) ) {
 			$user_data['user_email'] = $json_author_user->email;
@@ -826,6 +1014,11 @@ class GhostCMSHelper {
 	 * @return void
 	 */
 	private function log( string $message, string $level = 'debug', bool $exit_on_error = false ): void {
+		// Skip logging if log_slug is not set (e.g., in unit tests).
+		if ( empty( $this->log_slug ) ) {
+			return;
+		}
+
 		$logger = MultiLog::get_cli_and_file_logger( $this->log_slug );
 
 		try {
@@ -1086,7 +1279,7 @@ class GhostCMSHelper {
 	}
 
 	/**
-	 * Replace Ghost's "Koenig editor" video embeds with <video> elements.
+	 * Replace Ghost's "Koenig editor" video embeds with <video> elements, and logs the updates.
 	 * 
 	 * The resulting <video> element(s):
 	 *   - are not Gutenberg blocks, because the input HTML is not in expected to be in blocks either,
@@ -1094,9 +1287,11 @@ class GhostCMSHelper {
 	 *   - are given the `style="width: 100%%; height: auto;"` to ensure they are displayed correctly in WP.
 	 *
 	 * @param string $content Content to replace video embeds in.
+	 * @param string $ghost_id Ghost ID of the content.
+	 * 
 	 * @return string Processed content.
 	 */
-	public function replace_video_embeds( string $content ): string {
+	public function replace_video_embeds( string $content, string $ghost_id ): string {
 		// Find all kg-video-container divs.
 		$doc              = new HtmlDocument( $content );
 		$video_containers = $doc->find( 'div.kg-video-container' );
@@ -1125,20 +1320,27 @@ class GhostCMSHelper {
 			$container->outertext = $replacement;
 		}
 
+		$this->log(
+			sprintf( 'Replaced %d video embeds in Ghost ID %s.', count( $video_containers ), $ghost_id ),
+			LogLevel::INFO
+		);
+
 		return (string) $doc;
 	}
 
 	/**
-	 * Replace Ghost's "Koenig editor" audio embeds with <audio> elements.
+	 * Replace Ghost's "Koenig editor" audio embeds with <audio> elements, and logs the updates.
 	 * 
 	 * The resulting <audio> element(s):
 	 *   - are not Gutenberg blocks, because the input HTML is not expected to be in blocks either,
 	 *   - are simple HTML5 audio players with controls.
 	 *
 	 * @param string $content Content to replace audio embeds in.
+	 * @param string $ghost_id Ghost ID of the content.
+	 * 
 	 * @return string Processed content.
 	 */
-	public function replace_audio_embeds( string $content ): string {
+	public function replace_audio_embeds( string $content, string $ghost_id ): string {
 		// Find all kg-audio-card divs.
 		$doc              = new HtmlDocument( $content );
 		$audio_containers = $doc->find( 'div.kg-audio-card' );
@@ -1167,10 +1369,282 @@ class GhostCMSHelper {
 			$container->outertext = $replacement;
 		}
 
+		$this->log(
+			sprintf( 'Replaced %d audio embeds in Ghost ID %s.', count( $audio_containers ), $ghost_id ),
+			LogLevel::INFO
+		);
+
 		return (string) $doc;
 	}
 
-	
+	/**
+	 * Replace Ghost's "Koenig editor" `blockquote.kg-blockquote-alt` with Gutenberg quote blocks
+	 * and logs the updates.
+	 *
+	 * @param string $content Content to replace blockquotes in.
+	 * @param string $ghost_id Ghost ID of the content.
+	 * 
+	 * @return string Processed content.
+	 */
+	public function replace_blockquotes( string $content, string $ghost_id ): string {
+		// Find all kg-blockquote-alt blockquotes.
+		$doc         = new HtmlDocument( $content );
+		$blockquotes = $doc->find( 'blockquote.kg-blockquote-alt' );
+		if ( empty( $blockquotes ) ) {
+			return $content;
+		}
+
+		/** @var GutenbergBlockGenerator $block_generator */
+		$block_generator = new GutenbergBlockGenerator();
+
+		foreach ( $blockquotes as $blockquote ) {
+			// Get the inner text content.
+			$inner_text = $blockquote->innertext;
+			if ( empty( trim( $inner_text ) ) ) {
+				continue;
+			}
+
+			// Normalize whitespaces: collapse newlines/tabs/spaces into single spaces, and trim.
+			$inner_text = preg_replace( '/\s+/', ' ', $inner_text );
+			$inner_text = trim( $inner_text );
+
+			// Get the Gutenberg wp:pullquote block.
+			$replacement = serialize_blocks( [ $block_generator->get_quote( $inner_text ) ] );
+
+			$blockquote->outertext = $replacement;
+		}
+
+		$this->log(
+			sprintf( 'Replaced %d blockquotes in Ghost ID %s.', count( $blockquotes ), $ghost_id ),
+			LogLevel::INFO
+		);
+
+		return (string) $doc;
+	}
+
+	/**
+	 * Replace Ghost's "Koenig editor" callout cards with Gutenberg paragraphs, and logs the updates.
+	 * 
+	 * @see Ghost Koenig editor documentation: https://ghost.org/docs/themes/content/
+	 * 
+	 * Callout card consists of:
+	 *   1. a parent wrapper:
+	 *     - a `div` element with required classes `kg-card kg-callout-card`
+	 *     - optional additional classes:
+	 *       - `kg-callout-card-accent`
+	 *       - `kg-callout-card-blue`
+	 *       - `kg-callout-card-grey`
+	 *       - `kg-callout-card-green`
+	 *       - `kg-callout-card-white`
+	 *       - `kg-callout-card-yellow`
+	 *   2. children elements:
+	 *     - a `div.kg-callout-emoji`
+	 *     - a `div.kg-callout-text`
+	 * 
+	 * @param string $content Content to replace callout cards in.
+	 * @param string $ghost_id Ghost ID of the content.
+	 * 
+	 * @return string Processed content.
+	 */
+	public function replace_callout_cards( string $content, string $ghost_id ): string {
+		/**
+		 * Map Ghost callout color classes to hex background colors.
+		 * The following classes have been taken from Ghost's documentation https://ghost.org/docs/themes/content/ 
+		 * and Ghost's source code https://github.com/TryGhost/Ghost/blob/c667620d8f2e32c96fe376ad0f3dabc79488532a/ghost/core/core/frontend/src/cards/css/callout.css
+		 * where the rgba codes are here converted to hex.
+		 */
+		$color_codes = [
+			'kg-callout-card-accent' => '#7C8B9A21',
+			'kg-callout-card-blue'   => '#E3F2FD',
+			'kg-callout-card-grey'   => '#7C8B9A21',
+			'kg-callout-card-green'  => '#34b7431f',
+			'kg-callout-card-yellow' => '#FFF9E6',
+			'kg-callout-card-red'    => '#d12e2e1c',
+			'kg-callout-card-pink'   => '#e147ae1c',
+			'kg-callout-card-purple' => '#8755ec1f',
+			'kg-callout-card-white'  => '#FFFFFF',
+		];
+
+		// Find all kg-callout-card divs.
+		$doc      = new HtmlDocument( $content );
+		$callouts = $doc->find( 'div.kg-callout-card' );
+		if ( empty( $callouts ) ) {
+			return $content;
+		}
+
+		/** @var GutenbergBlockGenerator $block_generator */
+		$block_generator = new GutenbergBlockGenerator();
+
+		foreach ( $callouts as $callout ) {
+			// Get emoji.
+			$emoji_text = '';
+			$emoji_div  = $callout->find( 'div.kg-callout-emoji', 0 );
+			if ( $emoji_div ) {
+				$emoji_text = trim( $emoji_div->innertext );
+			}
+
+			// Get text.
+			$callout_text = '';
+			$text_div     = $callout->find( 'div.kg-callout-text', 0 );
+			if ( $text_div ) {
+				$callout_text = trim( $text_div->innertext );
+			}
+
+			// Skip if both are empty.
+			if ( empty( $emoji_text ) && empty( $callout_text ) ) {
+				continue;
+			}
+			// Insert space between emoji and text only when both are present.
+			$paragraph_content = trim( $emoji_text . ( $emoji_text && $callout_text ? ' ' : '' ) . $callout_text );
+
+			// Detect background color from optional color classes.
+			$class_attr = $callout->getAttribute( 'class' );
+			$bg_color   = '';
+			$classes    = explode( ' ', $class_attr );
+			foreach ( $classes as $class ) {
+				$class = trim( $class );
+				if ( isset( $color_codes[ $class ] ) ) {
+					$bg_color = $color_codes[ $class ];
+					break;
+				}
+			}
+
+			// Build paragraph block with optional background color.
+			if ( ! empty( $bg_color ) ) {
+				$block = $block_generator->get_paragraph(
+					$paragraph_content,
+					'',
+					'',
+					'',
+					[ 'has-background' ],
+					[ 'style' => [ 'color' => [ 'background' => $bg_color ] ] ],
+					[ 'background-color' => $bg_color ]
+				);
+			} else {
+				$block = $block_generator->get_paragraph( $paragraph_content );
+			}
+
+			$callout->outertext = serialize_blocks( [ $block ] );
+		}
+
+		$this->log(
+			sprintf( 'Replaced %d callout cards in Ghost ID %s.', count( $callouts ), $ghost_id ),
+			LogLevel::INFO
+		);
+
+		return (string) $doc;
+	}
+
+	/**
+	 * Replace Ghost's "Koenig editor" galleries with Gutenberg galleries, and logs the updates.
+	 * 
+	 * Koenig editor gallery structure:
+	 *   - parent `figure` with classes "kg-card kg-gallery-card" (optionally "kg-width-wide" or "kg-width-full", and "kg-card-hascaption" if caption present)
+	 *   - child of `figure.kg-gallery-card` -- `div` with class "kg-gallery-container"
+	 *   - children of `div.kg-gallery-container` -- multiple rows `div` with class "kg-gallery-row"
+	 *   - children of `div.kg-gallery-row` -- multiple images per row `div` with class "kg-gallery-image"
+	 *   - child of `div.kg-gallery-image` -- `img` (with attributes: src, width, height, loading="lazy", srcset, sizes)
+	 *   - child of `figure.kg-gallery-card`, sibling to `div.kg-gallery-container` -- `figcaption` (only present when kg-card-hascaption class exists)
+	 * 
+	 * There are no captions per images, just a single optional caption for the entire gallery.
+	 * 
+	 * The Koenig editor gallery looks like a tile grid, so we'll use the Jetpack Tiled Gallery block, however the Jetpack Tiled Gallery block generator
+	 * doesn't always produce the correct CSS layout, because it's computed in frontend, so a QA is always advised after the replacement,
+	 * which is why a warning is logged.
+	 * 
+	 * @param string $content Content to replace galleries in.
+	 * @param string $ghost_id Ghost ID of the content.
+	 * 
+	 * @return string Processed content.
+	 */
+	public function replace_galleries( string $content, string $ghost_id ): string {
+		// Find all kg-gallery-card figures.
+		$doc       = new HtmlDocument( $content );
+		$galleries = $doc->find( 'figure.kg-gallery-card' );
+		if ( empty( $galleries ) ) {
+			return $content;
+		}
+
+		/** @var GutenbergBlockGenerator $block_generator */
+		$block_generator = new GutenbergBlockGenerator();
+
+		$galleries_replaced = 0;
+
+		foreach ( $galleries as $gallery ) {
+			// Find all images within this gallery.
+			$images         = $gallery->find( 'div.kg-gallery-image img' );
+			$attachment_ids = [];
+
+			foreach ( $images as $img ) {
+				$src = $img->getAttribute( 'src' );
+				if ( empty( $src ) ) {
+					continue;
+				}
+
+				// Get WP attachment ID from the image URL.
+				$attachment_id = $this->get_or_import_url( $src, $src );
+
+				if ( ! is_wp_error( $attachment_id ) && $attachment_id > 0 ) {
+					$attachment_ids[] = $attachment_id;
+				} else {
+					$this->log(
+						sprintf( 'Image attachment with URL %s not found for gallery in Ghost ID %s.', $src, $ghost_id ),
+						LogLevel::ERROR
+					);
+				}
+			}
+
+			// Skip if no valid attachments found.
+			if ( empty( $attachment_ids ) ) {
+				$this->log(
+					sprintf( 'No valid attachments found for gallery in Ghost ID %s.', $ghost_id ),
+					LogLevel::WARNING
+				);
+				continue;
+			}
+
+			// Check for optional gallery caption (this is not per-image, just a single caption for the entire gallery, like "Photos by John Doe").
+			$caption    = '';
+			$figcaption = $gallery->find( 'figcaption', 0 );
+			if ( $figcaption ) {
+				$caption = trim( $figcaption->innertext );
+			}
+
+			// Generate Jetpack Tiled Gallery block.
+			$gallery_block = $block_generator->get_jetpack_tiled_gallery( $attachment_ids, 'media' );
+			$replacement   = serialize_blocks( [ $gallery_block ] );
+
+			// If gallery caption exists, append it as a centered italic paragraph.
+			if ( ! empty( $caption ) ) {
+				// Strip HTML tags from caption (Ghost may include <p><span>...</span></p>).
+				$caption_text = wp_strip_all_tags( $caption );
+				// Build caption block manually since get_paragraph couples className attr with <p> class,
+				// but for alignment we need class="has-text-align-center" on <p> without className in attrs.
+				$caption_block = [
+					'blockName'    => 'core/paragraph',
+					'attrs'        => [ 'align' => 'center' ],
+					'innerBlocks'  => [],
+					'innerHTML'    => '<p class="has-text-align-center"><em>' . $caption_text . '</em></p>',
+					'innerContent' => [ '<p class="has-text-align-center"><em>' . $caption_text . '</em></p>' ],
+				];
+				$replacement  .= "\n" . serialize_blocks( [ $caption_block ] );
+			}
+
+			$gallery->outertext = $replacement;
+			++$galleries_replaced;
+		}
+
+		$this->log(
+			sprintf( 'Replaced %d galleries in Ghost ID %s.', $galleries_replaced, $ghost_id ),
+			LogLevel::INFO
+		);
+		$this->log(
+			sprintf( 'QA is advised of Jetpack Tiled Galleries used in Ghost ID %s -- gallery layout may not be correct until refreshed in frontend/Gutenberg editor.', $ghost_id ),
+			LogLevel::WARNING
+		);
+
+		return (string) $doc;
+	}
 
 	/**
 	 * Get all visibility values from JSON data.

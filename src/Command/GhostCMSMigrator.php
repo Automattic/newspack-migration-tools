@@ -96,6 +96,22 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 					'shortdesc' => "After the content has been imported, run this command to check the imported posts for yet unvalidated/unsupported custom HTML content/syntax from the Ghost Koenig editor (such as different custom embeds, or Ghost's equivalents to Gutenberg blocks). This scans all HTML elements with kg-* classes.",
 				],
 			],
+			[
+				'newspack-migration-tools ghostcms-rewrite-author-urls',
+				[ __CLASS__, 'cmd_rewrite_ghost_author_urls' ],
+				[
+					'shortdesc' => 'Rewrite Ghost author URLs in imported post content. When users are imported from Ghost, their WordPress user_nicename (URL slug) may differ from the original Ghost slug if a collision occurred. This command finds all such users and rewrites author URLs in post content from the old Ghost slug to the new WordPress nicename.',
+					'synopsis'  => [
+						[
+							'type'        => 'assoc',
+							'name'        => 'ghost-url',
+							'description' => 'Public URL of the Ghost website (e.g., https://www.liveghost.com). This is the same URL used during import. The author URLs in post content will contain this hostname, and will be rewritten from the original Ghost slug to the new WP nicename.',
+							'optional'    => false,
+							'repeating'   => false,
+						],
+					],
+				],
+			],
 		];
 	}
 	
@@ -135,5 +151,28 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 
 		$ghost = new GhostCMSHelper();
 		$ghost->check_imported_posts_for_custom_html_content( $log_slug );
+	}
+
+	/**
+	 * Callable for the 'newspack-migration-tools ghostcms-rewrite-author-urls' command.
+	 * 
+	 * @param array $pos_args The positional arguments.
+	 * @param array $assoc_args The associative arguments.
+	 */
+	public static function cmd_rewrite_ghost_author_urls( array $pos_args, array $assoc_args ): void {
+		// Logger.
+		$log_slug = __FUNCTION__;
+		$logger   = MultiLog::get_cli_and_file_logger( $log_slug );
+		$logger->info( 'Starting CLI - Rewriting Ghost author URLs in post content...' );
+
+		// Arguments.
+		if ( ! isset( $assoc_args['ghost-url'] ) || ! preg_match( '#^https?://[^/]+/?$#i', $assoc_args['ghost-url'] ) ) {
+			$logger->error( 'Ghost URL does not match regex: ^https?://[^/]+/?$' );
+			exit( 1 );
+		}
+		$ghost_url = $assoc_args['ghost-url'];
+
+		$ghost = new GhostCMSHelper();
+		$ghost->rewrite_ghost_author_urls_in_content( $log_slug, $ghost_url );
 	}
 }
