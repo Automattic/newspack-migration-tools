@@ -60,8 +60,6 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 			compact( 'post_title', 'post_excerpt', 'post_content' ),
 		);
 
-		$this->attachment_ids[] = $attachment_id;
-
 		$this->assertIsInt( $attachment_id );
 		$file_path = get_attached_file( $attachment_id );
 		$this->assertFileExists( $file_path );
@@ -90,7 +88,6 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 			[],
 			$desired_file_name
 		);
-		$this->attachment_ids[] = $attachment_id;
 
 		$this->assertIsInt( $attachment_id );
 		$file_path = get_attached_file( $attachment_id );
@@ -104,6 +101,11 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 	public function test_download_image() {
 		$result = Attachments::download_file( 'tests/fixtures/koi.jpg' );
 
+		// keep a reference for deletion during tear down.
+		if( isset( $result['tmp_name'] ) && file_exists( $result['tmp_name'] ) ) {
+			$this->temp_files[] = $result['tmp_name'];
+		}
+
 		$this->assertEquals( $result['name'], 'koi.jpg' );
 		$this->assertFileExists( $result['tmp_name'] );
 	}
@@ -114,6 +116,11 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 	public function test_download_image_without_extension() {
 		$result = Attachments::download_file( 'tests/fixtures/koi' );
 
+		// keep a reference for deletion during tear down.
+		if( isset( $result['tmp_name'] ) && file_exists( $result['tmp_name'] ) ) {
+			$this->temp_files[] = $result['tmp_name'];
+		}
+		
 		$this->assertEquals( $result['name'], 'koi.jpg' );
 		$this->assertFileExists( $result['tmp_name'] );
 	}
