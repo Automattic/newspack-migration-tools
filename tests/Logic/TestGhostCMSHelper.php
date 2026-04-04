@@ -891,7 +891,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 	 */
 	public function test_replace_galleries_basic_replacement(): void {
 		// Create real attachment using the factory.
-		$attachment_id = $this->factory()->attachment->create_upload_object( $this->dummy_image );
+		$attachment_id          = $this->factory()->attachment->create_upload_object( $this->dummy_image );
 		$this->attachment_ids[] = $attachment_id;
 
 		$helper = new TestableGhostCMSHelper();
@@ -918,7 +918,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 	 */
 	public function test_replace_galleries_with_caption(): void {
 		// Create real attachment using the factory.
-		$attachment_id = $this->factory()->attachment->create_upload_object( $this->dummy_image );
+		$attachment_id          = $this->factory()->attachment->create_upload_object( $this->dummy_image );
 		$this->attachment_ids[] = $attachment_id;
 
 		$helper = new TestableGhostCMSHelper();
@@ -956,10 +956,10 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 	 */
 	public function test_replace_galleries_multiple_galleries(): void {
 		// Create real attachments using the factory.
-		$attachment_id_1 = $this->factory()->attachment->create_upload_object( $this->dummy_image );
+		$attachment_id_1        = $this->factory()->attachment->create_upload_object( $this->dummy_image );
 		$this->attachment_ids[] = $attachment_id_1;
 		
-		$attachment_id_2 = $this->factory()->attachment->create_upload_object( $this->dummy_image );
+		$attachment_id_2        = $this->factory()->attachment->create_upload_object( $this->dummy_image );
 		$this->attachment_ids[] = $attachment_id_2;
 
 		$helper = new TestableGhostCMSHelper();
@@ -992,7 +992,7 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 	 */
 	public function test_replace_galleries_preserves_surrounding_content(): void {
 		// Create real attachment using the factory.
-		$attachment_id = $this->factory()->attachment->create_upload_object( $this->dummy_image );
+		$attachment_id          = $this->factory()->attachment->create_upload_object( $this->dummy_image );
 		$this->attachment_ids[] = $attachment_id;
 
 		$helper = new TestableGhostCMSHelper();

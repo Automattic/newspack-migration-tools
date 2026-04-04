@@ -80,8 +80,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 	public function test_import_attachment_for_post_w_desired_name(): void {
 
 		$desired_file_name = uniqid() . '.jpeg';
-
-		$attachment_id          = $this->wrap_import_attachments_for_post(
+		$attachment_id     = $this->wrap_import_attachments_for_post(
 			$this->post_id,
 			$this->dummy_image,
 			'Named test image',
@@ -102,7 +101,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 		$result = Attachments::download_file( 'tests/fixtures/koi.jpg' );
 
 		// keep a reference for deletion during tear down.
-		if( isset( $result['tmp_name'] ) && file_exists( $result['tmp_name'] ) ) {
+		if ( isset( $result['tmp_name'] ) && file_exists( $result['tmp_name'] ) ) {
 			$this->temp_files[] = $result['tmp_name'];
 		}
 
@@ -117,7 +116,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 		$result = Attachments::download_file( 'tests/fixtures/koi' );
 
 		// keep a reference for deletion during tear down.
-		if( isset( $result['tmp_name'] ) && file_exists( $result['tmp_name'] ) ) {
+		if ( isset( $result['tmp_name'] ) && file_exists( $result['tmp_name'] ) ) {
 			$this->temp_files[] = $result['tmp_name'];
 		}
 		
