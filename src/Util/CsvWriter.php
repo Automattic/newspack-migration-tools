@@ -77,4 +77,17 @@ class CsvWriter {
 			throw new Exception( "Could not close file: {$this->filename}" );
 		}
 	}
+
+	/**
+	 * Closes the file pointer when the object is destroyed.
+	 *
+	 * Ensures the file handle is released even if close() was never called
+	 * explicitly. Safe to call after close() — is_resource() returns false
+	 * on an already-closed handle, so this is a no-op in that case.
+	 */
+	public function __destruct() {
+		if ( is_resource( $this->file_pointer ) ) {
+			$this->close();
+		}
+	}
 }

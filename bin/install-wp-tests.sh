@@ -21,7 +21,7 @@ download() {
     if [ `which curl` ]; then
         curl -s "$1" > "$2";
     elif [ `which wget` ]; then
-        wget -nv -O "$2" "$1"
+        curl -sL -o "$2" "$1"
     fi
 }
 
@@ -98,11 +98,11 @@ install_wp() {
 # Install plugins needed for the test suite.
 install_contrib_plugins() {
   # Also see set_up_contrib_plugins() in ./bootstrap.php in this repo for how to activate plugins in the test suite.
-  wget -nv -O $TMPDIR/co-authors-plus.zip https://downloads.wordpress.org/plugin/co-authors-plus.zip
+  curl -sL -o $TMPDIR/co-authors-plus.zip https://downloads.wordpress.org/plugin/co-authors-plus.zip
   unzip -q -o $TMPDIR/co-authors-plus.zip -d $WP_CORE_DIR/wp-content/plugins/
-  wget -nv -O $TMPDIR/newspack-plugin.zip https://github.com/Automattic/newspack-plugin/releases/latest/download/newspack-plugin.zip
+  curl -sL -o $TMPDIR/newspack-plugin.zip https://github.com/Automattic/newspack-plugin/releases/latest/download/newspack-plugin.zip
   unzip -q -o $TMPDIR/newspack-plugin.zip -d $WP_CORE_DIR/wp-content/plugins/
-  wget -nv -O $TMPDIR/simple-local-avatars.zip https://downloads.wordpress.org/plugin/simple-local-avatars.zip
+  curl -sL -o $TMPDIR/simple-local-avatars.zip https://downloads.wordpress.org/plugin/simple-local-avatars.zip
   unzip -q -o $TMPDIR/simple-local-avatars.zip -d $WP_CORE_DIR/wp-content/plugins/
 }
 
