@@ -243,7 +243,7 @@ $json_iterator->items( $file, [ 'pointer' => '/data/posts' ] );
 ### CsvWriter vs JsonWriter
 
 - `CsvWriter` opens the filename as-is. `JsonWriter` prepends `getcwd() . '/'`, so **never pass absolute paths to JsonWriter**.
-- Both classes close their file handle automatically via `__destruct()`. `JsonWriter::close()` also writes the closing `]\n` to finalize the JSON array — omitting it corrupts the file. `CsvWriter::close()` only flushes the OS buffer; forgetting it won't corrupt data, but calling it explicitly (or relying on `__destruct`) is still good practice.
+- Both classes close their file handle automatically via `__destruct()`. `JsonWriter::close()` also writes the closing `]\n` to finalize the JSON array — omitting it corrupts the file. `CsvWriter::close()` just calls `fclose()` (which flushes and releases the handle); forgetting it doesn't leave an invalid CSV, but it can leak a file handle and lose buffered writes — calling it explicitly (or letting `__destruct` run) is still good practice.
 - Both open in append mode. `CsvWriter::set_header()` only writes if the file is empty, making re-runs safe.
 
 ### PostSelect

@@ -84,10 +84,22 @@ class CsvWriter {
 	 * Ensures the file handle is released even if close() was never called
 	 * explicitly. Safe to call after close() — is_resource() returns false
 	 * on an already-closed handle, so this is a no-op in that case.
+	 *
+	 * Any exception from close() is swallowed and re-emitted as a warning,
+	 * because exceptions thrown from a destructor during shutdown become
+	 * fatal errors that callers cannot catch.
 	 */
 	public function __destruct() {
-		if ( is_resource( $this->file_pointer ) ) {
+		if ( ! is_resource( $this->file_pointer ) ) {
+			return;
+		}
+		try {
 			$this->close();
+		} catch ( Exception $e ) {
+			trigger_error( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_trigger_error
+				esc_html( "CsvWriter::__destruct could not close {$this->filename}: " . $e->getMessage() ),
+				E_USER_WARNING
+			);
 		}
 	}
 }

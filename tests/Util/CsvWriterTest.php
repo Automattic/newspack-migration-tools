@@ -96,14 +96,14 @@ class CsvWriterTest extends TestCase {
 	}
 
 	public function testDestructIsNoopAfterExplicitClose(): void {
+		$this->expectNotToPerformAssertions();
+
 		$csv_writer = new CsvWriter( $this->test_file );
 		$csv_writer->put( [ 'x', 'y' ] );
 		$csv_writer->close();
 
 		// Unsetting triggers __destruct on the already-closed handle.
-		// No exception should be thrown.
+		// is_resource() returns false on a closed handle, so this is a no-op.
 		unset( $csv_writer );
-
-		$this->assertTrue( true ); // reached without error.
 	}
 }
