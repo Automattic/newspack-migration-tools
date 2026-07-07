@@ -17,6 +17,7 @@ use Newspack\MigrationTools\Logic\GutenbergBlockGenerator;
 use Newspack\MigrationTools\NMT;
 use Newspack\MigrationTools\Util\Log\FileLog;
 use Newspack\MigrationTools\Util\Log\MultiLog;
+use Newspack\MigrationTools\Util\Log\PlainLineFormatter;
 use Monolog\Level;
 use Psr\Log\LogLevel;
 use simplehtmldom\HtmlDocument;
@@ -361,17 +362,6 @@ class GhostCMSHelper {
 
 		// Init logger usage in this class.
 		$this->set_log_slug( $log_slug );
-		
-		// Prepare output file.
-		$output_file = 'ghost_kg_elements.jsonl';
-		if ( file_exists( $output_file ) ) {
-			unlink( $output_file ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink.
-		}
-		$file_handle = fopen( $output_file, 'w' ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fopen.
-		if ( false === $file_handle ) {
-			$this->log( sprintf( 'Failed to open file "%s" for writing -- check file permissions and try running the custom Ghost content check command again.', $output_file ), LogLevel::ERROR );
-			return;
-		}
 
 		/**
 		 * Check all published posts migrated from Ghost for custom Ghost editor HTML content -- HTML elements with "kg-*" classes.
@@ -461,6 +451,12 @@ class GhostCMSHelper {
 		/**
 		 * Write results to JSONL file.
 		 */
+
+		$output_file = 'ghost_kg_elements.jsonl';
+		if ( file_exists( $output_file ) ) {
+			unlink( $output_file ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink.
+		}
+
 		foreach ( $elements as $element_data ) {
 			$data = [
 				'html_element'           => $element_data['html_element'],
@@ -468,9 +464,13 @@ class GhostCMSHelper {
 				'first_example_full_tag' => $element_data['first_example_full_tag'],
 				'post_ids'               => $element_data['post_ids'],
 			];
-			fwrite( $file_handle, wp_json_encode( $data ) . PHP_EOL ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fwrite.
+			try {
+				FileLog::get_logger( $output_file, $output_file, new PlainLineFormatter() )->info( wp_json_encode( $data ) );
+			} catch (\Throwable $e) {					
+				$this->log( sprintf( 'Failed to write to "%s" -- check file permissions and try running the custom Ghost content check command again.', $output_file ), LogLevel::ERROR );
+				return;
+			}
 		}
-		fclose( $file_handle ); // phpcs:ignore -- WordPress.WP.AlternativeFunctions.file_system_operations_fclose.
 
 		/**
 		 * Log summary.
