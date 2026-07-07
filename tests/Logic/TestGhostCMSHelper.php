@@ -6,11 +6,14 @@ use Newspack\MigrationTools\Tests\Logic\TestableGhostCMSHelper;
 use Newspack\Guest_Contributor_Role;
 use Newspack\MigrationTools\Logic\GhostCMSHelper;
 use Newspack\MigrationTools\Logic\GutenbergBlockGenerator;
+use Newspack\MigrationTools\Tests\AttachmentUnitTestTrait;
 use ReflectionClass;
 use WP_UnitTestCase;
 
 class TestGhostCMSHelper extends WP_UnitTestCase {
 
+	use AttachmentUnitTestTrait;
+	
 	/**
 	 * Helper to invoke the private get_json_data_from_path method.
 	 *
@@ -888,7 +891,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 	 */
 	public function test_replace_galleries_basic_replacement(): void {
 		// Create real attachment using the factory.
-		$attachment_id = $this->factory()->attachment->create_upload_object( __DIR__ . '/../fixtures/koi.jpg' );
+		$attachment_id          = $this->factory()->attachment->create_upload_object( $this->dummy_image );
+		$this->attachment_ids[] = $attachment_id;
 
 		$helper = new TestableGhostCMSHelper();
 		$helper->set_attachment_map(
@@ -914,7 +918,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 	 */
 	public function test_replace_galleries_with_caption(): void {
 		// Create real attachment using the factory.
-		$attachment_id = $this->factory()->attachment->create_upload_object( __DIR__ . '/../fixtures/koi.jpg' );
+		$attachment_id          = $this->factory()->attachment->create_upload_object( $this->dummy_image );
+		$this->attachment_ids[] = $attachment_id;
 
 		$helper = new TestableGhostCMSHelper();
 		$helper->set_attachment_map(
@@ -951,8 +956,11 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 	 */
 	public function test_replace_galleries_multiple_galleries(): void {
 		// Create real attachments using the factory.
-		$attachment_id_1 = $this->factory()->attachment->create_upload_object( __DIR__ . '/../fixtures/koi.jpg' );
-		$attachment_id_2 = $this->factory()->attachment->create_upload_object( __DIR__ . '/../fixtures/koi.jpg' );
+		$attachment_id_1        = $this->factory()->attachment->create_upload_object( $this->dummy_image );
+		$this->attachment_ids[] = $attachment_id_1;
+		
+		$attachment_id_2        = $this->factory()->attachment->create_upload_object( $this->dummy_image );
+		$this->attachment_ids[] = $attachment_id_2;
 
 		$helper = new TestableGhostCMSHelper();
 		$helper->set_attachment_map(
@@ -984,7 +992,8 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 	 */
 	public function test_replace_galleries_preserves_surrounding_content(): void {
 		// Create real attachment using the factory.
-		$attachment_id = $this->factory()->attachment->create_upload_object( __DIR__ . '/../fixtures/koi.jpg' );
+		$attachment_id          = $this->factory()->attachment->create_upload_object( $this->dummy_image );
+		$this->attachment_ids[] = $attachment_id;
 
 		$helper = new TestableGhostCMSHelper();
 		$helper->set_attachment_map(
