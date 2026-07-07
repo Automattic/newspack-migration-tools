@@ -466,7 +466,7 @@ class GhostCMSHelper {
 			];
 			try {
 				FileLog::get_logger( $output_file, $output_file, new PlainLineFormatter() )->info( wp_json_encode( $data ) );
-			} catch (\Throwable $e) {					
+			} catch ( \Throwable $e ) {                   
 				$this->log( sprintf( 'Failed to write to "%s" -- check file permissions and try running the custom Ghost content check command again.', $output_file ), LogLevel::ERROR );
 				return;
 			}
