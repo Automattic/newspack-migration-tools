@@ -75,4 +75,35 @@ class CsvWriterTest extends TestCase {
 		$content = file_get_contents( $this->test_file );
 		$this->assertStringNotContainsString( 'Header1,Header2', $content );
 	}
+
+	public function testFileIsClosedOnDestruct(): void {
+		$test_file = $this->test_file;
+
+		// Write inside a closure so the CsvWriter goes out of scope (triggering
+		// __destruct) before we read the file back.
+		$write = function () use ( $test_file ): void {
+			$csv_writer = new CsvWriter( $test_file );
+			$csv_writer->set_header( [ 'col1', 'col2' ] );
+			$csv_writer->put( [ 'a', 'b' ] );
+			// No explicit close() — destructor must handle it.
+		};
+		$write();
+
+		// phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+		$content = file_get_contents( $test_file );
+		$this->assertStringContainsString( 'col1,col2', $content );
+		$this->assertStringContainsString( 'a,b', $content );
+	}
+
+	public function testDestructIsNoopAfterExplicitClose(): void {
+		$this->expectNotToPerformAssertions();
+
+		$csv_writer = new CsvWriter( $this->test_file );
+		$csv_writer->put( [ 'x', 'y' ] );
+		$csv_writer->close();
+
+		// Unsetting triggers __destruct on the already-closed handle.
+		// is_resource() returns false on a closed handle, so this is a no-op.
+		unset( $csv_writer );
+	}
 }
