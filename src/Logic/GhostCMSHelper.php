@@ -19,7 +19,6 @@ use Newspack\MigrationTools\Util\Log\FileLog;
 use Newspack\MigrationTools\Util\Log\MultiLog;
 use Newspack\MigrationTools\Util\Log\PlainLineFormatter;
 use Monolog\Level;
-use Monolog\Handler\StreamHandler;
 use Psr\Log\LogLevel;
 use simplehtmldom\HtmlDocument;
 use UnhandledMatchError;
