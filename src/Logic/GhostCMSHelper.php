@@ -454,11 +454,11 @@ class GhostCMSHelper {
 
 		// Setup a logger. Be sure to use NMT's FileLog Util so that this log file will adhere to NMT's 
 		// logging filters such as `newspack_migration_tools_enable_file_log` and `newspack_migration_tools_log_dir`.
-		$jsonl_output_file   = 'ghost_kg_elements.jsonl';
-		$jsonl_output_logger = FileLog::get_logger( $jsonl_output_file, $jsonl_output_file, new PlainLineFormatter() );
+		$output_file   = 'ghost_kg_elements.jsonl';
+		$output_logger = FileLog::get_logger( $output_file, $output_file, new PlainLineFormatter() );
 		
 		// Delete existing output file.
-		FileLog::delete_files( $jsonl_output_logger );
+		FileLog::delete_files( $output_logger );
 
 		foreach ( $elements as $element_data ) {
 			$data = [
@@ -468,9 +468,9 @@ class GhostCMSHelper {
 				'post_ids'               => $element_data['post_ids'],
 			];
 			try {
-				$jsonl_output_logger->info( wp_json_encode( $data ) );
+				$output_logger->info( wp_json_encode( $data ) );
 			} catch ( \Throwable $e ) {                   
-				$this->log( sprintf( 'Failed to write to "%s" -- check file permissions, newspack_migration_tools_enable_file_log and newspack_migration_tools_log_dir, then try running the custom Ghost content check command again.', $jsonl_output_file ), LogLevel::ERROR );
+				$this->log( sprintf( 'Failed to write to "%s" -- check file permissions, newspack_migration_tools_enable_file_log and newspack_migration_tools_log_dir, then try running the custom Ghost content check command again.', $output_file ), LogLevel::ERROR );
 				return;
 			}
 		}
@@ -482,7 +482,7 @@ class GhostCMSHelper {
 			$this->log( sprintf( 'Failed to parse %d posts: %s', count( $failed_posts ), implode( ', ', $failed_posts ) ), LogLevel::ERROR );
 		}
 		if ( ! empty( $elements ) ) {
-			$this->log( sprintf( "Found %d unfamiliar/unhandled 'kg-*' elements in total %d posts, full list was saved to %s. Please QA these findings: if they display correctly/well enough in WP frontend/backend, simply add them to ACCEPTED_KG_ELEMENTS constant in GhostCMSHelper; if they don't, write fixers/transformers for them.", count( $elements ), count( $post_ids ), $jsonl_output_file ), LogLevel::WARNING );
+			$this->log( sprintf( "Found %d unfamiliar/unhandled 'kg-*' elements in total %d posts, full list was saved to %s. Please QA these findings: if they display correctly/well enough in WP frontend/backend, simply add them to ACCEPTED_KG_ELEMENTS constant in GhostCMSHelper; if they don't, write fixers/transformers for them.", count( $elements ), count( $post_ids ), $output_file ), LogLevel::WARNING );
 		} else {
 			$this->log( sprintf( "No unfamiliar/unhandled 'kg-*' elements found in total %d posts.", count( $post_ids ) ), LogLevel::INFO );
 		}
