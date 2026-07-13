@@ -19,6 +19,7 @@ use Newspack\MigrationTools\Util\Log\FileLog;
 use Newspack\MigrationTools\Util\Log\MultiLog;
 use Newspack\MigrationTools\Util\Log\PlainLineFormatter;
 use Monolog\Level;
+use Monolog\Handler\StreamHandler;
 use Psr\Log\LogLevel;
 use simplehtmldom\HtmlDocument;
 use UnhandledMatchError;
@@ -456,14 +457,9 @@ class GhostCMSHelper {
 		// logging filters such as `newspack_migration_tools_enable_file_log` and `newspack_migration_tools_log_dir`.
 		$jsonl_output_file = 'ghost_kg_elements.jsonl';
 		$jsonl_output_logger = FileLog::get_logger( $jsonl_output_file, $jsonl_output_file, new PlainLineFormatter() );
-
-		// Delete existing output file if exist. Note: file path(s) are stored as "urls" inside the logger's stream handler(s).
-		foreach( $jsonl_output_logger->getHandlers() as $handler ) {
-			$maybe_file_already_exists = $handler->getUrl();
-			if ( file_exists( $maybe_file_already_exists ) ) {
-				unlink( $maybe_file_already_exists ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink.
-			}
-		}
+		
+		// Delete existing output file.
+		FileLog::delete_files( $jsonl_output_logger );
 
 		foreach ( $elements as $element_data ) {
 			$data = [
