@@ -90,7 +90,7 @@ class FileLog {
 		$deleted_count = 0;
 
 		// Delete existing file(s) on disk, if exist.
-		foreach( $file_logger->getHandlers() as $handler ) {
+		foreach ( $file_logger->getHandlers() as $handler ) {
 			
 			// Verify handler type.
 			if ( ! $handler instanceof StreamHandler ) {

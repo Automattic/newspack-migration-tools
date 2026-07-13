@@ -455,7 +455,7 @@ class GhostCMSHelper {
 
 		// Setup a logger. Be sure to use NMT's FileLog Util so that this log file will adhere to NMT's 
 		// logging filters such as `newspack_migration_tools_enable_file_log` and `newspack_migration_tools_log_dir`.
-		$jsonl_output_file = 'ghost_kg_elements.jsonl';
+		$jsonl_output_file   = 'ghost_kg_elements.jsonl';
 		$jsonl_output_logger = FileLog::get_logger( $jsonl_output_file, $jsonl_output_file, new PlainLineFormatter() );
 		
 		// Delete existing output file.
