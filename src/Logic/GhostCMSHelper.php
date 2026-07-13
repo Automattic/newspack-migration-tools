@@ -354,16 +354,19 @@ class GhostCMSHelper {
 	/**
 	 * Check imported posts for custom Ghost Koenig editor HTML content, by scanning all HTML elements with kg-* classes.
 	 * 
-	 * @param string $log_slug The logger slug.
+	 * @param string      $log_slug    The logger slug.
+	 * @param string|null $output_file Full path to the output JSONL file. Defaults to ghost_kg_elements.jsonl in the system temp directory.
 	 */
-	public function check_imported_posts_for_custom_html_content( string $log_slug ): void {
+	public function check_imported_posts_for_custom_html_content( string $log_slug, ?string $output_file = null ): void {
 		global $wpdb;
 
 		// Init logger usage in this class.
 		$this->set_log_slug( $log_slug );
 		
 		// Prepare output file.
-		$output_file = 'ghost_kg_elements.jsonl';
+		if ( null === $output_file ) {
+			$output_file = sys_get_temp_dir() . '/ghost_kg_elements.jsonl';
+		}
 		if ( file_exists( $output_file ) ) {
 			unlink( $output_file ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink.
 		}

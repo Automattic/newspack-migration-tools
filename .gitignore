@@ -36,3 +36,4 @@ coverage/
 build/
 
 *.log
+ghost_kg_elements.jsonl

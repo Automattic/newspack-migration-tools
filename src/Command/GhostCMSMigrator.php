@@ -94,6 +94,15 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 				[ __CLASS__, 'cmd_check_imported_posts_for_custom_html_content' ],
 				[
 					'shortdesc' => "After the content has been imported, run this command to check the imported posts for yet unvalidated/unsupported custom HTML content/syntax from the Ghost Koenig editor (such as different custom embeds, or Ghost's equivalents to Gutenberg blocks). This scans all HTML elements with kg-* classes.",
+					'synopsis'  => [
+						[
+							'type'        => 'assoc',
+							'name'        => 'output-file',
+							'description' => 'Full path to the output JSONL file. Defaults to ghost_kg_elements.jsonl in the system temp directory.',
+							'optional'    => true,
+							'repeating'   => false,
+						],
+					],
 				],
 			],
 			[
@@ -149,8 +158,10 @@ class GhostCMSMigrator implements WpCliCommandInterface {
 		$logger   = MultiLog::get_cli_and_file_logger( $log_slug );
 		$logger->info( 'Starting CLI - Scanning imported posts for custom HTML content...' );
 
+		$output_file = isset( $assoc_args['output-file'] ) ? $assoc_args['output-file'] : null;
+
 		$ghost = new GhostCMSHelper();
-		$ghost->check_imported_posts_for_custom_html_content( $log_slug );
+		$ghost->check_imported_posts_for_custom_html_content( $log_slug, $output_file );
 	}
 
 	/**

@@ -1103,4 +1103,59 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 			$posts[0]->post_content
 		);
 	}
+
+	/**
+	 * Test that check_imported_posts_for_custom_html_content writes output to a specified path
+	 * and does not leave stray files in the repository working directory.
+	 *
+	 * @return void
+	 */
+	public function test_check_imported_posts_for_custom_html_content_uses_specified_output_path(): void {
+		$output_file = sys_get_temp_dir() . '/test_ghost_kg_elements_' . uniqid() . '.jsonl';
+
+		// Ensure file does not exist before the test.
+		if ( file_exists( $output_file ) ) {
+			unlink( $output_file );
+		}
+
+		$helper = new GhostCMSHelper();
+		$helper->check_imported_posts_for_custom_html_content( 'test-check-kg', $output_file );
+
+		// The output file must have been created at the specified path.
+		$this->assertFileExists( $output_file );
+
+		// The repository working directory must NOT contain a stray ghost_kg_elements.jsonl file.
+		$this->assertFileDoesNotExist( 'ghost_kg_elements.jsonl' );
+
+		// Cleanup.
+		if ( file_exists( $output_file ) ) {
+			unlink( $output_file );
+		}
+	}
+
+	/**
+	 * Test that check_imported_posts_for_custom_html_content defaults to the system temp directory.
+	 *
+	 * @return void
+	 */
+	public function test_check_imported_posts_for_custom_html_content_defaults_to_temp_dir(): void {
+		$default_output = sys_get_temp_dir() . '/ghost_kg_elements.jsonl';
+
+		// Remove the file if it already exists so we get a clean test.
+		if ( file_exists( $default_output ) ) {
+			unlink( $default_output );
+		}
+
+		$helper = new GhostCMSHelper();
+		$helper->check_imported_posts_for_custom_html_content( 'test-check-kg-default' );
+
+		// The default output file must be written to the temp directory, not the CWD.
+		$this->assertFileExists( $default_output );
+		$this->assertFileDoesNotExist( 'ghost_kg_elements.jsonl' );
+
+		// Cleanup.
+		if ( file_exists( $default_output ) ) {
+			unlink( $default_output );
+		}
+	}
 }
