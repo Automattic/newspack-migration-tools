@@ -104,7 +104,7 @@ class FileLog {
 			// Monolog file resource.
 			$file_resource = $handler->getStream();
 
-			// If file is not open, write a blank line so MonoLog will do it's magic and open the file.
+			// If file is not already open, write a blank line so MonoLog will do it's magic and open the file.
 			// Note: Creating a Logger does not create the file...MonoLog needs to "write" once to open the file resource.
 			if ( ! is_resource( $file_resource ) ) {
 
@@ -118,7 +118,7 @@ class FileLog {
 						message: '',
 				)	 );
 				} catch ( \Throwable $e ) {                   
-					// Just re-throw the error for now...
+					// Explicity re-throw the error so future developers know the above function might throw an error.
 					throw $e;
 				}
 
