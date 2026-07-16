@@ -6,9 +6,12 @@ use Monolog\Formatter\FormatterInterface;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
+use Monolog\Level;
 use Monolog\Logger;
+use Monolog\LogRecord;
 use Newspack\MigrationTools\NMT;
 use Psr\Log\LoggerInterface;
+use Throwable;
 
 class FileLog {
 
@@ -70,5 +73,69 @@ class FileLog {
 		self::add_new_logger( $log_id, $logger );
 
 		return $logger;
+	}
+
+	/**
+	 * Truncate file(s) on disk.
+	 * 
+	 * Loggers write to disk files using handlers. For FileLog, the handler is StreamHandler,
+	 * which handles the underlying fopen, fwrite, etc.  A file must first be fopen and a resource handler
+	 * assigned before truncate can happen.
+	 * 
+	 * Note: Creating a Logger does not create the file...MonoLog needs to "write" once to open the
+	 * file (resource) so it can then be truncated.
+	 * 
+	 * Loggers can have multiple handlers, so each handler's file (if exists) will be truncated.
+	 *
+	 * @param Logger $logger Logger object.
+	 * @return int Count of truncated files.
+	 * 
+	 * @throws Throwable If MonoLog is unable to fopen/fwrite to the file path, an exception will be thrown.
+	 */
+	public static function truncate_files( Logger $logger ): int {
+
+		$truncated_count = 0;
+		foreach ( $logger->getHandlers() as $handler ) {
+			
+			// Only StreamHandler at this time since that is the stream type used above in the get_logger function.
+			if ( ! $handler instanceof StreamHandler ) {
+				continue;
+			}
+
+			// Monolog file resource.
+			$file_resource = $handler->getStream();
+
+			// If file is not already open, write a blank line so MonoLog will do it's magic and open the file.
+			// Note: Creating a Logger does not create the file...MonoLog needs to "write" once to open the file resource.
+			if ( ! is_resource( $file_resource ) ) {
+
+				try {
+					// Write a blank message so MonoLog will open the recource.
+					// This will catch any fopen/fwrite errors due to file path errors (eg: unwriteable).
+					$handler->handle(
+						new LogRecord(
+							datetime: new \DateTimeImmutable(),
+							channel: 'app',
+							level: Level::Info,
+							message: '',
+						)    
+					);
+				} catch ( Throwable $e ) {                   
+					// Explicity re-throw the error so future developers know the above function might throw an error.
+					throw $e;
+				}
+
+				// Set the resource to the opened file.
+				$file_resource = $handler->getStream();
+			}
+
+			// Truncate and must rewind the resource.
+			ftruncate( $file_resource, 0 ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_ftruncate
+			rewind( $file_resource );
+
+			++$truncated_count;
+		}
+		
+		return $truncated_count;
 	}
 }

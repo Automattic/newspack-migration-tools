@@ -158,4 +158,138 @@ class LoggingTests extends WP_UnitTestCase {
 		$plain_4 = PlainFileLog::get_logger( 'different', $this->plain_file_log );
 		$this->assertNotEquals( $plain, $plain_4 );
 	}
+
+	/**
+	 * Test that truncate_files() empties an existing log file's contents.
+	 */
+	public function test_truncate_files_truncates_existing_content(): void {
+		$logger = FileLog::get_logger( 'test-truncate-existing', $this->file_log );
+
+		$logger->info( 'Some content that should be wiped out' );
+
+		$this->assertFileExists( $this->file_log );
+		// phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+		$this->assertNotEmpty( file_get_contents( $this->file_log ) );
+
+		$truncated_count = FileLog::truncate_files( $logger );
+
+		$this->assertEquals( 1, $truncated_count );
+		// phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+		$this->assertEquals( '', file_get_contents( $this->file_log ) );
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+	/**
+	 * Test that truncate_files() will open the underlying file resource even if
+	 * nothing has been logged yet (Monolog doesn't fopen until first write).
+	 */
+	public function test_truncate_files_opens_file_if_not_yet_opened(): void {
+		$logger = FileLog::get_logger( 'test-truncate-not-yet-opened', $this->file_log );
+
+		// Nothing has been logged, so the file shouldn't exist yet.
+		$this->assertFileDoesNotExist( $this->file_log );
+
+		$truncated_count = FileLog::truncate_files( $logger );
+
+		$this->assertEquals( 1, $truncated_count );
+		$this->assertFileExists( $this->file_log );
+		// phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+		$this->assertEquals( '', file_get_contents( $this->file_log ) );
+	}
+
+	/**
+	 * Test that after truncating, subsequent writes start clean (no leftover
+	 * bytes/null padding from before the truncate + rewind).
+	 */
+	public function test_truncate_files_allows_writes_after_truncate(): void {
+		$logger = FileLog::get_logger( 'test-truncate-then-write', $this->file_log );
+
+		$logger->info( 'First run content' );
+		FileLog::truncate_files( $logger );
+
+		$second_message = 'Second run content';
+		$logger->info( $second_message );
+
+		// phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+		$log_content = file_get_contents( $this->file_log );
+
+		$this->assertStringContainsString( $second_message, $log_content );
+		$this->assertStringNotContainsString( 'First run content', $log_content );
+	}
+
+	/**
+	 * Test that truncate_files() is a no-op (returns 0, no error) when the
+	 * logger only has a NullHandler (i.e. file logging disabled).
+	 */
+	public function test_truncate_files_returns_zero_when_logger_disabled(): void {
+		add_filter( 'newspack_migration_tools_enable_file_log', '__return_false' );
+
+		$logger = FileLog::get_logger( 'test-truncate-disabled', $this->file_log );
+
+		$truncated_count = FileLog::truncate_files( $logger );
+
+		$this->assertEquals( 0, $truncated_count );
+		$this->assertFileDoesNotExist( $this->file_log );
+	}
+
+	/**
+	 * Test that truncate_files() truncates every StreamHandler attached to
+	 * the logger when there are multiple handlers/files.
+	 */
+	public function test_truncate_files_with_multiple_handlers(): void {
+		$second_file_log = $this->log_dir . '/second-test-file-log.log';
+
+		$logger = MultiLog::get_logger(
+			'test-truncate-multi-handler',
+			[
+				FileLog::get_logger( 'first handler', $this->file_log ),
+				FileLog::get_logger( 'second handler', $second_file_log ),
+			]
+		);
+
+		$logger->info( 'Content in both files' );
+
+		$this->assertFileExists( $this->file_log );
+		$this->assertFileExists( $second_file_log );
+
+		$truncated_count = FileLog::truncate_files( $logger );
+
+		$this->assertEquals( 2, $truncated_count );
+		// phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+		$this->assertEquals( '', file_get_contents( $this->file_log ) );
+		// phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+		$this->assertEquals( '', file_get_contents( $second_file_log ) );
+
+		// Clean up the extra file since it isn't handled by tearDown()'s known filenames.
+		if ( file_exists( $second_file_log ) ) {
+			unlink( $second_file_log );
+		}
+	}
+
+	/**
+	 * Test that truncate_files() throws when the underlying handler is unable
+	 * to open/write to its file path (e.g. an unwritable directory).
+	 */
+	public function test_truncate_files_throws_on_unwritable_path(): void {
+		add_filter( 'newspack_migration_tools_log_dir', fn() => '/path/does/not/exist/and/is/unwritable' );
+
+		$logger = FileLog::get_logger( 'test-truncate-unwritable', 'unwritable.log' );
+
+		$this->expectException( \Throwable::class );
+		FileLog::truncate_files( $logger );
+	}
+
+
+
+
 }
