@@ -11,6 +11,7 @@ use Monolog\Logger;
 use Monolog\LogRecord;
 use Newspack\MigrationTools\NMT;
 use Psr\Log\LoggerInterface;
+use Throwable;
 
 class FileLog {
 
@@ -89,7 +90,7 @@ class FileLog {
 	 * @param Logger $logger Logger object.
 	 * @return int Count of truncated files.
 	 * 
-	 * @throws If MonoLog is unable to fopen/fwrite to the file path, an exception will be thrown.
+	 * @throws Throwable If MonoLog is unable to fopen/fwrite to the file path, an exception will be thrown.
 	 */
 	public static function truncate_files( Logger $logger ): int {
 
@@ -111,13 +112,15 @@ class FileLog {
 				try {
 					// Write a blank message so MonoLog will open the recource.
 					// This will catch any fopen/fwrite errors due to file path errors (eg: unwriteable).
-					$handler->handle( new LogRecord(
-						datetime: new \DateTimeImmutable(),
-						channel: 'app',
-						level: Level::Info,
-						message: '',
-				)	 );
-				} catch ( \Throwable $e ) {                   
+					$handler->handle(
+						new LogRecord(
+							datetime: new \DateTimeImmutable(),
+							channel: 'app',
+							level: Level::Info,
+							message: '',
+						)    
+					);
+				} catch ( Throwable $e ) {                   
 					// Explicity re-throw the error so future developers know the above function might throw an error.
 					throw $e;
 				}
@@ -127,7 +130,7 @@ class FileLog {
 			}
 
 			// Truncate and must rewind the resource.
-			ftruncate( $file_resource, 0 );
+			ftruncate( $file_resource, 0 ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_ftruncate
 			rewind( $file_resource );
 
 			++$truncated_count;

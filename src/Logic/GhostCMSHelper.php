@@ -461,7 +461,7 @@ class GhostCMSHelper {
 			// For each run, clear out any existing data already in file.
 			FileLog::truncate_files( $output_logger );
 		} catch ( \Throwable $e ) {                   
-			$this->log( sprintf( "Failed to truncate log file(s). %s", $e->getMessage() ), LogLevel::ERROR );
+			$this->log( sprintf( 'Failed to truncate log file(s). %s', $e->getMessage() ), LogLevel::ERROR );
 			return;
 		}
 
