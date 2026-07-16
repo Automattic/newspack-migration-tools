@@ -75,61 +75,26 @@ class FileLog {
 	}
 
 	/**
-	 * Delete files already on disk.
+	 * Truncate files on disk.
 	 * 
 	 * Loggers write to disk files using handlers. For FileLog, the handler is StreamHandler,
-	 * which handles the underlying fopen, fwrite, etc. The handler stores the file path in a
-	 * property called 'url'. The "url" property supports 'php://memory', 'php://stderr' etc,
-	 * but for FileLog, the "url" will be tested as a file path.
+	 * which handles the underlying fopen, fwrite, etc.  A file must first be fopen and a resource handler
+	 * assigned befora truncate can happen. Creating a Logger does not create the file.
+	 * MonoLog needs to "write" once to open the file (resource) so it can then be truncated.
 	 * 
-	 * Loggers can have multiple handlers, so each file will be deleted.
-	 * 
-	 * This function will only delete files prior to the first write (that is when MonoLog opens the file resource).
+	 * Loggers can have multiple handlers, so each handler's file (if exists) will be truncated.
 	 *
-	 * @param Logger $file_logger Logger object.
-	 * @return int Count of deleted files.
+	 * @param Logger $logger Logger object.
+	 * @return int Count of truncated files.
+	 * 
+	 * @throws If MonoLog is unable to fopen/fwrite, an exception will be thrown.
 	 */
-	public static function delete_files( Logger $file_logger ): int {
+	public static function truncate_files( Logger $logger ): int {
 
-		$deleted_count = 0;
-
-		// Delete existing file(s) on disk, if exists.
-		foreach ( $file_logger->getHandlers() as $handler ) {
+		$truncated_count = 0;
+		foreach ( $logger->getHandlers() as $handler ) {
 			
-			// Verify handler type.
-			if ( ! $handler instanceof StreamHandler ) {
-				continue;
-			}
-
-			// Do not delete if file is already open.
-			if ( is_resource( $handler->getStream() ) ) {
-				continue;
-			}
-
-			// File path is stored as "urls".
-			$file_path = $handler->getUrl();
-
-			// Only delete regular files (avoid deleting special files like /dev/null).
-			if ( is_file( $file_path ) && is_writable( $file_path ) ) {
-				$deleted = unlink( $file_path ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink.
-				if ( $deleted ) {
-					++$deleted_count;
-				}
-			}
-		}
-		
-		return $deleted_count;
-	}
-
-
-	public static function truncate_files( Logger $file_logger ): int {
-
-		$deleted_count = 0;
-
-		// Delete existing file(s) on disk, if exists.
-		foreach ( $file_logger->getHandlers() as $handler ) {
-			
-			// Verify handler type.
+			// Only StreamHandler at this time since that is the stream type used above in the get_logger function.
 			if ( ! $handler instanceof StreamHandler ) {
 				continue;
 			}
@@ -138,25 +103,30 @@ class FileLog {
 			$file_resource = $handler->getStream();
 
 			// If file is not open, write a blank line so MonoLog will do it's magic and open the file.
+			// Note: Creating a Logger does not create the file...MonoLog needs to "write" once to open the file resource.
 			if ( ! is_resource( $file_resource ) ) {
-				$record = new LogRecord(
+
+				// try {
+					// Write a blank message so MonoLog will open the recource. Catch any fopen/fwrite errors now.
+					$handler->handle( new LogRecord(
 						datetime: new \DateTimeImmutable(),
 						channel: 'app',
 						level: Level::Info,
 						message: '',
-				);
-				// try {}
-					$handler->handle( $record );
-				// catch
+				)	 );
+				// } catch ( \Throwable $e ) {                   
+				// 	throw $e;
+				// }
+
+				// Set the resource to the opened file.
 				$file_resource = $handler->getStream();
 			}
 
 			ftruncate( $file_resource, 0 );
 			rewind( $file_resource );
-			// fclose???
-			++$deleted_count;
+			++$truncated_count;
 		}
 		
-		return $deleted_count;
+		return $truncated_count;
 	}
 }
