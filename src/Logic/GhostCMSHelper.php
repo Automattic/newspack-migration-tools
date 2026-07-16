@@ -455,13 +455,10 @@ class GhostCMSHelper {
 		// Setup a logger. Be sure to use NMT's FileLog Util so that this log file will adhere to NMT's 
 		// logging filters such as `newspack_migration_tools_enable_file_log` and `newspack_migration_tools_log_dir`.
 		$output_file   = 'ghost_kg_elements.jsonl';
-		// $output_file   = '/dev/full';
-		// $output_file   = '/dev/null';
-		// $output_file = 'file:///dev/full';
-
 		$output_logger = FileLog::get_logger( $output_file, $output_file, new PlainLineFormatter() );
 
 		try {
+			// For each run, clear out any existing data already in file.
 			FileLog::truncate_files( $output_logger );
 		} catch ( \Throwable $e ) {                   
 			$this->log( sprintf( "Failed to truncate log file(s). %s", $e->getMessage() ), LogLevel::ERROR );
