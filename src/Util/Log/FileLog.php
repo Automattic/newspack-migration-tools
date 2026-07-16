@@ -75,19 +75,21 @@ class FileLog {
 	}
 
 	/**
-	 * Truncate files on disk.
+	 * Truncate file(s) on disk.
 	 * 
 	 * Loggers write to disk files using handlers. For FileLog, the handler is StreamHandler,
 	 * which handles the underlying fopen, fwrite, etc.  A file must first be fopen and a resource handler
-	 * assigned befora truncate can happen. Creating a Logger does not create the file.
-	 * MonoLog needs to "write" once to open the file (resource) so it can then be truncated.
+	 * assigned before truncate can happen.
+	 * 
+	 * Note: Creating a Logger does not create the file...MonoLog needs to "write" once to open the
+	 * file (resource) so it can then be truncated.
 	 * 
 	 * Loggers can have multiple handlers, so each handler's file (if exists) will be truncated.
 	 *
 	 * @param Logger $logger Logger object.
 	 * @return int Count of truncated files.
 	 * 
-	 * @throws If MonoLog is unable to fopen/fwrite, an exception will be thrown.
+	 * @throws If MonoLog is unable to fopen/fwrite to the file path, an exception will be thrown.
 	 */
 	public static function truncate_files( Logger $logger ): int {
 
@@ -106,24 +108,28 @@ class FileLog {
 			// Note: Creating a Logger does not create the file...MonoLog needs to "write" once to open the file resource.
 			if ( ! is_resource( $file_resource ) ) {
 
-				// try {
-					// Write a blank message so MonoLog will open the recource. Catch any fopen/fwrite errors now.
+				try {
+					// Write a blank message so MonoLog will open the recource.
+					// This will catch any fopen/fwrite errors due to file path errors (eg: unwriteable).
 					$handler->handle( new LogRecord(
 						datetime: new \DateTimeImmutable(),
 						channel: 'app',
 						level: Level::Info,
 						message: '',
 				)	 );
-				// } catch ( \Throwable $e ) {                   
-				// 	throw $e;
-				// }
+				} catch ( \Throwable $e ) {                   
+					// Just re-throw the error for now...
+					throw $e;
+				}
 
 				// Set the resource to the opened file.
 				$file_resource = $handler->getStream();
 			}
 
+			// Truncate and must rewind the resource.
 			ftruncate( $file_resource, 0 );
 			rewind( $file_resource );
+
 			++$truncated_count;
 		}
 		
