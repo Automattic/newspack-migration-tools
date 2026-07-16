@@ -6,7 +6,9 @@ use Monolog\Formatter\FormatterInterface;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
+use Monolog\Level;
 use Monolog\Logger;
+use Monolog\LogRecord;
 use Newspack\MigrationTools\NMT;
 use Psr\Log\LoggerInterface;
 
@@ -77,19 +79,21 @@ class FileLog {
 	 * 
 	 * Loggers write to disk files using handlers. For FileLog, the handler is StreamHandler,
 	 * which handles the underlying fopen, fwrite, etc. The handler stores the file path in a
-	 * property called 'url'. The "url" property supports 'php://memory', 'php://stderr` etc,
+	 * property called 'url'. The "url" property supports 'php://memory', 'php://stderr' etc,
 	 * but for FileLog, the "url" will be tested as a file path.
 	 * 
 	 * Loggers can have multiple handlers, so each file will be deleted.
+	 * 
+	 * This function will only delete files prior to the first write (that is when MonoLog opens the file resource).
 	 *
 	 * @param Logger $file_logger Logger object.
-	 * @return integer Count of deleted files.
+	 * @return int Count of deleted files.
 	 */
 	public static function delete_files( Logger $file_logger ): int {
 
 		$deleted_count = 0;
 
-		// Delete existing file(s) on disk, if exist.
+		// Delete existing file(s) on disk, if exists.
 		foreach ( $file_logger->getHandlers() as $handler ) {
 			
 			// Verify handler type.
@@ -97,12 +101,60 @@ class FileLog {
 				continue;
 			}
 
-			// file path is stored as "urls" inside the logger's stream handler.
-			$file_path = $handler->getUrl();
-			if ( file_exists( $file_path ) ) {
-				unlink( $file_path ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink.
-				++$deleted_count;
+			// Do not delete if file is already open.
+			if ( is_resource( $handler->getStream() ) ) {
+				continue;
 			}
+
+			// File path is stored as "urls".
+			$file_path = $handler->getUrl();
+
+			// Only delete regular files (avoid deleting special files like /dev/null).
+			if ( is_file( $file_path ) && is_writable( $file_path ) ) {
+				$deleted = unlink( $file_path ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink.
+				if ( $deleted ) {
+					++$deleted_count;
+				}
+			}
+		}
+		
+		return $deleted_count;
+	}
+
+
+	public static function truncate_files( Logger $file_logger ): int {
+
+		$deleted_count = 0;
+
+		// Delete existing file(s) on disk, if exists.
+		foreach ( $file_logger->getHandlers() as $handler ) {
+			
+			// Verify handler type.
+			if ( ! $handler instanceof StreamHandler ) {
+				continue;
+			}
+
+			// Monolog file resource.
+			$file_resource = $handler->getStream();
+
+			// If file is not open, write a blank line so MonoLog will do it's magic and open the file.
+			if ( ! is_resource( $file_resource ) ) {
+				$record = new LogRecord(
+						datetime: new \DateTimeImmutable(),
+						channel: 'app',
+						level: Level::Info,
+						message: '',
+				);
+				// try {}
+					$handler->handle( $record );
+				// catch
+				$file_resource = $handler->getStream();
+			}
+
+			ftruncate( $file_resource, 0 );
+			rewind( $file_resource );
+			// fclose???
+			++$deleted_count;
 		}
 		
 		return $deleted_count;

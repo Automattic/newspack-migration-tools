@@ -455,10 +455,21 @@ class GhostCMSHelper {
 		// Setup a logger. Be sure to use NMT's FileLog Util so that this log file will adhere to NMT's 
 		// logging filters such as `newspack_migration_tools_enable_file_log` and `newspack_migration_tools_log_dir`.
 		$output_file   = 'ghost_kg_elements.jsonl';
+
+		// $prefix = '';
+        // if ('file://' === substr($streamUrl, 0, 7)) {
+        //     $streamUrl = substr($streamUrl, 7);
+        //     $prefix = 'file://';
+		// /dev/null
+		//  See clearstatcache() for more details.
+
 		$output_logger = FileLog::get_logger( $output_file, $output_file, new PlainLineFormatter() );
 		
+		// $output_logger->info( 'asdfasdf' );
+
 		// Delete existing output file.
-		FileLog::delete_files( $output_logger );
+		// FileLog::delete_files( $output_logger );
+		FileLog::truncate_files( $output_logger );
 
 		foreach ( $elements as $element_data ) {
 			$data = [
