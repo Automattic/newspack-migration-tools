@@ -79,13 +79,8 @@ class FileLog {
 	 * Truncate file(s) on disk.
 	 * 
 	 * Loggers write to disk files using handlers. For FileLog, the handler is StreamHandler,
-	 * which handles the underlying fopen, fwrite, etc.  A file must first be fopen and a resource handler
-	 * assigned before truncate can happen.
-	 * 
-	 * Note: Creating a Logger does not create the file...MonoLog needs to "write" once to open the
-	 * file (resource) so it can then be truncated.
-	 * 
-	 * Loggers can have multiple handlers, so each handler's file (if exists) will be truncated.
+	 * which handles the underlying fopen, fwrite, etc.  Loggers can have multiple handlers,
+	 * so each handler's file (if exists) will be truncated.
 	 *
 	 * @param Logger $logger Logger object.
 	 * @return int Count of truncated files.
@@ -100,28 +95,25 @@ class FileLog {
 				continue;
 			}
 
-			// Monolog file resource.
+			// File resource.
 			$file_resource = $handler->getStream();
 
 			// If file resource is not already open, attempt to open it, but do not create it.
+			// A file must first be fopen before truncate can happen.
 			if ( ! is_resource( $file_resource ) ) {
 
-				// Get the file path. Note: MonoLog names the path as "url" since it could support "scheme://..." paths.
+				// Get the file path. (Note: MonoLog stores the path as "url").
 				$file_path = $handler->getUrl();
 
-				// No need to truncate if file doesn't already exist.
-				// todo: put this back in!!!
-				// if ( empty( $file_path ) || ! is_file( $file_path ) || ! is_writable( $file_path ) ) {
-				// 	continue;
-				// }
-
-				$steam_is_local = stream_is_local( $file_path );
-				$parse_url = parse_url( $file_path, PHP_URL_SCHEME );
+				// No need to truncate if file doesn't exist, isn't local, or isn't writeable.
+				if ( empty( $file_path ) || ! is_file( $file_path ) || ! stream_is_local( $file_path ) || ! is_writable( $file_path ) ) {
+					continue;
+				}
 				
 				// Just open in reading and writing mode so we don't create the file if it doesn't already exist.
-				// Use @ to avoide a PHP warning if file doesn't already exist.
-				$file_resource = @fopen( $file_path, 'r+' );
-				if ( $file_resource === false ) {
+				// Use @ to avoid a PHP warning incase file doesn't already exist.
+				$file_resource = @fopen( $file_path, 'r+' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_fopen
+				if ( false === $file_resource ) {
 					// file doesn't exist, so no need to truncate.
 					continue;
 				}
