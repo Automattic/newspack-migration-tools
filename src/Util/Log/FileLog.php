@@ -89,15 +89,13 @@ class FileLog {
 	 *
 	 * @param Logger $logger Logger object.
 	 * @return int Count of truncated files.
-	 * 
-	 * @throws Throwable If MonoLog is unable to fopen/fwrite to the file path, an exception will be thrown.
 	 */
 	public static function truncate_files( Logger $logger ): int {
 
 		$truncated_count = 0;
 		foreach ( $logger->getHandlers() as $handler ) {
 			
-			// Only StreamHandler at this time since that is the stream type used above in the get_logger function.
+			// Only StreamHandler.
 			if ( ! $handler instanceof StreamHandler ) {
 				continue;
 			}
@@ -105,35 +103,35 @@ class FileLog {
 			// Monolog file resource.
 			$file_resource = $handler->getStream();
 
-			// If file is not already open, write a blank line so MonoLog will do it's magic and open the file.
-			// Note: Creating a Logger does not create the file...MonoLog needs to "write" once to open the file resource.
+			// If file resource is not already open, attempt to open it, but do not create it.
 			if ( ! is_resource( $file_resource ) ) {
 
-				try {
-					// Write a blank message so MonoLog will open the recource.
-					// This will catch any fopen/fwrite errors due to file path errors (eg: unwriteable).
-					$handler->handle(
-						new LogRecord(
-							datetime: new \DateTimeImmutable(),
-							channel: 'app',
-							level: Level::Info,
-							message: '',
-						)    
-					);
-				} catch ( Throwable $e ) {                   
-					// Explicity re-throw the error so future developers know the above function might throw an error.
-					throw $e;
-				}
+				// Get the file path. Note: MonoLog names the path as "url" since it could support "scheme://..." paths.
+				$file_path = $handler->getUrl();
 
-				// Set the resource to the opened file.
-				$file_resource = $handler->getStream();
+				// No need to truncate if file doesn't already exist.
+				// todo: put this back in!!!
+				// if ( empty( $file_path ) || ! is_file( $file_path ) || ! is_writable( $file_path ) ) {
+				// 	continue;
+				// }
+
+				$steam_is_local = stream_is_local( $file_path );
+				$parse_url = parse_url( $file_path, PHP_URL_SCHEME );
+				
+				// Just open in reading and writing mode so we don't create the file if it doesn't already exist.
+				// Use @ to avoide a PHP warning if file doesn't already exist.
+				$file_resource = @fopen( $file_path, 'r+' );
+				if ( $file_resource === false ) {
+					// file doesn't exist, so no need to truncate.
+					continue;
+				}
 			}
 
 			// Truncate and must rewind the resource.
-			ftruncate( $file_resource, 0 ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_ftruncate
-			rewind( $file_resource );
-
-			++$truncated_count;
+			// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_ftruncate
+			if ( ftruncate( $file_resource, 0 ) && rewind( $file_resource ) ) {
+				++$truncated_count;
+			}
 		}
 		
 		return $truncated_count;

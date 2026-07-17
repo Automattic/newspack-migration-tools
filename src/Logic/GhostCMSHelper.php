@@ -457,14 +457,9 @@ class GhostCMSHelper {
 		$output_file   = 'ghost_kg_elements.jsonl';
 		$output_logger = FileLog::get_logger( $output_file, $output_file, new PlainLineFormatter() );
 
-		try {
-			// For each run, clear out any existing data already in file.
-			FileLog::truncate_files( $output_logger );
-		} catch ( \Throwable $e ) {                   
-			$this->log( sprintf( 'Failed to truncate log file(s). %s', $e->getMessage() ), LogLevel::ERROR );
-			return;
-		}
-
+		// For each run, clear out any existing data already in file.
+		FileLog::truncate_files( $output_logger );
+		
 		foreach ( $elements as $element_data ) {
 			$data = [
 				'html_element'           => $element_data['html_element'],
