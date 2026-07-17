@@ -192,7 +192,6 @@ class LoggingTests extends WP_UnitTestCase {
 
 		$this->assertEquals( 0, $truncated_count );
 		$this->assertFileDoesNotExist( $this->file_log );
-		
 	}
 
 	/**
