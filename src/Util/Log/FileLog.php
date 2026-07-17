@@ -6,12 +6,9 @@ use Monolog\Formatter\FormatterInterface;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
-use Monolog\Level;
 use Monolog\Logger;
-use Monolog\LogRecord;
 use Newspack\MigrationTools\NMT;
 use Psr\Log\LoggerInterface;
-use Throwable;
 
 class FileLog {
 
