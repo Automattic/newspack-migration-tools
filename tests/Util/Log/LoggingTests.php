@@ -163,7 +163,7 @@ class LoggingTests extends WP_UnitTestCase {
 	 * Test that truncate_files() empties an existing log file's contents.
 	 */
 	public function test_truncate_files_truncates_existing_content(): void {
-		$logger = FileLog::get_logger( 'test-truncate-existing', $this->file_log );
+		$logger = FileLog::get_logger( $this->file_log, $this->file_log );
 
 		$logger->info( 'Some content that should be wiped out' );
 
@@ -184,7 +184,7 @@ class LoggingTests extends WP_UnitTestCase {
 	public function test_truncate_files_does_not_create_file(): void {
 		
 		// Creating a logger does not create the file.
-		$logger = FileLog::get_logger( 'test-truncate-no-file', $this->file_log );
+		$logger = FileLog::get_logger( $this->file_log, $this->file_log );
 		$this->assertFileDoesNotExist( $this->file_log );
 
 		// Verify truncating does not create a file.
@@ -201,11 +201,70 @@ class LoggingTests extends WP_UnitTestCase {
 	public function test_truncate_files_with_null_handler(): void {
 		add_filter( 'newspack_migration_tools_enable_file_log', '__return_false' );
 
-		$logger = FileLog::get_logger( 'test-truncate-disabled', $this->file_log );
+		$logger = FileLog::get_logger( $this->file_log, $this->file_log );
 
 		$truncated_count = FileLog::truncate_files( $logger );
 
 		$this->assertEquals( 0, $truncated_count );
 		$this->assertFileDoesNotExist( $this->file_log );
+	}
+
+	/**
+	 * Test truncate_files() succeeds appropriatly when file path has scheme file://
+	 */
+	public function test_truncate_files_with_file_scheme( ): void {
+		
+		$file_path = 'file://' . $this->file_log;
+		$logger = FileLog::get_logger( $file_path, $file_path );
+
+		// Replace default handler with a testable handler with scheme (://) format.
+		$logger->setHandlers( [ new \Monolog\Handler\StreamHandler( $file_path ) ] );
+		$logger->info( 'Some content' );
+		$truncated_count = FileLog::truncate_files( $logger );
+
+		$this->assertEquals( 1, $truncated_count );
+
+	}
+
+	/**
+	 * Data provider for testing truncate_files() with scheme (://) and other failures.
+	 */
+	public function data_provider_truncate_files_with_failures() {
+		return [
+			'php://output' => [ 'php://output' ],
+			'php://stdout' => [ 'php://stdout' ],
+			'php://stderr' => [ 'php://stderr' ],
+			'http://...'   => [ 'http://example.com/test' ],
+			'/dev/null'    => [ '/dev/null' ],
+			'/dev/full'    => [ '/dev/full' ],
+		];
+	}
+
+	/**
+	 * 
+	 * Test truncate_files() fails appropriatly when file path has a scheme (://)
+	 * or other non file paths.
+	 * 
+	 * ( For file:// scheme, see test_truncate_files_with_file_scheme above )
+	 * 
+	 * @dataProvider data_provider_truncate_files_with_failures
+	 */
+	public function test_truncate_files_with_failures( $stream_with_scheme ): void {
+		
+		$logger = FileLog::get_logger( 'test-truncate-scheme-failures' );
+
+		// Replace default handler with a testable handler with scheme (://) format.
+		$logger->setHandlers( [ new \Monolog\Handler\StreamHandler( $stream_with_scheme ) ] );
+		
+		try {
+			$logger->info( 'Some content' );
+		} catch( \Throwable $e ) {
+			// Ignore any write failues, we're just testing the truncate function below.
+		}
+
+		$truncated_count = FileLog::truncate_files( $logger );
+
+		$this->assertEquals( 0, $truncated_count );
+
 	}
 }

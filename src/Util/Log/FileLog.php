@@ -91,6 +91,14 @@ class FileLog {
 			if ( ! $handler instanceof StreamHandler ) {
 				continue;
 			}
+ 			
+			// Get the file path. (Note: MonoLog stores the path as "url").
+			$file_path = $handler->getUrl();
+
+			// No need to truncate if file doesn't exist, isn't local, isn't writeable, or non-file stream (scheme ://), etc
+			if ( empty( $file_path ) || ! is_file( $file_path ) || ! stream_is_local( $file_path ) || ! is_writable( $file_path ) ) {
+				continue;
+			}
 
 			// File resource.
 			$file_resource = $handler->getStream();
@@ -99,14 +107,6 @@ class FileLog {
 			// A file must first be fopen before truncate can happen.
 			if ( ! is_resource( $file_resource ) ) {
 
-				// Get the file path. (Note: MonoLog stores the path as "url").
-				$file_path = $handler->getUrl();
-
-				// No need to truncate if file doesn't exist, isn't local, or isn't writeable.
-				if ( empty( $file_path ) || ! is_file( $file_path ) || ! stream_is_local( $file_path ) || ! is_writable( $file_path ) ) {
-					continue;
-				}
-				
 				// Just open in reading and writing mode so we don't create the file if it doesn't already exist.
 				// Use @ to avoid a PHP warning incase file doesn't already exist.
 				$file_resource = @fopen( $file_path, 'r+' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_fopen
