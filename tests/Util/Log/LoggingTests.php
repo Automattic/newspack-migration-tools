@@ -255,13 +255,8 @@ class LoggingTests extends WP_UnitTestCase {
 
 		// Replace default handler with a testable handler with scheme (://) format.
 		$logger->setHandlers( [ new \Monolog\Handler\StreamHandler( $stream_with_scheme ) ] );
-		
-		try {
-			$logger->info( 'Some content' );
-		} catch( \Throwable $e ) {
-			// Ignore any write failues, we're just testing the truncate function below.
-		}
 
+		// Truncate will skip if not is_file, not stream_is_local, not is_writable.
 		$truncated_count = FileLog::truncate_files( $logger );
 
 		$this->assertEquals( 0, $truncated_count );
