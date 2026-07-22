@@ -100,11 +100,11 @@ class FileLog {
 				continue;
 			}
 
-			// File resource.
-			$file_resource = $handler->getStream();
+			// Try to use the existing file resource, otherwise a new resource will need to be opened.
+			$file_resource       = $handler->getStream();
+			$new_resource_opened = false;
 
 			// If file resource is not already open, attempt to open it, but do not create it.
-			// A file must first be fopen before truncate can happen.
 			if ( ! is_resource( $file_resource ) ) {
 
 				// Just open in reading and writing mode so we don't create the file if it doesn't already exist.
@@ -114,6 +114,7 @@ class FileLog {
 					// file doesn't exist, so no need to truncate.
 					continue;
 				}
+				$new_resource_opened = true;
 			}
 
 			// Truncate and must rewind the resource.
@@ -121,6 +122,11 @@ class FileLog {
 			if ( ftruncate( $file_resource, 0 ) && rewind( $file_resource ) ) {
 				++$truncated_count;
 			}
+
+			// Close the resource if it was opened just to do the truncate (ie: don't close the Stream resource).
+			if ( $new_resource_opened ) {
+				fclose( $file_resource );
+			}       
 		}
 		
 		return $truncated_count;
