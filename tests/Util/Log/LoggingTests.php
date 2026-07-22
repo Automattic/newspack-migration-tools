@@ -212,10 +212,10 @@ class LoggingTests extends WP_UnitTestCase {
 	/**
 	 * Test truncate_files() succeeds appropriatly when file path has scheme file://
 	 */
-	public function test_truncate_files_with_file_scheme( ): void {
+	public function test_truncate_files_with_file_scheme(): void {
 		
 		$file_path = 'file://' . $this->file_log;
-		$logger = FileLog::get_logger( $file_path, $file_path );
+		$logger    = FileLog::get_logger( $file_path, $file_path );
 
 		// Replace default handler with a testable handler with scheme (://) format.
 		$logger->setHandlers( [ new \Monolog\Handler\StreamHandler( $file_path ) ] );
@@ -223,7 +223,6 @@ class LoggingTests extends WP_UnitTestCase {
 		$truncated_count = FileLog::truncate_files( $logger );
 
 		$this->assertEquals( 1, $truncated_count );
-
 	}
 
 	/**
@@ -260,6 +259,5 @@ class LoggingTests extends WP_UnitTestCase {
 		$truncated_count = FileLog::truncate_files( $logger );
 
 		$this->assertEquals( 0, $truncated_count );
-
 	}
 }

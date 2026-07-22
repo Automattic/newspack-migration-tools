@@ -91,7 +91,7 @@ class FileLog {
 			if ( ! $handler instanceof StreamHandler ) {
 				continue;
 			}
- 			
+			
 			// Get the file path. (Note: MonoLog stores the path as "url").
 			$file_path = $handler->getUrl();
 
