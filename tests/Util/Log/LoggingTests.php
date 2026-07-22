@@ -179,10 +179,10 @@ class LoggingTests extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that truncate_files() does not create file.
+	 * Test that truncate_files() does not create a file.
 	 */
 	public function test_truncate_files_does_not_create_file(): void {
-		
+
 		// Creating a logger does not create the file.
 		$logger = FileLog::get_logger( $this->file_log, $this->file_log );
 		$this->assertFileDoesNotExist( $this->file_log );
@@ -213,7 +213,7 @@ class LoggingTests extends WP_UnitTestCase {
 	 * Test truncate_files() succeeds appropriatly when file path has scheme file://
 	 */
 	public function test_truncate_files_with_file_scheme(): void {
-		
+
 		$file_path = 'file://' . $this->file_log;
 		$logger    = FileLog::get_logger( $file_path, $file_path );
 
@@ -240,16 +240,16 @@ class LoggingTests extends WP_UnitTestCase {
 	}
 
 	/**
-	 * 
+	 *
 	 * Test truncate_files() fails appropriatly when file path has a scheme (://)
 	 * or other non file paths.
-	 * 
+	 *
 	 * ( For file:// scheme, see test_truncate_files_with_file_scheme above )
-	 * 
+	 *
 	 * @dataProvider data_provider_truncate_files_with_failures
 	 */
 	public function test_truncate_files_with_failures( $stream_with_scheme ): void {
-		
+
 		$logger = FileLog::get_logger( 'test-truncate-scheme-failures' );
 
 		// Replace default handler with a testable handler with scheme (://) format.

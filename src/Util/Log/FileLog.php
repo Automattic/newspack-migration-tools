@@ -74,7 +74,7 @@ class FileLog {
 
 	/**
 	 * Truncate file(s) on disk.
-	 * 
+	 *
 	 * Loggers write to disk files using handlers. For FileLog, the handler is StreamHandler,
 	 * which handles the underlying fopen, fwrite, etc.  Loggers can have multiple handlers,
 	 * so each handler's file (if exists) will be truncated.
@@ -86,12 +86,12 @@ class FileLog {
 
 		$truncated_count = 0;
 		foreach ( $logger->getHandlers() as $handler ) {
-			
+
 			// Only StreamHandler.
 			if ( ! $handler instanceof StreamHandler ) {
 				continue;
 			}
-			
+
 			// Get the file path. (Note: MonoLog stores the path as "url").
 			$file_path = $handler->getUrl();
 
@@ -126,7 +126,7 @@ class FileLog {
 				fclose( $file_resource ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 			}
 		}
-		
+
 		return $truncated_count;
 	}
 }
