@@ -101,8 +101,7 @@ class FileLog {
 			}
 
 			// Try to use the existing file resource, otherwise a new resource will need to be opened.
-			$file_resource       = $handler->getStream();
-			$new_resource_opened = false;
+			$file_resource = $handler->getStream();
 
 			// If file resource is not already open, attempt to open it, but do not create it.
 			if ( ! is_resource( $file_resource ) ) {
@@ -114,7 +113,6 @@ class FileLog {
 					// file doesn't exist, so no need to truncate.
 					continue;
 				}
-				$new_resource_opened = true;
 			}
 
 			// Truncate and must rewind the resource.
@@ -123,10 +121,10 @@ class FileLog {
 				++$truncated_count;
 			}
 
-			// Close the resource if it was opened just to do the truncate (ie: don't close the Stream resource).
-			if ( $new_resource_opened ) {
-				fclose( $file_resource );
-			}       
+			// Close the stream if we opened it just for truncation (ie: the handler stream was not open).
+			if ( is_resource( $file_resource ) && ! is_resource( $handler->getStream() ) ) {
+				fclose( $file_resource ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+			}
 		}
 		
 		return $truncated_count;
