@@ -210,7 +210,7 @@ class LoggingTests extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test truncate_files() succeeds appropriatly when file path has scheme file://
+	 * Test truncate_files() succeeds appropriately when file path has scheme file://
 	 */
 	public function test_truncate_files_with_file_scheme(): void {
 
@@ -241,7 +241,7 @@ class LoggingTests extends WP_UnitTestCase {
 
 	/**
 	 *
-	 * Test truncate_files() fails appropriatly when file path has a scheme (://)
+	 * Test truncate_files() fails appropriately when file path has a scheme (://)
 	 * or other non file paths.
 	 *
 	 * ( For file:// scheme, see test_truncate_files_with_file_scheme above )
