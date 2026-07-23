@@ -95,7 +95,7 @@ class FileLog {
 			// Get the file path. (Note: Monolog stores the path as "url").
 			$file_path = $handler->getUrl();
 
-			// No need to truncate if file doesn't exist, isn't local, isn't writeable, or non-file stream (scheme ://), etc
+			// No need to truncate if file doesn't exist, isn't local, isn't writable, or is a non-file stream (scheme ://), etc
 			if ( empty( $file_path ) || ! is_file( $file_path ) || ! stream_is_local( $file_path ) || ! is_writable( $file_path ) ) {
 				continue;
 			}
