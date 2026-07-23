@@ -107,7 +107,7 @@ class FileLog {
 			if ( ! is_resource( $file_resource ) ) {
 
 				// Just open in reading and writing mode so we don't create the file if it doesn't already exist.
-				// Use @ to avoid a PHP warning incase file doesn't already exist.
+				// Use @ to avoid a PHP warning in case the file doesn't already exist.
 				$file_resource = @fopen( $file_path, 'r+' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_fopen
 				if ( false === $file_resource ) {
 					// file doesn't exist, so no need to truncate.
