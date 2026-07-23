@@ -92,7 +92,7 @@ class FileLog {
 				continue;
 			}
 
-			// Get the file path. (Note: MonoLog stores the path as "url").
+			// Get the file path. (Note: Monolog stores the path as "url").
 			$file_path = $handler->getUrl();
 
 			// No need to truncate if file doesn't exist, isn't local, isn't writeable, or non-file stream (scheme ://), etc
