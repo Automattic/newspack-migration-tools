@@ -16,7 +16,8 @@
         "php": ">=8.1",
         "monolog/monolog": "^3.7",
         "bramus/monolog-colored-line-formatter": "^3.1",
-        "halaxa/json-machine": "^1.1.5"
+        "halaxa/json-machine": "^1.1.5",
+        "simplehtmldom/simplehtmldom": "2.0-RC2"
     },
     "require-dev": {
         "ext-libxml": "*",
@@ -29,8 +30,8 @@
         "php-coveralls/php-coveralls": "^2.7"
     },
     "scripts": {
-        "phpcs": "./vendor/bin/phpcs",
-        "phpcbf": "./vendor/bin/phpcbf",
+        "phpcs": "./vendor/bin/phpcs --standard=phpcs.xml",
+        "phpcbf": "./vendor/bin/phpcbf --standard=phpcs.xml",
         "phpunit": "./vendor/bin/phpunit",
         "code-coverage": "export XDEBUG_MODE=coverage && ./vendor/bin/phpunit --coverage-clover build/logs/clover.xml",
         "build-release": [

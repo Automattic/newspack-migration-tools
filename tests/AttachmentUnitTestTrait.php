@@ -12,13 +12,22 @@ trait AttachmentUnitTestTrait {
 	 */
 	private array $attachment_ids = [];
 
-	public string $dummy_image = 'https://dummyimage.com/600x400.jpg/000/fff&text=Iz+test';
+	/**
+	 * @var string Path to a real local image file.
+	 */
+	public string $dummy_image = 'tests/fixtures/koi.jpg';
+
+	/**
+	 * @var array Temp files to clean up on tearDown().
+	 */
+	private array $temp_files = [];
 
 	/**
 	 * {@inheritDoc}
 	 */
 	public function tearDown(): void { // phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid
 		$this->clean_up_attachments();
+		$this->clean_up_temp_files();
 		parent::tearDown();
 	}
 
@@ -47,6 +56,19 @@ trait AttachmentUnitTestTrait {
 	public function clean_up_attachments(): void {
 		foreach ( $this->attachment_ids as $attachment_id ) {
 			wp_delete_attachment( $attachment_id, true );
+		}
+	}
+
+	/**
+	 * Delete temp files created during the test.
+	 *
+	 * @return void
+	 */
+	public function clean_up_temp_files(): void {
+		foreach ( $this->temp_files as $path ) {
+			if ( file_exists( $path ) ) {
+				unlink( $path );
+			}
 		}
 	}
 }

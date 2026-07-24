@@ -20,9 +20,10 @@ class CsvWriterTest extends TestCase {
 
 		$random_dir_name = wp_unique_filename( $temp_dir, uniqid( time() ) );
 
-		wp_mkdir_p( $random_dir_name );
+		wp_mkdir_p( $temp_dir . $random_dir_name );
 
-		$this->test_file = $random_dir_name . '/test.csv';
+		$this->test_file = $temp_dir . $random_dir_name . '/test.csv';
+
 		if ( file_exists( $this->test_file ) ) {
 			unlink( $this->test_file );
 		}
@@ -31,6 +32,8 @@ class CsvWriterTest extends TestCase {
 	protected function tearDown(): void {
 		if ( file_exists( $this->test_file ) ) {
 			unlink( $this->test_file );
+			// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.directory_rmdir
+			rmdir( dirname( $this->test_file ) );
 		}
 	}
 
@@ -71,5 +74,36 @@ class CsvWriterTest extends TestCase {
 		// phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
 		$content = file_get_contents( $this->test_file );
 		$this->assertStringNotContainsString( 'Header1,Header2', $content );
+	}
+
+	public function testFileIsClosedOnDestruct(): void {
+		$test_file = $this->test_file;
+
+		// Write inside a closure so the CsvWriter goes out of scope (triggering
+		// __destruct) before we read the file back.
+		$write = function () use ( $test_file ): void {
+			$csv_writer = new CsvWriter( $test_file );
+			$csv_writer->set_header( [ 'col1', 'col2' ] );
+			$csv_writer->put( [ 'a', 'b' ] );
+			// No explicit close() — destructor must handle it.
+		};
+		$write();
+
+		// phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+		$content = file_get_contents( $test_file );
+		$this->assertStringContainsString( 'col1,col2', $content );
+		$this->assertStringContainsString( 'a,b', $content );
+	}
+
+	public function testDestructIsNoopAfterExplicitClose(): void {
+		$this->expectNotToPerformAssertions();
+
+		$csv_writer = new CsvWriter( $this->test_file );
+		$csv_writer->put( [ 'x', 'y' ] );
+		$csv_writer->close();
+
+		// Unsetting triggers __destruct on the already-closed handle.
+		// is_resource() returns false on a closed handle, so this is a no-op.
+		unset( $csv_writer );
 	}
 }

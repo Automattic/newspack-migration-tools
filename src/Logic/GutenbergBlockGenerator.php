@@ -534,6 +534,25 @@ AUDIO;
 
 	/**
 	 * Generate a Paragraph Block.
+	 * 
+	 * Backgound and text color usage $inline_styles and:
+	 *   $block = get_paragraph(
+	 *      'Text content',
+	 *      '',
+	 *      '',
+	 *      '',
+	 *      [ 'has-background', 'has-text-color' ], // Additional CSS classes to <p> and Block.
+	 *      [ 'style' => [ 'color' => [ 'background' => '#E3F2FD', 'text' => '#333333' ] ] ], // Inline styles as key-value pairs added to the `<p>` element's `style` attribute.
+	 *      [ 'background-color' => '#E3F2FD', 'color' => '#333333' ] // Inline styles as key-value pairs added to the `<p>` element's `style` attribute.
+	 *   );
+	 * 
+	 * 
+	 *   Produces, after serialization:
+	 *   ```
+	 *     <!-- wp:paragraph {"style":{"color":{"background":"#E3F2FD","text":"#333333"}}} -->
+	 *     <p class="has-background has-text-color" style="background-color:#E3F2FD;color:#333333">Hello</p>
+	 *     <!-- /wp:paragraph -->
+	 *   ```
 	 *
 	 * @param string $paragraph_content      Paragraph content.
 	 * @param string $anchor                 Paragraph anchor.
@@ -541,10 +560,11 @@ AUDIO;
 	 * @param string $font_size              Paragraph font size (small, normal, medium, large, huge).
 	 * @param array  $additional_css_classes Additional paragraph classes.
 	 * @param array  $attrs                  Paragraph attributes.
+	 * @param array  $inline_styles          Inline CSS styles as key-value pairs added to the `<p>` element's `style` attribute.
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_paragraph( $paragraph_content, $anchor = '', $text_color = '', $font_size = '', array $additional_css_classes = [], $attrs = [] ) {
+	public function get_paragraph( $paragraph_content, $anchor = '', $text_color = '', $font_size = '', array $additional_css_classes = [], $attrs = [], array $inline_styles = [] ) {
 		// Paragraph can have both <p class=""> classes, and <!-- wp:paragraph {"className":""} --> className attributes (called "Additional CSS classes" in Gutenberg).
 		$paragraph_element_classes = [];
 		if ( ! empty( $text_color ) ) {
@@ -564,8 +584,24 @@ AUDIO;
 
 		$paragraph_element_class_string = ! empty( $paragraph_element_classes ) ? ' class="' . implode( ' ', $paragraph_element_classes ) . '"' : '';
 
+		// Build inline style attribute.
+		$style_attribute = '';
+		if ( ! empty( $inline_styles ) ) {
+			$style_parts = [];
+			foreach ( $inline_styles as $property => $value ) {
+				$sanitized_property = sanitize_key( $property );
+				if ( '' === $sanitized_property ) {
+					continue;
+				}
+				$style_parts[] = $sanitized_property . ':' . $value;
+			}
+			if ( ! empty( $style_parts ) ) {
+				$style_attribute = ' style="' . esc_attr( implode( ';', $style_parts ) ) . '"';
+			}
+		}
+
 		$anchor_attribute = ! empty( $anchor ) ? ' id="' . $anchor . '"' : '';
-		$content          = '<p' . $anchor_attribute . $paragraph_element_class_string . '>' . $paragraph_content . '</p>';
+		$content          = '<p' . $anchor_attribute . $paragraph_element_class_string . $style_attribute . '>' . $paragraph_content . '</p>';
 
 		return [
 			'blockName'    => 'core/paragraph',

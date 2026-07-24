@@ -27,7 +27,8 @@ class CsvIterator {
 		$csv_file    = fopen( $csv_path, 'r' );
 		$csv_headers = [];
 		$line_number = 0;
-		while ( false !== ( $line = fgetcsv( $csv_file, null, $separator ) ) ) {
+		// fgetcsv escape='' for RFC 4180 compliance (@see https://php.net/fgetcsv).
+		while ( false !== ( $line = fgetcsv( $csv_file, null, $separator, '"', '' ) ) ) {
 			++$line_number;
 			if ( 1 === $line_number ) {
 				$csv_headers = array_map( fn( $value ) => trim( $value ?? '' ), $line );
@@ -59,7 +60,8 @@ class CsvIterator {
 
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- We're reading a CSV file outside WP.
 		$csv_file = fopen( $csv_path, 'r' );
-		while ( false !== ( $line = fgetcsv( $csv_file, null, $separator ) ) ) {
+		// fgetcsv escape='' for RFC 4180 compliance (@see https://php.net/fgetcsv).
+		while ( false !== ( $line = fgetcsv( $csv_file, null, $separator, '"', '' ) ) ) {
 			$trimmed_line = array_map( fn( $value ) => trim( $value ?? '' ), $line );
 
 			// Skip empty rows (rows where all fields are empty)

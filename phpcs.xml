@@ -16,6 +16,14 @@
         <exclude name="WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_is_writable" />
         <exclude name="WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_unlink" />
 
+		<!-- Exclude deprecated sniffs for JS and CSS -->
+		<exclude name="WordPressVIPMinimum.JS.DangerouslySetInnerHTML" />
+		<exclude name="WordPressVIPMinimum.JS.InnerHTML" />
+		<exclude name="WordPressVIPMinimum.JS.StrippingTags" />
+		<exclude name="WordPressVIPMinimum.JS.StringConcat" />
+		<exclude name="WordPressVIPMinimum.JS.HTMLExecutingFunctions" />
+		<exclude name="WordPressVIPMinimum.JS.Window" />
+
         <!-- Only comment when neccessary -->
         <exclude name="Squiz.Commenting.FileComment.Missing" />
         <exclude name="Squiz.Commenting.FileComment.MissingPackageTag" />

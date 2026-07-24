@@ -108,9 +108,10 @@ class GutenbergBlockGeneratorTest extends WP_UnitTestCase {
 	public function test_get_file_pdf() {
 		$attachment_id          = Attachments::import_attachment_for_post(
 			$this->test_post_1_id,
-			'tests/fixtures/test.pdf'
+			'tests/fixtures/flier.pdf' // copied from: https://github.com/WordPress/wordpress-develop/blob/85108188d02f77712e4f1b88fb08e3e6e87c0216/tests/phpunit/data/images/wordpress-gsoc-flyer.pdf
 		);
 		$this->attachment_ids[] = $attachment_id;
+
 		$no_download_link_block = $this->block_generator->get_file_pdf( get_post( $attachment_id ), 'My PDF', false );
 		$this->assertEquals( 'core/file', $no_download_link_block['blockName'] );
 		$this->assertStringNotContainsString( 'download', $no_download_link_block['innerHTML'] );
@@ -120,13 +121,11 @@ class GutenbergBlockGeneratorTest extends WP_UnitTestCase {
 	}
 
 	public function test_get_audio() {
-		$audio_url = 'https://v1.cdnpk.net/videvo_files/audio/premium/audio0060/conversions/mp3_option/CatMeowsPurring PE916904.mp3';
-
-		$attachment_id = Attachments::import_attachment_for_post(
+		$audio_url              = 'tests/fixtures/small-audio.mp3'; // copied from: https://github.com/WordPress/wordpress-develop/blob/85108188d02f77712e4f1b88fb08e3e6e87c0216/tests/phpunit/data/uploads/small-audio.mp3
+		$attachment_id          = Attachments::import_attachment_for_post(
 			$this->test_post_1_id,
 			$audio_url
 		);
-
 		$this->attachment_ids[] = $attachment_id;
 
 		$filename = wp_basename( $audio_url );

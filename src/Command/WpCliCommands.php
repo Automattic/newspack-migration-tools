@@ -15,6 +15,7 @@ class WpCliCommands {
 			AttachmentsMigrator::class,
 			BlockTransformerCommand::class,
 			CampaignsMigrator::class,
+			CommandSupervisor::class,
 			ContentConverterPluginMigrator::class,
 			CraftCMSMigrator::class,
 			CssMigrator::class,

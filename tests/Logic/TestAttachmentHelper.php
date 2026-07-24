@@ -60,8 +60,6 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 			compact( 'post_title', 'post_excerpt', 'post_content' ),
 		);
 
-		$this->attachment_ids[] = $attachment_id;
-
 		$this->assertIsInt( $attachment_id );
 		$file_path = get_attached_file( $attachment_id );
 		$this->assertFileExists( $file_path );
@@ -82,15 +80,13 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 	public function test_import_attachment_for_post_w_desired_name(): void {
 
 		$desired_file_name = uniqid() . '.jpeg';
-
-		$attachment_id          = $this->wrap_import_attachments_for_post(
+		$attachment_id     = $this->wrap_import_attachments_for_post(
 			$this->post_id,
 			$this->dummy_image,
 			'Named test image',
 			[],
 			$desired_file_name
 		);
-		$this->attachment_ids[] = $attachment_id;
 
 		$this->assertIsInt( $attachment_id );
 		$file_path = get_attached_file( $attachment_id );
