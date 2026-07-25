@@ -287,16 +287,20 @@ class Attachments {
 				return $tmpfname;
 			}
 		} else {
-			// The `media_handle_sideload()` function deletes the local file after import, so to preserve the local path, we're
-			// first saving it to a temp location, in exactly the same way the WP's own `\download_url()` function above does.
-			$tmpfname = wp_tempnam( $path );
+			// Verify local file exists before copying it into a temp file.
 			if ( ! file_exists( $path ) ) {
 				return new WP_Error( sprintf( 'File %s was not found', $path ) );
 			}
+			// The `media_handle_sideload()` function deletes the local file after import, so to preserve the local file, we're
+			// first saving it to a temp location, in exactly the same way the WP's own `\download_url()` function above does,
+			// then the temp file will be used for `media_handle_sideload()`.
+			$tmpfname = wp_tempnam( $path );
 			copy( $path, $tmpfname );
 		}
 
 		if ( filesize( $tmpfname ) < 1 ) {
+			// If temp file is blank, remove it from disk before returning the error.
+			@unlink( $tmpfname ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			return new WP_Error( sprintf( 'File %s was empty', $path ) );
 		}
 

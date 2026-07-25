@@ -101,7 +101,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 	 */
 	public function test_download_file( array $provider ) {
 
-		$downloaded_file_array = Attachments::download_file( $provider['path'] );
+		$downloaded_file_array = $this->wrap_download_file( $provider['path'] );
 		
 		// Check for Download error just incase.
 		if ( is_wp_error( $downloaded_file_array ) ) {
@@ -123,7 +123,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 
 		// Verify sideload for WP Core by not running the download_file's extension fix...just use the basename as-is.
 		// using wp_basename( $path ) is the same logic download_file would do if we had a "skip fix extension" argument.
-		$downloaded_file_array = Attachments::download_file( $provider['path'], wp_basename( $provider['path'] ) );
+		$downloaded_file_array = $this->wrap_download_file( $provider['path'], wp_basename( $provider['path'] ) );
 		$this->media_handle_sideload_asserts( $downloaded_file_array, $provider['sideloaded-wp-core'] );        
 	}
 
@@ -150,7 +150,7 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 	private function media_handle_sideload_asserts( array $downloaded_file_array, string $assert_value ) {
 
 		// Verify result works as expecpted with sideload.
-		$sideload_id = media_handle_sideload( $downloaded_file_array );
+		$sideload_id = $this->wrap_media_handle_sideload( $downloaded_file_array );
 		
 		if ( is_wp_error( $sideload_id ) ) {
 			$this->assertSame( $assert_value, $sideload_id->get_error_message() );
@@ -192,6 +192,26 @@ class TestAttachmentHelper extends WP_UnitTestCase {
 				[
 					'path'                 => $fixtures_folder . 'no-file.nope',
 					'downloaded-file-name' => 'File ' . $fixtures_folder . 'no-file.nope was not found',
+					'sideloaded-file-name' => '',
+					'sideloaded-wp-core'   => '',
+					'file-binary-mime'     => '',
+					'mime-default-ext'     => '',
+				],
+			],
+			'empty file'                                 => [
+				[
+					'path'                 => $fixtures_folder . 'empty-file.txt',
+					'downloaded-file-name' => 'File ' . $fixtures_folder . 'empty-file.txt was empty',
+					'sideloaded-file-name' => '',
+					'sideloaded-wp-core'   => '',
+					'file-binary-mime'     => '',
+					'mime-default-ext'     => '',
+				],
+			],
+			'empty url'                                 => [
+				[
+					'path'                 => 'https://newspack.com/no-image-exists.jpg',
+					'downloaded-file-name' => 'http_404',
 					'sideloaded-file-name' => '',
 					'sideloaded-wp-core'   => '',
 					'file-binary-mime'     => '',
