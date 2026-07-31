@@ -96,6 +96,24 @@ class FgHelper {
 
 		do_action( 'fg_helper_pre_import', [ $pos_args, $assoc_args ] );
 
+		// todo: wrap these in some sort of boolean to remove if desired.
+
+		
+		// Per FG support email: this will allow FG to import "repeater" without having to install ACF.
+		if ( ! defined( 'ACF_PRO' ) ) {
+			// define( 'ACF_PRO', true );
+		}
+
+		// This will remove FG's ACF "add-on" warning.
+		if ( ! defined( 'ACF' ) ) {
+			// define( 'ACF', true );
+		}
+
+		// Override FG's 2 hour limit...try to just run to finish without forcing a stop.
+		if ( ! defined( 'IMPORT_TIMEOUT' ) ) {
+			define( 'IMPORT_TIMEOUT', 0 );
+		}
+		
 		// Note that the 'launch' arg is important – without it the hooks above will not be registered.
 		\WP_CLI::runcommand( "import-$this->type import", [ 'launch' => false ] );
 	}
