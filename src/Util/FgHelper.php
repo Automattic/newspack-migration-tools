@@ -101,12 +101,12 @@ class FgHelper {
 		
 		// Per FG support email: this will allow FG to import "repeater" without having to install ACF.
 		if ( ! defined( 'ACF_PRO' ) ) {
-			// define( 'ACF_PRO', true );
+			define( 'ACF_PRO', true );
 		}
 
 		// This will remove FG's ACF "add-on" warning.
 		if ( ! defined( 'ACF' ) ) {
-			// define( 'ACF', true );
+			define( 'ACF', true );
 		}
 
 		// Override FG's 2 hour limit...try to just run to finish without forcing a stop.
