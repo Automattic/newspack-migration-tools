@@ -71,4 +71,62 @@ class FileLog {
 
 		return $logger;
 	}
+
+	/**
+	 * Truncate file(s) on disk.
+	 *
+	 * Loggers write to disk files using handlers. For FileLog, the handler is StreamHandler,
+	 * which handles the underlying fopen, fwrite, etc.  Loggers can have multiple handlers,
+	 * so each handler's file (if exists) will be truncated.
+	 *
+	 * @param Logger $logger Logger object.
+	 * @return int Count of truncated files.
+	 */
+	public static function truncate_files( Logger $logger ): int {
+
+		$truncated_count = 0;
+		foreach ( $logger->getHandlers() as $handler ) {
+
+			// Only StreamHandler.
+			if ( ! $handler instanceof StreamHandler ) {
+				continue;
+			}
+
+			// Get the file path. (Note: Monolog stores the path as "url").
+			$file_path = $handler->getUrl();
+
+			// No need to truncate if file doesn't exist, isn't local, isn't writable, or is a non-file stream (scheme ://), etc
+			if ( empty( $file_path ) || ! is_file( $file_path ) || ! stream_is_local( $file_path ) || ! is_writable( $file_path ) ) {
+				continue;
+			}
+
+			// Try to use the existing file resource, otherwise a new resource will need to be opened.
+			$file_resource = $handler->getStream();
+
+			// If file resource is not already open, attempt to open it, but do not create it.
+			if ( ! is_resource( $file_resource ) ) {
+
+				// Just open in reading and writing mode so we don't create the file if it doesn't already exist.
+				// Use @ to avoid a PHP warning in case the file doesn't already exist.
+				$file_resource = @fopen( $file_path, 'r+' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_fopen
+				if ( false === $file_resource ) {
+					// file doesn't exist, so no need to truncate.
+					continue;
+				}
+			}
+
+			// Truncate and must rewind the resource.
+			// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_ftruncate
+			if ( ftruncate( $file_resource, 0 ) && rewind( $file_resource ) ) {
+				++$truncated_count;
+			}
+
+			// Close the stream if we opened it just for truncation (ie: the handler stream was not open).
+			if ( is_resource( $file_resource ) && ! is_resource( $handler->getStream() ) ) {
+				fclose( $file_resource ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+			}
+		}
+
+		return $truncated_count;
+	}
 }

@@ -158,4 +158,106 @@ class LoggingTests extends WP_UnitTestCase {
 		$plain_4 = PlainFileLog::get_logger( 'different', $this->plain_file_log );
 		$this->assertNotEquals( $plain, $plain_4 );
 	}
+
+	/**
+	 * Test that truncate_files() empties an existing log file's contents.
+	 */
+	public function test_truncate_files_truncates_existing_content(): void {
+		$logger = FileLog::get_logger( $this->file_log, $this->file_log );
+
+		$logger->info( 'Some content that should be wiped out' );
+
+		$this->assertFileExists( $this->file_log );
+		// phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+		$this->assertNotEmpty( file_get_contents( $this->file_log ) );
+
+		$truncated_count = FileLog::truncate_files( $logger );
+
+		$this->assertEquals( 1, $truncated_count );
+		// phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+		$this->assertEquals( '', file_get_contents( $this->file_log ) );
+	}
+
+	/**
+	 * Test that truncate_files() does not create a file.
+	 */
+	public function test_truncate_files_does_not_create_file(): void {
+
+		// Creating a logger does not create the file.
+		$logger = FileLog::get_logger( $this->file_log, $this->file_log );
+		$this->assertFileDoesNotExist( $this->file_log );
+
+		// Verify truncating does not create a file.
+		$truncated_count = FileLog::truncate_files( $logger );
+
+		$this->assertEquals( 0, $truncated_count );
+		$this->assertFileDoesNotExist( $this->file_log );
+	}
+
+	/**
+	 * Test that truncate_files() returns 0 when the logger
+	 * only has a NullHandler (i.e. file logging disabled).
+	 */
+	public function test_truncate_files_with_null_handler(): void {
+		add_filter( 'newspack_migration_tools_enable_file_log', '__return_false' );
+
+		$logger = FileLog::get_logger( $this->file_log, $this->file_log );
+
+		$truncated_count = FileLog::truncate_files( $logger );
+
+		$this->assertEquals( 0, $truncated_count );
+		$this->assertFileDoesNotExist( $this->file_log );
+	}
+
+	/**
+	 * Test truncate_files() succeeds appropriately when file path has scheme file://
+	 */
+	public function test_truncate_files_with_file_scheme(): void {
+
+		$file_path = 'file://' . $this->file_log;
+		$logger    = FileLog::get_logger( $file_path, $file_path );
+
+		// Replace default handler with a testable handler with scheme (://) format.
+		$logger->setHandlers( [ new \Monolog\Handler\StreamHandler( $file_path ) ] );
+		$logger->info( 'Some content' );
+		$truncated_count = FileLog::truncate_files( $logger );
+
+		$this->assertEquals( 1, $truncated_count );
+	}
+
+	/**
+	 * Data provider for testing truncate_files() with scheme (://) and other failures.
+	 */
+	public function data_provider_truncate_files_with_failures() {
+		return [
+			'php://output' => [ 'php://output' ],
+			'php://stdout' => [ 'php://stdout' ],
+			'php://stderr' => [ 'php://stderr' ],
+			'http://...'   => [ 'http://example.com/test' ],
+			'/dev/null'    => [ '/dev/null' ],
+			'/dev/full'    => [ '/dev/full' ],
+		];
+	}
+
+	/**
+	 *
+	 * Test truncate_files() fails appropriately when file path has a scheme (://)
+	 * or other non file paths.
+	 *
+	 * ( For file:// scheme, see test_truncate_files_with_file_scheme above )
+	 *
+	 * @dataProvider data_provider_truncate_files_with_failures
+	 */
+	public function test_truncate_files_with_failures( $stream_with_scheme ): void {
+
+		$logger = FileLog::get_logger( 'test-truncate-scheme-failures' );
+
+		// Replace default handler with a testable handler with scheme (://) format.
+		$logger->setHandlers( [ new \Monolog\Handler\StreamHandler( $stream_with_scheme ) ] );
+
+		// Truncate will skip if not is_file, not stream_is_local, not is_writable.
+		$truncated_count = FileLog::truncate_files( $logger );
+
+		$this->assertEquals( 0, $truncated_count );
+	}
 }
