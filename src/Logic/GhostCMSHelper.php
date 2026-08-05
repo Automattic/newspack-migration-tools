@@ -363,6 +363,14 @@ class GhostCMSHelper {
 		// Init logger usage in this class.
 		$this->set_log_slug( $log_slug );
 
+		// Setup a logger. Be sure to use NMT's FileLog Util so that this log file will adhere to NMT's 
+		// logging filters such as `newspack_migration_tools_enable_file_log` and `newspack_migration_tools_log_dir`.
+		$output_file   = 'ghost_kg_elements.jsonl';
+		$output_logger = FileLog::get_logger( $output_file, $output_file, new PlainLineFormatter() );
+
+		// For each run, clear out any existing data already in file.
+		FileLog::truncate_files( $output_logger );
+
 		/**
 		 * Check all published posts migrated from Ghost for custom Ghost editor HTML content -- HTML elements with "kg-*" classes.
 		 */
@@ -451,14 +459,6 @@ class GhostCMSHelper {
 		/**
 		 * Write results to JSONL file.
 		 */
-
-		// Setup a logger. Be sure to use NMT's FileLog Util so that this log file will adhere to NMT's 
-		// logging filters such as `newspack_migration_tools_enable_file_log` and `newspack_migration_tools_log_dir`.
-		$output_file   = 'ghost_kg_elements.jsonl';
-		$output_logger = FileLog::get_logger( $output_file, $output_file, new PlainLineFormatter() );
-
-		// For each run, clear out any existing data already in file.
-		FileLog::truncate_files( $output_logger );
 		
 		foreach ( $elements as $element_data ) {
 			$data = [
