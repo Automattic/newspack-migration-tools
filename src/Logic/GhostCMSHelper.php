@@ -459,7 +459,6 @@ class GhostCMSHelper {
 		/**
 		 * Write results to JSONL file.
 		 */
-		
 		foreach ( $elements as $element_data ) {
 			$data = [
 				'html_element'           => $element_data['html_element'],
