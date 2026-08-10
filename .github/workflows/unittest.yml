@@ -18,7 +18,7 @@ jobs:
                   mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
 
             - name: Checkout code
-              uses: actions/checkout@v2
+              uses: actions/checkout@v7
 
             - name: Setup PHP
               uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # 2.37.1
