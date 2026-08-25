@@ -36,9 +36,9 @@ class DrupalHelper extends FgHelper {
 		}
 		
 		// Verify the FG Drupal "Paragraphs" add-on is active.
-		if ( ! is_plugin_active( "fg-drupal-to-wp-premium-paragraphs-module/fg-drupal-to-wp-paragraphs.php" ) ) {
-			NMT::exit_with_message( "FG Drupal to WordPress Premium Paragraphs module is required. Install and activate it before using this class." );
-		}
+		// if ( ! is_plugin_active( "fg-drupal-to-wp-premium-paragraphs-module/fg-drupal-to-wp-paragraphs.php" ) ) {
+		// 	NMT::exit_with_message( "FG Drupal to WordPress Premium Paragraphs module is required. Install and activate it before using this class." );
+		// }
 		
 // todo: domain access module.
 
