@@ -42,10 +42,8 @@ class DrupalHelper extends FgHelper {
 		
 // todo: domain access module.
 
-
-		add_filter ( 'fgd2wp_display_admin_notice_error_log', '__return_false' );
-		add_filter ( 'fgd2wp_display_admin_warning_error_log', '__return_false' );
-		// add_filter ( 'fgd2wp_display_admin_error_error_log', '__return_false' );
+		// Don't put notices into error log.  They are already logged to the fg log and the CLI.
+		add_filter ( 'fgd2wp_display_admin_notice_into_error_log', '__return_false' );
 		
 	}
 
