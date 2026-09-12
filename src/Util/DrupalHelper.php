@@ -32,7 +32,7 @@ class DrupalHelper extends FgHelper {
 
 		// Verify the FG Drupal "Entity Reference" add-on is active.
 		if ( ! is_plugin_active( "fg-drupal-to-wp-premium-entityreference-module/fg-drupal-to-wp-entityreference.php" ) ) {
-			NMT::exit_with_message( "FG Drupal to WordPress Premium Entity Reference module is required. Install and activate it before using this class." );
+			// NMT::exit_with_message( "FG Drupal to WordPress Premium Entity Reference module is required. Install and activate it before using this class." );
 		}
 		
 		// Verify the FG Drupal "Paragraphs" add-on is active.
