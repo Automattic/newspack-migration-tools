@@ -29,6 +29,22 @@ class DrupalHelper extends FgHelper {
 	public function __construct( int $version ) {
 		parent::__construct( 'drupal' );
 		$this->drupal_version = $version;
+
+		// Verify the FG Drupal "Entity Reference" add-on is active.
+		if ( ! is_plugin_active( "fg-drupal-to-wp-premium-entityreference-module/fg-drupal-to-wp-entityreference.php" ) ) {
+			// NMT::exit_with_message( "FG Drupal to WordPress Premium Entity Reference module is required. Install and activate it before using this class." );
+		}
+		
+		// Verify the FG Drupal "Paragraphs" add-on is active.
+		// if ( ! is_plugin_active( "fg-drupal-to-wp-premium-paragraphs-module/fg-drupal-to-wp-paragraphs.php" ) ) {
+		// 	NMT::exit_with_message( "FG Drupal to WordPress Premium Paragraphs module is required. Install and activate it before using this class." );
+		// }
+		
+// todo: domain access module.
+
+		// Don't put notices into error log.  They are already logged to the fg log and the CLI.
+		add_filter ( 'fgd2wp_display_admin_notice_into_error_log', '__return_false' );
+		
 	}
 
 	/**
