@@ -10,13 +10,20 @@ namespace Newspack\MigrationTools\Command;
 use Newspack\MigrationTools\Hooks\MemoryCleanupHook;
 use Newspack\MigrationTools\Logic\Attachments;
 use Newspack\MigrationTools\Logic\GuestContributorsHelper;
+use Newspack\MigrationTools\Logic\GutenbergBlockGenerator;
+use Newspack\MigrationTools\Logic\OriginalValueStore;
+use Newspack\MigrationTools\Logic\Posts;
 use Newspack\MigrationTools\Logic\SimpleLocalAvatars;
+use Newspack\MigrationTools\Logic\Sponsors;
+use Newspack\MigrationTools\Logic\Taxonomy;
 use Newspack\MigrationTools\Logic\UsersHelper;
 use Newspack\MigrationTools\Util\CsvIterator;
 use Newspack\MigrationTools\Util\CsvWriter;
 use Newspack\MigrationTools\Util\Log\MultiLog;
+use Newspack\MigrationTools\Util\OriginalPermalink;
 use Psr\Log\LoggerInterface;
 use WP_CLI;
+use WP_HTML_Tag_Processor;
 use WP_User;
 
 /**
@@ -30,6 +37,16 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 	private const UID_USER         = 'indiegraf-user-';
 	private const UID_BYLINE       = 'indiegraf-byline-';
 	private const TOUCHED_IDS_FILE = 'indiegraf_touched_post_ids.txt';
+
+	/**
+	 * Post statuses imported as-is; any other status becomes a draft.
+	 */
+	private const POST_STATUSES = [ 'publish', 'draft', 'pending', 'private', 'future' ];
+
+	/**
+	 * First blocks that make the featured image redundant in the post header.
+	 */
+	private const MEDIA_BLOCKS = [ 'core/image', 'core/gallery', 'core/cover', 'core/video', 'core/embed' ];
 
 	/**
 	 * CSV column => wp_insert_post arg.
@@ -229,7 +246,8 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 	];
 
 	/**
-	 * Block name fnmatch() pattern => 'drop' | 'unwrap' | handler method. Unknown indiegraf*\/ blocks default to 'unwrap'.
+	 * Block name fnmatch() pattern => 'drop' | 'unwrap' | 'keep' (logged for review) | handler method.
+	 * Unknown indiegraf*\/ blocks default to 'unwrap'. Every rule except a handler is logged.
 	 */
 	private const BLOCK_TRANSFORMS = [
 		'indiegraf/accordion'     => 'transform_accordion',
@@ -238,6 +256,7 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 		'indiegraf/featured-post' => 'drop',
 		'indiegraf/latest-posts'  => 'drop',
 		'indiegrafpay/*'          => 'drop',
+		'core/shortcode'          => 'keep',
 	];
 
 	/**
@@ -290,7 +309,7 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 	private array $touched_post_ids = [];
 
 	/**
-	 * Media hosts found in content, host => 'wp'|'cdn'.
+	 * Media hosts found in transformed content: 'wp' (WordPress upload paths) | 'cdn' (timestamp-folder paths) | 'pdf' => [ host => true ].
 	 *
 	 * @var array
 	 */
@@ -419,13 +438,16 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 			WP_CLI::error( "Missing dependencies:\n- " . implode( "\n- ", $missing ) );
 		}
 
+		// Site settings gates: the timezone converts source dates to GMT; source URLs are flat /slug/.
+		WP_CLI::confirm( sprintf( "This site's timezone is %s. Source post dates are imported in this timezone. If it is not the source site's timezone, set it now (e.g. wp option update timezone_string America/Los_Angeles), then press y to continue.", wp_timezone_string() ) );
+		if ( '/%postname%/' !== get_option( 'permalink_structure' ) ) {
+			WP_CLI::confirm( sprintf( "This site's permalink structure is '%s'. This importer relies on /%%postname%%/ permalinks (source URLs are flat /slug/; old slugs redirect via _wp_old_slug). Set them now (wp rewrite structure '/%%postname%%/'), then press y to continue.", get_option( 'permalink_structure' ) ) );
+		}
+		// Settings changed from another shell while paused are only seen after the options cache is cleared.
+		wp_cache_delete( 'alloptions', 'options' );
+
 		foreach ( [ $assoc_args['users-csv'], ...$post_csvs ] as $csv ) {
 			$this->normalize_csv_headers( $csv );
-		}
-
-		// Permalink gate: source URLs are flat /slug/.
-		if ( '/%postname%/' !== get_option( 'permalink_structure' ) ) {
-			WP_CLI::confirm( "This importer relies on /%postname%/ permalinks (source URLs are flat /slug/; old slugs redirect via _wp_old_slug). Set them now (wp rewrite structure '/%postname%/'), then press y to continue." );
 		}
 
 		// Column audit and role counts; unmapped columns with data need a confirmation.
@@ -439,9 +461,47 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 			WP_CLI::confirm( sprintf( '%d unmapped columns with data, see indiegraf_unmapped_columns_*.csv. Continue?', $unmapped ) );
 		}
 
-		$this->import_users( $assoc_args['users-csv'], $import_roles );
+		// Import as an importer: no pings/enclosures on publish, no kses stripping of iframes and scripts (WP-CLI runs as no user), no revisions.
+		if ( ! defined( 'WP_IMPORTING' ) ) {
+			define( 'WP_IMPORTING', true );
+		}
+		kses_remove_filters();
+		add_filter( 'wp_revisions_to_keep', '__return_zero' );
 
-		$this->logger->warning( 'Posts and pages import is not implemented yet.' );
+		$this->import_users( $assoc_args['users-csv'], $import_roles );
+		foreach ( $post_csvs as $csv ) {
+			$this->import_posts( $csv, ! empty( $assoc_args['update-already-imported-posts'] ) );
+		}
+
+		// Touched post IDs scope the downloader and import-2-of-2 to this run's diff.
+		$ids_file = getcwd() . '/' . self::TOUCHED_IDS_FILE;
+		if ( false === file_put_contents( $ids_file, implode( ',', array_unique( $this->touched_post_ids ) ) ) ) {
+			WP_CLI::error( sprintf( 'Could not write %s', $ids_file ) );
+		}
+
+		// Hand-off: newspack-post-image-downloader commands in its README order (scan, images, scan non-images, non-images), then step 2.
+		// PDFs only from hosts that also serve the images, i.e. the source's own storage.
+		$this->content_hosts['pdf'] = array_intersect_key( $this->content_hosts['pdf'] ?? [], ( $this->content_hosts['wp'] ?? [] ) + ( $this->content_hosts['cdn'] ?? [] ) );
+		$posts                      = sprintf( '--post-types=post,page --post-statuses=%s --post-ids-csv=$(cat %s)', implode( ',', self::POST_STATUSES ), $ids_file );
+		$hosts                      = fn( string $group ) => implode( ',', array_keys( $this->content_hosts[ $group ] ?? [] ) );
+		$commands                   = array_filter(
+			[
+				"wp newspack-post-image-downloader scan-existing-urls $posts",
+				'' === $hosts( 'wp' ) ? null : "wp newspack-post-image-downloader download-images $posts --do-not-download-root-relative-urls --only-download-from-hosts=" . $hosts( 'wp' ),
+				'' === $hosts( 'cdn' ) ? null : "wp newspack-post-image-downloader download-images $posts --do-not-download-root-relative-urls --only-download-from-hosts=" . $hosts( 'cdn' ) . ' --do-not-download-large-sizes',
+				"wp newspack-post-image-downloader scan-existing-urls --include-non-image-urls $posts",
+				'' === $hosts( 'pdf' ) ? null : "wp newspack-post-image-downloader download-non-images-files $posts --do-not-download-root-relative-urls --extensions=pdf --only-download-from-hosts=" . $hosts( 'pdf' ),
+			]
+		);
+		$this->logger->info(
+			sprintf(
+				"%s\nWhen those finish, run:\n  wp newspack-migration-tools indiegraf import-2-of-2",
+				empty( $this->touched_post_ids )
+					? 'Import done. No posts were created or updated, so there is no media to download.'
+					: "Import done. Next, download the media in post content, in this order, from the WP root.\nRead newspack-post-image-downloader's README to ensure these commands are correct, and check the hosts and extensions each scan lists:\n  " . implode( "\n  ", $commands )
+			)
+		);
+
 		wp_cache_flush();
 		WP_CLI::success(
 			sprintf(
@@ -584,6 +644,19 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 	}
 
 	/**
+	 * Normalizes a CSV date (e.g. single-digit hours) to MySQL format.
+	 *
+	 * @param string|null $date Date as exported.
+	 *
+	 * @return string|null "Y-m-d H:i:s", or null when empty or unparseable.
+	 */
+	private function to_mysql_date( ?string $date ): ?string {
+		$timestamp = null === $date ? false : strtotime( $date );
+
+		return false === $timestamp ? null : gmdate( 'Y-m-d H:i:s', $timestamp );
+	}
+
+	/**
 	 * GETs a path from the source site's public REST API, once per run.
 	 *
 	 * REST is optional: without --live-rest-url or on failure this returns null, and the first failure prints one warning.
@@ -687,10 +760,10 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 			}
 		}
 		// Identity fields are never cleared: WP would refill them from user_login (an email here) or the current date.
-		$timestamp = strtotime( $data['user_registered'] ?? '' );
+		$registered = $this->to_mysql_date( $data['user_registered'] ?? null );
 		unset( $data['user_registered'] );
-		if ( false !== $timestamp ) {
-			$data['user_registered'] = gmdate( 'Y-m-d H:i:s', $timestamp );
+		if ( null !== $registered ) {
+			$data['user_registered'] = $registered;
 		}
 		$display_name = $this->value( $row, 'Display Name' );
 		if ( null !== $display_name ) {
@@ -701,9 +774,6 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 		if ( array_key_exists( 'biography', $row ) || array_key_exists( 'Description', $row ) ) {
 			$biography           = $this->value( $row, 'biography' ) ?? $this->value( $row, 'Description' );
 			$data['description'] = null === $biography ? null : $this->clean_biography( $biography );
-		}
-		if ( array_key_exists( 'title', $row ) ) {
-			$data['meta_input']['newspack_job_title'] = $this->value( $row, 'title' ) ?? '';
 		}
 
 		// Refresh the existing user, or create it.
@@ -724,8 +794,7 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 			$user   = get_user_by( 'id', $user->ID );
 			$status = 'updated';
 		} else {
-			$data['meta_input'] = array_filter( $data['meta_input'] ?? [] );
-			$user               = GuestContributorsHelper::create_or_get_contributor( array_filter( $data, fn( $value ) => null !== $value && [] !== $value ), $uid );
+			$user = GuestContributorsHelper::create_or_get_contributor( array_filter( $data, fn( $value ) => null !== $value ), $uid );
 			if ( is_wp_error( $user ) ) {
 				$this->log( $uid, null, 'error', 'Create failed: ' . $user->get_error_message() );
 
@@ -734,7 +803,14 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 			$status = 'created';
 		}
 
-		// Avatar: an empty value on refresh removes it.
+		// Job title and avatar: an empty value on refresh removes them.
+		if ( array_key_exists( 'title', $row ) ) {
+			if ( null === $this->value( $row, 'title' ) ) {
+				delete_user_meta( $user->ID, 'newspack_job_title' );
+			} else {
+				update_user_meta( $user->ID, 'newspack_job_title', $this->value( $row, 'title' ) );
+			}
+		}
 		if ( array_key_exists( 'profile_picture', $row ) ) {
 			$media_id = (int) $this->value( $row, 'profile_picture' );
 			if ( $media_id > 0 ) {
@@ -900,5 +976,409 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 		}
 
 		return $user;
+	}
+
+	/**
+	 * Creates, updates or skips each post or page of a CSV (plan 0.2), then reports imported ones missing from it.
+	 *
+	 * @param string $csv              Posts or Pages CSV file path.
+	 * @param bool   $update_conflicts Also update posts edited on this site since their import (--update-already-imported-posts).
+	 *
+	 * @return void
+	 */
+	private function import_posts( string $csv, bool $update_conflicts ): void {
+		global $wpdb;
+
+		$taxonomy   = new Taxonomy();
+		$seen_uids  = [];
+		$post_types = [];
+		foreach ( ( new CsvIterator() )->items( $csv, ',' ) as $index => $row ) {
+			MemoryCleanupHook::cleanup( 0, $index, 50 );
+
+			$source_id = $this->value( $row, 'ID' );
+			$post_type = $this->value( $row, 'Post Type' ) ?? 'post';
+			if ( null === $source_id || ! in_array( $post_type, [ 'post', 'page' ], true ) ) {
+				$this->log( self::UID_POST . $source_id, null, 'error', sprintf( 'Row skipped: no ID, or post type "%s" is not post or page.', $post_type ) );
+				continue;
+			}
+			$uid                      = self::UID_POST . $source_id;
+			$seen_uids[ $uid ]        = true;
+			$post_types[ $post_type ] = true;
+
+			// Diff: skip when the source is unchanged; a post edited here since its import is a conflict, skipped unless $update_conflicts.
+			$source_modified = $this->to_mysql_date( $this->value( $row, 'Post Modified Date' ) );
+			$post_id         = Posts::get_post_by_unique_identifier( $uid );
+			if ( $post_id ) {
+				$imported_modified = (string) OriginalValueStore::get_for_post( $post_id, 'modified' );
+				$is_conflict       = '' !== $imported_modified && get_post_field( 'post_modified', $post_id ) !== $imported_modified;
+				if ( $is_conflict && ! $update_conflicts ) {
+					$this->log( $uid, $post_id, 'conflict', sprintf( 'Edited on this site after the import (%s), skipped. Use --update-already-imported-posts to overwrite it.', get_post_field( 'post_modified', $post_id ) ) );
+					continue;
+				}
+				if ( ! $is_conflict && null !== $source_modified && $source_modified <= $imported_modified ) {
+					$this->log( $uid, $post_id, 'skipped', 'Unchanged.' );
+					continue;
+				}
+			}
+
+			// Post fields. Null marks a present-but-empty column: skipped on create, cleared on update. Absent columns are left out.
+			$data = [ 'post_type' => $post_type ];
+			foreach ( self::POST_COLUMNS as $column => $field ) {
+				if ( array_key_exists( $column, $row ) ) {
+					$data[ $field ] = $this->value( $row, $column );
+				}
+			}
+			if ( isset( $data['post_status'] ) && ! in_array( $data['post_status'], self::POST_STATUSES, true ) ) {
+				$this->log( $uid, $post_id ?: null, 'unresolved', sprintf( 'Unknown status "%s", imported as draft.', $data['post_status'] ) ); // phpcs:ignore -- Universal.Operators.DisallowShortTernary.Found.
+				$data['post_status'] = 'draft';
+			}
+			// A 1970 date is an unset draft date: WP sets one.
+			$date = $this->to_mysql_date( $this->value( $row, 'Date' ) );
+			if ( null !== $date && ! str_starts_with( $date, '1970-01-01' ) ) {
+				$data['post_date']     = $date;
+				$data['post_date_gmt'] = get_gmt_from_date( $date );
+			}
+			$content = array_key_exists( 'Content', $row ) ? $this->transform_content( $this->value( $row, 'Content' ) ?? '', $uid ) : null;
+			if ( null !== $content ) {
+				$data['post_content'] = $content;
+			}
+			if ( array_key_exists( 'Parent', $row ) ) {
+				$source_parent_id    = (int) $this->value( $row, 'Parent' );
+				$data['post_parent'] = $source_parent_id ? Posts::get_post_by_unique_identifier( self::UID_POST . $source_parent_id ) : 0;
+				if ( false === $data['post_parent'] ) {
+					$this->log( $uid, $post_id ?: null, 'unresolved', sprintf( 'Parent %d is not imported (yet); parent not set.', $source_parent_id ) ); // phpcs:ignore -- Universal.Operators.DisallowShortTernary.Found.
+					unset( $data['post_parent'] );
+				}
+			}
+			// Tags by name; tags_input replaces the post's tags.
+			if ( array_key_exists( 'Tags', $row ) ) {
+				$data['tags_input'] = array_map( 'html_entity_decode', explode( '|', $this->value( $row, 'Tags' ) ?? '' ) );
+			}
+			// Categories: pipe-separated "Parent>Child" chains, each segment get-or-created under the previous one.
+			if ( array_key_exists( 'Categories', $row ) ) {
+				$data['post_category'] = [];
+				foreach ( explode( '|', $this->value( $row, 'Categories' ) ?? '' ) as $chain ) {
+					$term_id = 0;
+					foreach ( array_filter( array_map( fn( $name ) => trim( html_entity_decode( $name ) ), explode( '>', $chain ) ) ) as $name ) {
+						$term_id = $taxonomy->get_or_create_category(
+							[
+								'cat_name'        => $name,
+								'category_parent' => $term_id,
+							] 
+						);
+						if ( is_wp_error( $term_id ) ) {
+							$this->log( $uid, $post_id ?: null, 'error', sprintf( 'Category "%s": %s', $chain, $term_id->get_error_message() ) ); // phpcs:ignore -- Universal.Operators.DisallowShortTernary.Found.
+							$term_id = 0;
+							break;
+						}
+					}
+					if ( $term_id ) {
+						$data['post_category'][] = (int) $term_id;
+					}
+				}
+			}
+
+			// Create, or update in place.
+			if ( $post_id ) {
+				$result = Posts::update_post_without_modified_date( wp_slash( [ 'ID' => $post_id ] + array_map( fn( $value ) => $value ?? '', $data ) ), true );
+				$status = 'updated';
+			} else {
+				$result = Posts::create_or_get_post( wp_slash( array_filter( $data, fn( $value ) => null !== $value ) ), $uid );
+				$status = 'created';
+			}
+			if ( is_wp_error( $result ) || ! $result ) {
+				$this->log( $uid, $post_id ?: null, 'error', ucfirst( substr( $status, 0, -1 ) ) . ' failed: ' . ( is_wp_error( $result ) ? $result->get_error_message() : 'wp_insert_post() returned 0' ) ); // phpcs:ignore -- Universal.Operators.DisallowShortTernary.Found.
+				continue;
+			}
+			$post_id = $result;
+
+			// Yoast primary category: the post's only category, or the source term matched by name via REST.
+			if ( array_key_exists( '_yoast_wpseo_primary_category', $row ) ) {
+				$source_term_id = (int) $this->value( $row, '_yoast_wpseo_primary_category' );
+				$category_ids   = wp_get_post_categories( $post_id );
+				$primary_id     = 1 === count( $category_ids ) ? $category_ids[0] : null;
+				if ( null === $primary_id && $source_term_id ) {
+					$source_name = $this->rest_get( 'categories/' . $source_term_id )['name'] ?? null;
+					$matches     = array_filter( $category_ids, fn( $term_id ) => is_string( $source_name ) && html_entity_decode( get_cat_name( $term_id ) ) === html_entity_decode( $source_name ) );
+					$primary_id  = array_shift( $matches );
+				}
+				if ( $primary_id && $source_term_id ) {
+					update_post_meta( $post_id, '_yoast_wpseo_primary_category', $primary_id );
+				} else {
+					delete_post_meta( $post_id, '_yoast_wpseo_primary_category' );
+					if ( $source_term_id ) {
+						$this->log( $uid, $post_id, 'unresolved', sprintf( 'Primary category: source term %d is not among the post categories (%s).', $source_term_id, null === $this->rest_url ? 'no --live-rest-url' : 'REST lookup failed or no name match' ) );
+					}
+				}
+			}
+
+			// Authors in byline order; pages have no Authors column and resolve by Author ID.
+			if ( array_key_exists( 'Authors', $row ) || array_key_exists( 'Author ID', $row ) ) {
+				$source_author_id = (int) $this->value( $row, 'Author ID' );
+				$user_ids         = [];
+				foreach ( explode( '|', $this->value( $row, 'Authors' ) ?? '' ) as $name ) {
+					$user = $this->get_or_create_byline_user( $name, $source_author_id ?: null ); // phpcs:ignore -- Universal.Operators.DisallowShortTernary.Found.
+					if ( $user ) {
+						$user_ids[] = $user->ID;
+					} else {
+						$this->log( $uid, $post_id, 'unresolved', sprintf( 'Byline "%s" (Author ID %d) has no user.', $name, $source_author_id ) );
+					}
+				}
+				$result = empty( $user_ids ) ? true : UsersHelper::assign_authors_to_post( $post_id, array_values( array_unique( $user_ids ) ) );
+				if ( is_wp_error( $result ) ) {
+					$this->log( $uid, $post_id, 'error', 'Authors: ' . $result->get_error_message() );
+				}
+			}
+
+			// Featured image (pipe item 0), imported once per source URL; hidden in the header when the content opens with media.
+			if ( array_key_exists( 'Image Featured', $row ) ) {
+				$url  = explode( '|', $this->value( $row, 'Image Featured' ) ?? '' )[0];
+				$item = fn( string $column ) => explode( '|', $this->value( $row, $column ) ?? '' )[0];
+				if ( '' === $url ) {
+					delete_post_thumbnail( $post_id );
+				} else {
+					$attachment_id = Attachments::get_attachment_by_unique_identifier( $url )
+						?: Attachments::import_external_file( $url, $item( 'Image Title' ), $item( 'Image Caption' ), $item( 'Image Description' ), $item( 'Image Alt Text' ), $post_id, [], '', true, $url ); // phpcs:ignore -- Universal.Operators.DisallowShortTernary.Found.
+					if ( is_wp_error( $attachment_id ) ) {
+						$this->log( $uid, $post_id, 'error', sprintf( 'Featured image %s: %s', $url, $attachment_id->get_error_message() ) );
+					} else {
+						set_post_thumbnail( $post_id, $attachment_id );
+					}
+				}
+				$first_block = current( array_filter( parse_blocks( $content ?? get_post_field( 'post_content', $post_id ) ), fn( $block ) => null !== $block['blockName'] || '' !== trim( $block['innerHTML'] ) ) );
+				if ( has_post_thumbnail( $post_id ) && in_array( $first_block['blockName'] ?? null, self::MEDIA_BLOCKS, true ) ) {
+					update_post_meta( $post_id, 'newspack_featured_image_position', 'hidden' );
+				} else {
+					delete_post_meta( $post_id, 'newspack_featured_image_position' );
+				}
+			}
+
+			// Meta passthrough and provenance; an empty value clears the key.
+			$meta_columns = self::POST_META_COLUMNS + [
+				'dt_original_post_url'  => OriginalValueStore::key_for( 'syndicated_url' ),
+				'dt_original_site_name' => OriginalValueStore::key_for( 'syndicated_site' ),
+			];
+			foreach ( array_intersect_key( $meta_columns, $row ) as $column => $meta_key ) {
+				$value = $this->value( $row, $column );
+				if ( null === $value ) {
+					delete_post_meta( $post_id, $meta_key );
+				} else {
+					update_post_meta( $post_id, $meta_key, wp_slash( $value ) );
+				}
+			}
+			if ( null !== $this->value( $row, 'Permalink' ) ) {
+				OriginalPermalink::save_for_post( $post_id, $this->value( $row, 'Permalink' ) );
+			}
+
+			// Old slugs redirect here: the source's old slug, and the source slug when WP changed it on insert. Each value is stored once.
+			$old_slugs = get_post_meta( $post_id, '_wp_old_slug' ); // phpcs:ignore -- WordPress.WP.GetMetaSingle.Missing.
+			foreach ( array_filter( [ $this->value( $row, '_wp_old_slug' ), $this->value( $row, 'Slug' ) ] ) as $old_slug ) {
+				if ( get_post_field( 'post_name', $post_id ) !== $old_slug && ! in_array( $old_slug, $old_slugs, true ) ) {
+					add_post_meta( $post_id, '_wp_old_slug', wp_slash( $old_slug ) );
+					$old_slugs[] = $old_slug;
+				}
+			}
+
+			// Sponsor (stub): a flagged post is linked to a get-or-added sponsor only when the sponsor name exists.
+			if ( in_array( '1', [ $this->value( $row, 'sponsor_settings_is_sponsored' ), $this->value( $row, 'Sponsor settings_is_sponsored' ) ], true ) ) {
+				$sponsor_name = $this->value( $row, 'Sponsor settings_name' );
+				$sponsors     = null === $sponsor_name ? null : new Sponsors();
+				$sponsor_id   = $sponsors?->get_or_add_sponsor( $sponsor_name, array_filter( [ 'url' => $this->value( $row, 'Sponsor settings_link' ) ] ) );
+				if ( ! $sponsor_id || ! $sponsors->add_sponsor_to_post( $sponsor_id, $post_id ) ) {
+					$this->log( $uid, $post_id, 'unresolved', null === $sponsor_name ? 'Flagged as sponsored, but has no sponsor name.' : sprintf( 'Sponsor "%s" could not be linked, see sponsors.log.', $sponsor_name ) );
+				}
+			}
+
+			// Source modified date, written last because wp_insert_post() sets it to post_date; stored for the next run's diff.
+			if ( null !== $source_modified ) {
+				$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+					$wpdb->posts,
+					[
+						'post_modified'     => $source_modified,
+						'post_modified_gmt' => get_gmt_from_date( $source_modified ),
+					],
+					[ 'ID' => $post_id ]
+				);
+				clean_post_cache( $post_id );
+			}
+			OriginalValueStore::save_for_post( $post_id, 'modified', get_post_field( 'post_modified', $post_id ) );
+
+			$this->touched_post_ids[] = $post_id;
+			$this->log( $uid, $post_id, $status );
+		}
+
+		// Imported posts of this CSV's post types that are no longer in it are reported, never deleted.
+		$imported = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->prepare(
+				"SELECT pm.post_id, pm.meta_value, p.post_type FROM {$wpdb->postmeta} pm JOIN {$wpdb->posts} p ON p.ID = pm.post_id WHERE pm.meta_key = %s AND pm.meta_value LIKE %s",
+				Posts::UNIQUE_POST_IDENTIFIER_META_KEY,
+				$wpdb->esc_like( self::UID_POST ) . '%'
+			)
+		);
+		foreach ( $imported as $post ) {
+			if ( isset( $post_types[ $post->post_type ] ) && ! isset( $seen_uids[ $post->meta_value ] ) ) {
+				$this->log( $post->meta_value, (int) $post->post_id, 'missing', sprintf( 'Not in %s: deleted or unpublished on the source? Not deleted here.', basename( $csv ) ) );
+			}
+		}
+	}
+
+	/**
+	 * Applies BLOCK_TRANSFORMS to post content, and collects its media hosts for the downloader hand-off.
+	 *
+	 * @param string $content Source post content.
+	 * @param string $uid     Source unique identifier, for the log.
+	 *
+	 * @return string Transformed content.
+	 */
+	private function transform_content( string $content, string $uid ): string {
+		$content = serialize_blocks( $this->transform_blocks( parse_blocks( $content ), $uid ) );
+
+		// Media hosts: <img> sources and PDF links under upload paths; other links are not the source's media.
+		$tags = new WP_HTML_Tag_Processor( $content );
+		while ( $tags->next_tag() ) {
+			$url = match ( $tags->get_tag() ) {
+				'IMG'   => $tags->get_attribute( 'src' ),
+				'A'     => $tags->get_attribute( 'href' ),
+				default => null,
+			};
+			$host = is_string( $url ) ? wp_parse_url( $url, PHP_URL_HOST ) : null;
+			$path = is_string( $url ) ? (string) wp_parse_url( $url, PHP_URL_PATH ) : '';
+			// "/uploads/YYYY/MM/file" is a WordPress upload; "/uploads/YYYY/MM/{timestamp}/file" is a CDN copy.
+			if ( ! $host || ! preg_match( '#/uploads/\d{4}/\d{2}/(?<cdn_folder>\d+/)?[^/]+$#', $path, $match ) ) {
+				continue;
+			}
+			if ( 'IMG' === $tags->get_tag() ) {
+				$this->content_hosts[ empty( $match['cdn_folder'] ) ? 'wp' : 'cdn' ][ $host ] = true;
+			} elseif ( str_ends_with( strtolower( $path ), '.pdf' ) ) {
+				$this->content_hosts['pdf'][ $host ] = true;
+			}
+		}
+
+		return $content;
+	}
+
+	/**
+	 * Applies BLOCK_TRANSFORMS to a list of blocks, recursively.
+	 *
+	 * @param array  $blocks Parsed blocks.
+	 * @param string $uid    Source unique identifier, for the log.
+	 *
+	 * @return array Transformed blocks.
+	 */
+	private function transform_blocks( array $blocks, string $uid ): array {
+		$transformed = [];
+		foreach ( $blocks as $block ) {
+			$name  = (string) $block['blockName'];
+			$rules = array_filter( self::BLOCK_TRANSFORMS, fn( $pattern ) => fnmatch( $pattern, $name ), ARRAY_FILTER_USE_KEY );
+			$rule  = current( $rules ) ?: ( fnmatch( 'indiegraf*/*', $name ) ? 'unwrap' : 'keep' ); // phpcs:ignore -- Universal.Operators.DisallowShortTernary.Found.
+
+			if ( 'drop' === $rule ) {
+				$this->log( $uid, null, 'dropped', sprintf( 'Block %s dropped.', $name ) );
+			} elseif ( 'unwrap' === $rule ) {
+				$inner_blocks = $this->transform_blocks( $block['innerBlocks'], $uid );
+				$this->log( $uid, null, 'dropped', sprintf( 'Block %s unwrapped, %d inner blocks kept.', $name, count( $inner_blocks ) ) );
+				array_push( $transformed, ...$inner_blocks );
+			} elseif ( 'keep' === $rule ) {
+				if ( ! empty( $rules ) ) {
+					$this->log( $uid, null, 'unresolved', sprintf( 'Block %s kept as-is, review it: %s', $name, trim( $block['innerHTML'] ) ) );
+				}
+				// Recurse, with one innerContent placeholder per resulting inner block.
+				$inner_blocks  = [];
+				$inner_content = [];
+				$inner_index   = 0;
+				foreach ( $block['innerContent'] as $chunk ) {
+					$replacements  = null === $chunk ? $this->transform_blocks( [ $block['innerBlocks'][ $inner_index++ ] ], $uid ) : [];
+					$inner_content = [ ...$inner_content, ...( null === $chunk ? array_fill( 0, count( $replacements ), null ) : [ $chunk ] ) ];
+					$inner_blocks  = [ ...$inner_blocks, ...$replacements ];
+				}
+				$transformed[] = [
+					'innerBlocks'  => $inner_blocks,
+					'innerContent' => $inner_content,
+				] + $block;
+			} else {
+				array_push( $transformed, ...$this->$rule( $block, $uid ) );
+			}
+		}
+
+		return $transformed;
+	}
+
+	/**
+	 * Converts an indiegraf/accordion block to a core accordion.
+	 *
+	 * @param array  $block Parsed indiegraf/accordion block.
+	 * @param string $uid   Source unique identifier, for the log.
+	 *
+	 * @return array Replacement blocks.
+	 */
+	private function transform_accordion( array $block, string $uid ): array {
+		$items = [];
+		foreach ( $block['innerBlocks'] as $item ) {
+			$items[] = [
+				'title'  => esc_html( $this->get_text_by_class( $item['innerHTML'], 'wp-block-indiegraf-accordion-item__header-title' )['text'] ?? '' ),
+				'blocks' => $this->transform_blocks( $item['innerBlocks'], $uid ),
+			];
+		}
+
+		return empty( $items ) ? [] : [ ( new GutenbergBlockGenerator() )->get_accordion( $items ) ];
+	}
+
+	/**
+	 * Converts indiegraf/user-list to its heading + its profiles, and indiegraf/user-profile to a Newspack author profile.
+	 *
+	 * @param array  $block Parsed indiegraf/user-list or indiegraf/user-profile block.
+	 * @param string $uid   Source unique identifier, for the log.
+	 *
+	 * @return array Replacement blocks.
+	 */
+	private function transform_user_list( array $block, string $uid ): array {
+		$generator = new GutenbergBlockGenerator();
+
+		// List: heading + inner profiles.
+		if ( 'indiegraf/user-list' === $block['blockName'] ) {
+			$heading = $this->get_text_by_class( $block['innerHTML'], 'team-title' );
+
+			return [
+				...( null === $heading ? [] : [ $generator->get_heading( esc_html( $heading['text'] ), $heading['tag'] ) ] ),
+				...$this->transform_blocks( $block['innerBlocks'], $uid ),
+			];
+		}
+
+		// Profile: the source user ID resolves like a page author.
+		$source_user_id = (int) ( $block['attrs']['userId'] ?? 0 );
+		$user           = $source_user_id ? $this->get_or_create_byline_user( '', $source_user_id ) : null;
+		if ( ! $user ) {
+			$this->log( $uid, null, 'dropped', sprintf( 'Block %s dropped: source user %d has no user.', $block['blockName'], $source_user_id ) );
+
+			return [];
+		}
+
+		return [ $generator->get_author_profile( $user->ID, false, true, true, false, true, false, true ) ];
+	}
+
+	/**
+	 * Finds the first element with a class and returns its tag and text content.
+	 *
+	 * @param string $html       HTML.
+	 * @param string $class_name Class name.
+	 *
+	 * @return array|null [ 'tag' => lowercase tag name, 'text' => trimmed, decoded text ], or null when not found.
+	 */
+	private function get_text_by_class( string $html, string $class_name ): ?array {
+		$tags = new WP_HTML_Tag_Processor( $html );
+		if ( ! $tags->next_tag( [ 'class_name' => $class_name ] ) ) {
+			return null;
+		}
+
+		$tag  = $tags->get_tag();
+		$text = '';
+		while ( $tags->next_token() && ! ( $tags->is_tag_closer() && $tag === $tags->get_tag() ) ) {
+			$text .= '#text' === $tags->get_token_type() ? $tags->get_modifiable_text() : '';
+		}
+
+		return [
+			'tag'  => strtolower( $tag ),
+			'text' => trim( $text ),
+		];
 	}
 }
