@@ -1108,6 +1108,103 @@ HTML;
 	}
 
 	/**
+	 * Generate a core Accordion Block (WP 6.9+): core/accordion > core/accordion-item > core/accordion-heading + core/accordion-panel.
+	 *
+	 * The markup reproduces core's save() output exactly, so the editor shows no "unexpected content" warning.
+	 *
+	 * @param array  $items         List of items, each [ 'title' => string (rich text), 'blocks' => array (panel inner blocks), 'open' => bool (optional) ].
+	 * @param int    $heading_level Heading level of the item titles, 1-6.
+	 * @param bool   $show_icon     Show the "+" toggle icon.
+	 * @param string $icon_position Icon position, 'left' or 'right'.
+	 * @param bool   $autoclose     Close other items when one is opened.
+	 *
+	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
+	 */
+	public function get_accordion( array $items, int $heading_level = 3, bool $show_icon = true, string $icon_position = 'right', bool $autoclose = false ): array {
+		// Core serializes only non-default attributes; the heading blocks carry their own copy of level and icon settings.
+		$heading_attrs       = array_filter(
+			[
+				'level'        => 3 === $heading_level ? null : $heading_level,
+				'iconPosition' => 'right' === $icon_position ? null : $icon_position,
+				'showIcon'     => $show_icon ? null : false,
+			],
+			fn( $value ) => null !== $value
+		);
+			$accordion_attrs = array_filter(
+				[
+					'headingLevel' => $heading_attrs['level'] ?? null,
+					'iconPosition' => $heading_attrs['iconPosition'] ?? null,
+					'showIcon'     => $heading_attrs['showIcon'] ?? null,
+					'autoclose'    => $autoclose ? true : null,
+				],
+				fn( $value ) => null !== $value
+			);
+
+				$icon          = '<span class="wp-block-accordion-heading__toggle-icon" aria-hidden="true">+</span>';
+				$heading_class = 'wp-block-accordion-heading' . ( $show_icon ? ' has-icon has-icon-' . $icon_position : '' );
+
+				$item_blocks = [];
+				foreach ( $items as $item ) {
+					$heading_html = sprintf(
+						"\n" . '<h%1$d class="%2$s"><button type="button" class="wp-block-accordion-heading__toggle">%3$s<span class="wp-block-accordion-heading__toggle-title">%4$s</span>%5$s</button></h%1$d>' . "\n",
+						$heading_level,
+						$heading_class,
+						$show_icon && 'left' === $icon_position ? $icon : '',
+						$item['title'],
+						$show_icon && 'right' === $icon_position ? $icon : ''
+					);
+					$heading      = [
+						'blockName'    => 'core/accordion-heading',
+						'attrs'        => $heading_attrs,
+						'innerBlocks'  => [],
+						'innerHTML'    => $heading_html,
+						'innerContent' => [ $heading_html ],
+					];
+					$panel        = $this->get_container_block( 'core/accordion-panel', [], '<div role="region" class="wp-block-accordion-panel">', $item['blocks'] );
+
+					$is_open       = ! empty( $item['open'] );
+					$item_blocks[] = $this->get_container_block(
+						'core/accordion-item',
+						$is_open ? [ 'openByDefault' => true ] : [],
+						'<div class="wp-block-accordion-item' . ( $is_open ? ' is-open' : '' ) . '">',
+						[ $heading, $panel ]
+					);
+				}
+
+				return $this->get_container_block( 'core/accordion', $accordion_attrs, '<div role="group" class="wp-block-accordion">', $item_blocks );
+	}
+
+	/**
+	 * Build a block that wraps inner blocks in a single <div>, laid out like the block editor serializes it.
+	 *
+	 * @param string $block_name   Block name.
+	 * @param array  $attrs        Block attributes.
+	 * @param string $opening_tag  Opening <div> tag.
+	 * @param array  $inner_blocks Inner blocks.
+	 *
+	 * @return array Block array.
+	 */
+	private function get_container_block( string $block_name, array $attrs, string $opening_tag, array $inner_blocks ): array {
+		// The editor puts a newline after the opening block comment, before the closing one, and between sibling blocks.
+		$inner_content = [ "\n" . $opening_tag ];
+		foreach ( array_keys( $inner_blocks ) as $index ) {
+			if ( $index > 0 ) {
+				$inner_content[] = "\n\n";
+			}
+			$inner_content[] = null;
+		}
+		$inner_content[] = "</div>\n";
+
+		return [
+			'blockName'    => $block_name,
+			'attrs'        => $attrs,
+			'innerBlocks'  => array_values( $inner_blocks ),
+			'innerHTML'    => implode( '', array_filter( $inner_content ) ),
+			'innerContent' => $inner_content,
+		];
+	}
+
+	/**
 	 * Generate a Genesis Accordion Block.
 	 *
 	 * WARNING: To use this block we need to install Genesis Blocks: https://wordpress.org/plugins/genesis-blocks/.
@@ -1119,7 +1216,7 @@ HTML;
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_accordion( $title, $body, $use_html_block = false, $open = false ) {
+	public function get_accordion_genesis_block( $title, $body, $use_html_block = false, $open = false ) {
 		$inner_block = $use_html_block ? $this->get_html( $body ) : $this->get_paragraph( $body );
 
 		$attrs = $open ? [ 'accordionOpen' => $open ] : [];
