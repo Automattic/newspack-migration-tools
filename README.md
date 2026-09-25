@@ -26,6 +26,7 @@ The repository contains a set of WP commands to migrate different data to WordPr
 ### Individual Migrators
 * Attachments (todo)
 * [GhostCMS](./docs/GhostCMS.md)
+* [Indiegraf CSV importer](./docs/IndiegrafCSVImporter.md)
 * [Newspaper Theme](./docs/newspaper-theme.md)
 
 ## Using the library

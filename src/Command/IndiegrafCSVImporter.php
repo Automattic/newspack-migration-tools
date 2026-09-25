@@ -28,6 +28,8 @@ use WP_User;
 
 /**
  * Imports Indiegraf (WP All Export) CSVs of users, posts and pages.
+ *
+ * @see docs/IndiegrafCSVImporter.md How it works, how to extend it for other publications, and each feature.
  */
 class IndiegrafCSVImporter implements WpCliCommandInterface {
 
@@ -36,6 +38,7 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 	private const UID_POST         = 'indiegraf-post-';
 	private const UID_USER         = 'indiegraf-user-';
 	private const UID_BYLINE       = 'indiegraf-byline-';
+	private const UID_CATEGORY     = 'indiegraf-category-';
 	private const TOUCHED_IDS_FILE = 'indiegraf_touched_post_ids.txt';
 
 	/**
@@ -243,6 +246,7 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 		'_bluesky',
 		'_mastodon',
 		'_threads',
+		'author_category',
 	];
 
 	/**
@@ -321,6 +325,14 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 	 * Commands are listed in the order they are run.
 	 */
 	public static function get_cli_commands(): array {
+		$live_rest_url = [
+			'type'        => 'assoc',
+			'name'        => 'live-rest-url',
+			'description' => "Source site URL (e.g. https://yountvillesun.com). Its public WP REST API fills in what the CSVs lack or have outdated: each post's exact categories and the category tree (the CSV omits assigned parents; Yoast primary categories are source term IDs), the live image URLs in post content (the CSV has pre-CDN URLs that may 404), author profile pictures, byline and page author details missing from the Users CSV, and the source host whose links import-2-of-2 rewrites to this site.",
+			'optional'    => false,
+			'repeating'   => false,
+		];
+
 		return [
 			[
 				'newspack-migration-tools indiegraf import-1-of-2',
@@ -357,13 +369,7 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 							'repeating'   => false,
 							'default'     => 'administrator,editor,author,contributor',
 						],
-						[
-							'type'        => 'assoc',
-							'name'        => 'live-rest-url',
-							'description' => 'CSVs have only ID references for some values, so API requests are made to fetch up extra data: category names for Yoast primary categories, and author profile picture files.',
-							'optional'    => true,
-							'repeating'   => false,
-						],
+						$live_rest_url,
 						[
 							'type'        => 'flag',
 							'name'        => 'update-already-imported-posts',
@@ -377,8 +383,9 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 				'newspack-migration-tools indiegraf import-2-of-2',
 				self::get_command_closure( 'cmd_finalize' ),
 				[
-					'shortdesc' => 'Step 2, after the media downloader: syncs block media IDs and reports permalink mismatches.',
+					'shortdesc' => 'Step 2, after the media downloader: syncs block media IDs, rewrites links to the source site, and reports permalink mismatches.',
 					'synopsis'  => [
+						$live_rest_url,
 						[
 							'type'        => 'assoc',
 							'name'        => 'post-ids-file',
@@ -413,29 +420,42 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 		$this->csv_log->set_header( [ 'source_id', 'new_id', 'status', 'message' ] );
 
 		// Arguments.
-		if ( ! empty( $assoc_args['live-rest-url'] ) ) {
-			if ( ! wp_http_validate_url( $assoc_args['live-rest-url'] ) ) {
-				WP_CLI::error( sprintf( 'Invalid --live-rest-url: %s', $assoc_args['live-rest-url'] ) );
-			}
-			$this->rest_url = untrailingslashit( $assoc_args['live-rest-url'] );
-		}
+		$this->set_rest_url( $assoc_args['live-rest-url'] );
 		$import_roles = array_filter( array_map( 'trim', explode( ',', $assoc_args['import-roles'] ) ) );
 		$post_csvs    = array_filter( [ $assoc_args['posts-csv'], $assoc_args['pages-csv'] ?? null ] );
 
-		// Dependencies: CAP, Simple Local Avatars, Newspack guest contributor role.
+		// Dependencies: CAP, Newspack guest contributor role, and the plugins for avatars, SEO meta, author profile blocks and the media hand-off.
 		if ( ! function_exists( 'is_plugin_active' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		// The downloader bundles an older NMT that overrides NCCM's while active, so it runs only in the hand-off, with NCCM deactivated.
+		$downloader = 'newspack-post-image-downloader/newspack-post-image-downloader.php';
+		if ( is_plugin_active( $downloader ) ) {
+			WP_CLI::error( 'Deactivate Newspack Post Image Downloader (wp plugin deactivate newspack-post-image-downloader): its bundled NMT clashes with this importer. The hand-off at the end prints when to activate it.' );
 		}
 		$cap     = UsersHelper::validate_co_authors_plus();
 		$missing = array_filter(
 			[
 				is_wp_error( $cap ) ? $cap->get_error_message() : null,
-				is_plugin_active( 'simple-local-avatars/simple-local-avatars.php' ) ? null : 'Simple Local Avatars plugin is not active.',
 				GuestContributorsHelper::validate_newspack_plugin() ? null : GuestContributorsHelper::ERROR_NEWSPACK_PLUGIN,
 			]
 		);
+		$plugins = [
+			'simple-local-avatars/simple-local-avatars.php' => 'Simple Local Avatars',
+			'wordpress-seo/wp-seo.php'            => 'Yoast SEO',
+			'newspack-blocks/newspack-blocks.php' => 'Newspack Blocks',
+			'safe-svg/safe-svg.php'               => 'Safe SVG (lets the downloader import SVG images; delete it after import-2-of-2)',
+		];
+		foreach ( $plugins as $file => $name ) {
+			if ( ! is_plugin_active( $file ) ) {
+				$missing[] = sprintf( '%s plugin is not active.', $name );
+			}
+		}
+		if ( ! file_exists( WP_PLUGIN_DIR . '/' . $downloader ) ) {
+			$missing[] = 'Newspack Post Image Downloader plugin is not installed (install it, but keep it inactive).';
+		}
 		if ( ! empty( $missing ) ) {
-			WP_CLI::error( "Missing dependencies:\n- " . implode( "\n- ", $missing ) );
+			WP_CLI::error( "Install and activate the missing dependencies, then re-run:\n- " . implode( "\n- ", $missing ) );
 		}
 
 		// Site settings gates: the timezone converts source dates to GMT; source URLs are flat /slug/.
@@ -461,13 +481,7 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 			WP_CLI::confirm( sprintf( '%d unmapped columns with data, see indiegraf_unmapped_columns_*.csv. Continue?', $unmapped ) );
 		}
 
-		// Import as an importer: no pings/enclosures on publish, no kses stripping of iframes and scripts (WP-CLI runs as no user), no revisions.
-		if ( ! defined( 'WP_IMPORTING' ) ) {
-			define( 'WP_IMPORTING', true );
-		}
-		kses_remove_filters();
-		add_filter( 'wp_revisions_to_keep', '__return_zero' );
-
+		$this->start_importing();
 		$this->import_users( $assoc_args['users-csv'], $import_roles );
 		foreach ( $post_csvs as $csv ) {
 			$this->import_posts( $csv, ! empty( $assoc_args['update-already-imported-posts'] ) );
@@ -484,21 +498,38 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 		$this->content_hosts['pdf'] = array_intersect_key( $this->content_hosts['pdf'] ?? [], ( $this->content_hosts['wp'] ?? [] ) + ( $this->content_hosts['cdn'] ?? [] ) );
 		$posts                      = sprintf( '--post-types=post,page --post-statuses=%s --post-ids-csv=$(cat %s)', implode( ',', self::POST_STATUSES ), $ids_file );
 		$hosts                      = fn( string $group ) => implode( ',', array_keys( $this->content_hosts[ $group ] ?? [] ) );
-		$commands                   = array_filter(
+		// Run as an admin: Safe SVG allows SVG uploads only to users who can upload files, and WP-CLI runs as no user.
+		$download = sprintf(
+			'wp --user=%s newspack-post-image-downloader',
+			get_users(
+				[
+					'role'   => 'administrator',
+					'number' => 1,
+					'fields' => 'user_login',
+				] 
+			)[0] ?? '<admin-login>' 
+		);
+		$commands = array_filter(
 			[
-				"wp newspack-post-image-downloader scan-existing-urls $posts",
-				'' === $hosts( 'wp' ) ? null : "wp newspack-post-image-downloader download-images $posts --do-not-download-root-relative-urls --only-download-from-hosts=" . $hosts( 'wp' ),
-				'' === $hosts( 'cdn' ) ? null : "wp newspack-post-image-downloader download-images $posts --do-not-download-root-relative-urls --only-download-from-hosts=" . $hosts( 'cdn' ) . ' --do-not-download-large-sizes',
-				"wp newspack-post-image-downloader scan-existing-urls --include-non-image-urls $posts",
-				'' === $hosts( 'pdf' ) ? null : "wp newspack-post-image-downloader download-non-images-files $posts --do-not-download-root-relative-urls --extensions=pdf --only-download-from-hosts=" . $hosts( 'pdf' ),
+				'# Deactivating NCCM for potential clash of NMT dependencies.',
+				'wp plugin deactivate newspack-custom-content-migrator',
+				'wp plugin activate newspack-post-image-downloader',
+				"$download scan-existing-urls $posts",
+				'' === $hosts( 'wp' ) ? null : "$download download-images $posts --do-not-download-root-relative-urls --only-download-from-hosts=" . $hosts( 'wp' ),
+				'' === $hosts( 'cdn' ) ? null : "$download download-images $posts --do-not-download-root-relative-urls --only-download-from-hosts=" . $hosts( 'cdn' ) . ' --do-not-download-large-sizes',
+				"$download scan-existing-urls --include-non-image-urls $posts",
+				'' === $hosts( 'pdf' ) ? null : "$download download-non-images-files $posts --do-not-download-root-relative-urls --extensions=pdf --only-download-from-hosts=" . $hosts( 'pdf' ),
+				'wp plugin deactivate newspack-post-image-downloader',
+				'wp plugin activate newspack-custom-content-migrator',
 			]
 		);
 		$this->logger->info(
 			sprintf(
-				"%s\nWhen those finish, run:\n  wp newspack-migration-tools indiegraf import-2-of-2",
+				"%s\nWhen those finish, run:\n  wp newspack-migration-tools indiegraf import-2-of-2 --live-rest-url=%s",
 				empty( $this->touched_post_ids )
 					? 'Import done. No posts were created or updated, so there is no media to download.'
-					: "Import done. Next, download the media in post content, in this order, from the WP root.\nRead newspack-post-image-downloader's README to ensure these commands are correct, and check the hosts and extensions each scan lists:\n  " . implode( "\n  ", $commands )
+					: "Import done. Next, download the media in post content, in this order, from the WP root.\nRead newspack-post-image-downloader's README to ensure these commands are correct, and check the hosts and extensions each scan lists:\n  " . implode( "\n  ", $commands ),
+				$this->rest_url
 			)
 		);
 
@@ -520,7 +551,107 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 	 * @return void
 	 */
 	public function cmd_finalize( array $pos_args, array $assoc_args ): void {
-		WP_CLI::log( 'indiegraf import-2-of-2: not implemented yet.' );
+		global $wpdb;
+
+		$this->logger  = MultiLog::get_cli_and_file_logger( 'indiegraf-import-2-of-2' );
+		$this->csv_log = new CsvWriter( 'indiegraf-import-2-of-2.csv' );
+		$this->csv_log->set_header( [ 'source_id', 'new_id', 'status', 'message' ] );
+		$this->set_rest_url( $assoc_args['live-rest-url'] );
+
+		// Target posts: every imported post, or the IDs step 1 touched (the file may be empty).
+		if ( ! empty( $assoc_args['all-imported-posts'] ) ) {
+			$post_ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$wpdb->prepare( "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value LIKE %s", Posts::UNIQUE_POST_IDENTIFIER_META_KEY, $wpdb->esc_like( self::UID_POST ) . '%' )
+			);
+		} else {
+			$ids = is_readable( $assoc_args['post-ids-file'] ) ? file_get_contents( $assoc_args['post-ids-file'] ) : false; // phpcs:ignore WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown
+			if ( false === $ids ) {
+				WP_CLI::error( sprintf( 'Cannot read %s. Run this from the directory of import-1-of-2, or use --post-ids-file or --all-imported-posts.', $assoc_args['post-ids-file'] ) );
+			}
+			$post_ids = explode( ',', $ids );
+		}
+		$post_ids = array_values( array_unique( array_filter( array_map( 'intval', $post_ids ) ) ) );
+		$this->logger->info( sprintf( 'Processing %d posts.', count( $post_ids ) ) );
+
+		// Block media IDs and links to the source site; saved without changing post_modified, or the next import sees the post as a conflict.
+		$this->start_importing();
+		foreach ( $post_ids as $index => $post_id ) {
+			MemoryCleanupHook::cleanup( 0, $index, 50 );
+
+			$uid     = (string) get_post_meta( $post_id, Posts::UNIQUE_POST_IDENTIFIER_META_KEY, true );
+			$content = get_post_field( 'post_content', $post_id );
+			$changed = false;
+			$blocks  = $this->sync_block_media_ids( parse_blocks( $content ), $uid, $post_id, $changed );
+			$synced  = $changed ? serialize_blocks( $blocks ) : $content;
+
+			// Links: an imported post's source permalink becomes its permalink here, and the source home page this site's; other source links stay.
+			$links = 0;
+			$tags  = new WP_HTML_Tag_Processor( $synced );
+			while ( $tags->next_tag( 'a' ) ) {
+				$href = (string) $tags->get_attribute( 'href' );
+				if ( ! $this->is_source_url( $href ) ) {
+					continue;
+				}
+				$path      = OriginalPermalink::ensure_path_format( $href );
+				$target_id = '' === $path ? null : $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s LIMIT 1", OriginalValueStore::key_for( OriginalPermalink::KEY ), $path ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$target    = '' === $path ? home_url( '/' ) : ( $target_id ? get_permalink( (int) $target_id ) : null );
+				if ( $target ) {
+					$tags->set_attribute( 'href', $target );
+					++$links;
+				}
+			}
+			$synced = $tags->get_updated_html();
+
+			if ( $synced === $content ) {
+				$this->log( $uid, $post_id, 'skipped', 'Block media IDs and links already in sync.' );
+				continue;
+			}
+			$result = Posts::update_post_without_modified_date(
+				wp_slash(
+					[
+						'ID'           => $post_id,
+						'post_content' => $synced,
+					]
+				),
+				true
+			);
+			if ( is_wp_error( $result ) || ! $result ) {
+				$this->log( $uid, $post_id, 'error', 'Saving synced block media IDs and links failed: ' . ( is_wp_error( $result ) ? $result->get_error_message() : 'wp_update_post() returned 0' ) );
+			} else {
+				$this->log( $uid, $post_id, 'updated', sprintf( 'Synced block media IDs%s.', $links ? " and $links links" : '' ) );
+			}
+		}
+
+		// Permalink report: published posts whose source path differs from this site's, and no _wp_old_slug redirects the source slug.
+		$mismatches = 0;
+		foreach ( $post_ids as $post_id ) {
+			$source_path   = OriginalPermalink::get_post_source_permalink( $post_id );
+			$path          = OriginalPermalink::ensure_path_format( (string) get_permalink( $post_id ) );
+			$is_same       = mb_strtolower( untrailingslashit( $source_path ) ) === mb_strtolower( untrailingslashit( $path ) );
+			$is_redirected = in_array( basename( untrailingslashit( $source_path ) ), get_post_meta( $post_id, '_wp_old_slug' ), true ); // phpcs:ignore -- WordPress.WP.GetMetaSingle.Missing.
+			if ( '' === $source_path || 'publish' !== get_post_status( $post_id ) || $is_same || $is_redirected ) {
+				continue;
+			}
+			++$mismatches;
+			$this->log( (string) get_post_meta( $post_id, Posts::UNIQUE_POST_IDENTIFIER_META_KEY, true ), $post_id, 'unresolved', sprintf( 'Permalink mismatch: source %s is %s here, and no _wp_old_slug redirects it. Add a redirect.', $source_path, $path ) );
+		}
+
+		wp_cache_flush();
+		WP_CLI::success(
+			sprintf(
+				"Done (%s). Permalink mismatches: %d.\nSee indiegraf-import-2-of-2.log for warnings and errors; every post's outcome is in indiegraf-import-2-of-2.csv.\nMigration complete. For a content refresh, get fresh CSVs and re-run indiegraf import-1-of-2. Only new or changed posts are processed.",
+				implode( ', ', array_map( fn( $status, $count ) => "$status: $count", array_keys( $this->log_counts ), $this->log_counts ) ),
+				$mismatches
+			)
+		);
+
+		// Safe SVG was only required so the downloader could import SVG images.
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		if ( is_plugin_active( 'safe-svg/safe-svg.php' ) ) {
+			WP_CLI::warning( 'REMINDER: delete the Safe SVG plugin now, unless the site should allow SVG uploads: wp plugin deactivate safe-svg --uninstall' );
+		}
 	}
 
 	/**
@@ -657,9 +788,36 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 	}
 
 	/**
+	 * Validates and sets the --live-rest-url source site URL.
+	 *
+	 * @param string $url Source site URL.
+	 *
+	 * @return void
+	 */
+	private function set_rest_url( string $url ): void {
+		if ( ! wp_http_validate_url( $url ) ) {
+			WP_CLI::error( sprintf( 'Invalid --live-rest-url: %s', $url ) );
+		}
+		$this->rest_url = untrailingslashit( $url );
+	}
+
+	/**
+	 * Whether a URL is on the source site (--live-rest-url host, with or without "www.").
+	 *
+	 * @param string $url URL.
+	 *
+	 * @return bool
+	 */
+	private function is_source_url( string $url ): bool {
+		$host = fn( ?string $any_url ) => preg_replace( '/^www\./', '', strtolower( (string) wp_parse_url( (string) $any_url, PHP_URL_HOST ) ) );
+
+		return '' !== $host( $url ) && $host( $url ) === $host( $this->rest_url );
+	}
+
+	/**
 	 * GETs a path from the source site's public REST API, once per run.
 	 *
-	 * REST is optional: without --live-rest-url or on failure this returns null, and the first failure prints one warning.
+	 * On failure (or before --live-rest-url is set) this returns null, and the first failure prints one warning.
 	 * Callers check the response shape before use.
 	 *
 	 * @param string $path Path under /wp-json/wp/v2/, e.g. "media/981".
@@ -708,6 +866,20 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 			return;
 		}
 		$this->logger->log( 'error' === $status ? 'error' : 'warning', sprintf( '%s %s%s: %s', $status, $source_id, null === $new_id ? '' : " -> $new_id", $message ) );
+	}
+
+	/**
+	 * Saves posts like a WP importer: no pings or enclosures on publish, no kses stripping of iframes and scripts
+	 * (WP-CLI runs as no user), and no revisions.
+	 *
+	 * @return void
+	 */
+	private function start_importing(): void {
+		if ( ! defined( 'WP_IMPORTING' ) ) {
+			define( 'WP_IMPORTING', true );
+		}
+		kses_remove_filters();
+		add_filter( 'wp_revisions_to_keep', '__return_zero' );
 	}
 
 	/**
@@ -856,7 +1028,7 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 		$uid = (string) get_user_meta( $user_id, UsersHelper::UNIQUE_IDENTIFIER_META_KEY, true );
 		$url = $this->rest_get( 'media/' . $source_media_id )['source_url'] ?? null;
 		if ( ! is_string( $url ) || ! wp_http_validate_url( $url ) ) {
-			$this->log( $uid, $user_id, 'unresolved', sprintf( 'Avatar: source media %d has no source_url (%s).', $source_media_id, null === $this->rest_url ? 'no --live-rest-url' : 'REST lookup failed' ) );
+			$this->log( $uid, $user_id, 'unresolved', sprintf( 'Avatar: source media %d has no source_url (REST lookup failed).', $source_media_id ) );
 
 			return;
 		}
@@ -992,6 +1164,35 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 		$taxonomy   = new Taxonomy();
 		$seen_uids  = [];
 		$post_types = [];
+
+		// Live data (REST shows published posts only): each post's exact categories, as CSV paths omit an assigned parent; its rendered
+		// content, which has the current image URLs (the CSV may have pre-CDN ones that 404); and the category tree.
+		$live_posts         = [];
+		$category_tree      = [];
+		$term_ids_by_source = [];
+		$rows               = iterator_to_array( ( new CsvIterator() )->items( $csv, ',' ), false );
+		foreach ( [
+			'post' => 'posts',
+			'page' => 'pages',
+		] as $post_type => $rest_base ) {
+			$source_ids = array_column( array_filter( $rows, fn( $row ) => ( $this->value( $row, 'Post Type' ) ?? 'post' ) === $post_type && null !== $this->value( $row, 'ID' ) ), 'ID' );
+			foreach ( array_chunk( $source_ids, 100 ) as $chunk ) {
+				foreach ( $this->rest_get( sprintf( '%s?include=%s&per_page=100&_fields=id,categories,content', $rest_base, implode( ',', $chunk ) ) ) ?? [] as $live_post ) {
+					$live_posts[ (int) ( $live_post['id'] ?? 0 ) ] = $live_post;
+				}
+			}
+		}
+		if ( array_key_exists( 'Categories', $rows[0] ?? [] ) ) {
+			$page = 0;
+			do {
+				$terms = $this->rest_get( sprintf( 'categories?per_page=100&page=%d&_fields=id,name,slug,parent', ++$page ) ) ?? [];
+				foreach ( $terms as $term ) {
+					$category_tree[ (int) ( $term['id'] ?? 0 ) ] = $term;
+				}
+			} while ( 100 === count( $terms ) ); // phpcs:ignore -- Squiz.PHP.DisallowSizeFunctionsInLoops.Found.
+		}
+		unset( $rows );
+
 		foreach ( ( new CsvIterator() )->items( $csv, ',' ) as $index => $row ) {
 			MemoryCleanupHook::cleanup( 0, $index, 50 );
 
@@ -1038,8 +1239,44 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 				$data['post_date']     = $date;
 				$data['post_date_gmt'] = get_gmt_from_date( $date );
 			}
-			$content = array_key_exists( 'Content', $row ) ? $this->transform_content( $this->value( $row, 'Content' ) ?? '', $uid ) : null;
-			if ( null !== $content ) {
+			$notes   = [];
+			$content = null;
+			if ( array_key_exists( 'Content', $row ) ) {
+				/**
+				 * Live image URLs. The CSV has the source's local image URLs, but the live site renders images from a dedicated image CDN,
+				 * and the local files may be gone (404), e.g.:
+				 * - CSV:  https://yountvillesun.com/wp-content/uploads/2025/07/Fair-Farm-Set-Up-1-1024x768.jpg (404)
+				 * - live: https://d1qvdom7axrrra.cloudfront.net/wp-content/uploads/2025/07/31184942/Fair-Farm-Set-Up-1-1024x768.jpg
+				 * The importer keeps the CSV content and uses the live HTML only to look up each image's current URL, matched by
+				 * month and file name ("2025/07/Fair-Farm-Set-Up-1-1024x768.jpg"). The downloader then downloads from the CDN URL.
+				 * Path shape: "/uploads/YYYY/MM/[{timestamp}/]file"; the optional timestamp folder is the CDN copy's.
+				 */
+				$upload_key = fn( string $url ) => preg_match( '#/uploads/(?<month>\d{4}/\d{2})/(?:\d+/)?(?<file>[^/]+)$#', (string) wp_parse_url( $url, PHP_URL_PATH ), $match ) ? $match['month'] . '/' . $match['file'] : null;
+				$live_urls  = [];
+				$tags       = new WP_HTML_Tag_Processor( $live_posts[ (int) $source_id ]['content']['rendered'] ?? '' );
+				while ( $tags->next_tag( 'img' ) ) {
+					foreach ( [ (string) $tags->get_attribute( 'src' ), ...explode( ',', (string) $tags->get_attribute( 'srcset' ) ) ] as $candidate ) {
+						$url = strtok( trim( $candidate ), ' ' );
+						if ( $url && $upload_key( $url ) ) {
+							$live_urls[ $upload_key( $url ) ] ??= $url;
+						}
+					}
+				}
+				$content      = $this->value( $row, 'Content' ) ?? '';
+				$replacements = [];
+				$tags         = new WP_HTML_Tag_Processor( $content );
+				while ( $tags->next_tag( 'img' ) ) {
+					$src      = (string) $tags->get_attribute( 'src' );
+					$live_url = $live_urls[ $upload_key( $src ) ?? '' ] ?? $src;
+					if ( $live_url !== $src ) {
+						$replacements[ $src ] = $live_url;
+					}
+				}
+				if ( $replacements ) {
+					$content = strtr( $content, $replacements );
+					$notes[] = sprintf( '%d image URLs replaced with their live URLs.', count( $replacements ) );
+				}
+				$content              = $this->transform_content( $content, $uid );
 				$data['post_content'] = $content;
 			}
 			if ( array_key_exists( 'Parent', $row ) ) {
@@ -1054,26 +1291,59 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 			if ( array_key_exists( 'Tags', $row ) ) {
 				$data['tags_input'] = array_map( 'html_entity_decode', explode( '|', $this->value( $row, 'Tags' ) ?? '' ) );
 			}
-			// Categories: pipe-separated "Parent>Child" chains, each segment get-or-created under the previous one.
+			// Categories as name paths: the live post's exact categories when REST returned it, else the CSV's pipe-separated "Parent>Child" paths.
 			if ( array_key_exists( 'Categories', $row ) ) {
+				$csv_paths       = array_filter( array_map( fn( $path ) => array_values( array_filter( array_map( fn( $name ) => trim( html_entity_decode( $name ) ), explode( '>', $path ) ) ) ), explode( '|', $this->value( $row, 'Categories' ) ?? '' ) ) );
+				$live_paths      = [];
+				$live_categories = $live_posts[ (int) $source_id ]['categories'] ?? null;
+				foreach ( is_array( $live_categories ) ? $live_categories : [] as $live_term_id ) {
+					$path = [];
+					for ( $term_id = (int) $live_term_id; isset( $category_tree[ $term_id ] ); $term_id = (int) $category_tree[ $term_id ]['parent'] ) {
+						$path = [ $term_id => trim( html_entity_decode( $category_tree[ $term_id ]['name'] ) ) ] + $path;
+					}
+					// A path is complete only when the walk reached the root.
+					$live_paths[ (int) $live_term_id ] = 0 === $term_id ? $path : null;
+				}
+				$is_live = is_array( $live_categories ) && ! in_array( null, $live_paths, true );
+
+				// Log the source only when it matters: REST differs from the CSV, or REST lacks the post.
+				$live_list = $is_live ? array_map( fn( $names ) => implode( '>', $names ), $live_paths ) : [];
+				$csv_list  = array_map( fn( $names ) => implode( '>', $names ), $csv_paths );
+				if ( $is_live && ( array_diff( $live_list, $csv_list ) || array_diff( $csv_list, $live_list ) ) ) {
+					$notes[] = sprintf( 'Categories from live REST "%s"; the CSV lists "%s".', implode( '|', $live_list ), implode( '|', $csv_list ) );
+				} elseif ( ! $is_live ) {
+					$notes[] = 'Categories from the CSV: the post is not in live REST (e.g. a draft).';
+				}
+
+				// Each path segment is get-or-created under the previous one; the post gets the last one.
+				// Live terms are keyed by their source ID and created with their live slug, so same-name siblings (2 top-level "Food & Wine") stay separate.
 				$data['post_category'] = [];
-				foreach ( explode( '|', $this->value( $row, 'Categories' ) ?? '' ) as $chain ) {
+				foreach ( $is_live ? $live_paths : $csv_paths as $key => $names ) {
 					$term_id = 0;
-					foreach ( array_filter( array_map( fn( $name ) => trim( html_entity_decode( $name ) ), explode( '>', $chain ) ) ) as $name ) {
-						$term_id = $taxonomy->get_or_create_category(
-							[
-								'cat_name'        => $name,
-								'category_parent' => $term_id,
-							] 
-						);
+					foreach ( $names as $segment_id => $name ) {
+						$args    = [
+							'cat_name'        => $name,
+							'category_parent' => $term_id,
+						];
+						$term_id = $is_live
+							? $taxonomy->get_or_create_category( $args + [ 'category_nicename' => $category_tree[ $segment_id ]['slug'] ?? '' ], self::UID_CATEGORY . $segment_id )
+							: $taxonomy->get_or_create_category( $args );
+						// A term created earlier from a CSV path, with the same name and slug, becomes this live term.
+						if ( is_wp_error( $term_id ) && 'term_exists' === $term_id->get_error_code() ) {
+							$term_id = (int) $term_id->get_error_data();
+							update_term_meta( $term_id, Taxonomy::UNIQUE_CATEGORY_IDENTIFIER_META_KEY, self::UID_CATEGORY . $segment_id );
+						}
 						if ( is_wp_error( $term_id ) ) {
-							$this->log( $uid, $post_id ?: null, 'error', sprintf( 'Category "%s": %s', $chain, $term_id->get_error_message() ) ); // phpcs:ignore -- Universal.Operators.DisallowShortTernary.Found.
+							$this->log( $uid, $post_id ?: null, 'error', sprintf( 'Category "%s": %s', implode( '>', $names ), $term_id->get_error_message() ) ); // phpcs:ignore -- Universal.Operators.DisallowShortTernary.Found.
 							$term_id = 0;
 							break;
 						}
 					}
 					if ( $term_id ) {
 						$data['post_category'][] = (int) $term_id;
+						if ( $is_live ) {
+							$term_ids_by_source[ $key ] = (int) $term_id;
+						}
 					}
 				}
 			}
@@ -1092,22 +1362,17 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 			}
 			$post_id = $result;
 
-			// Yoast primary category: the post's only category, or the source term matched by name via REST.
+			// Yoast primary category: the post's only category, or the source term's local ID (mapped from live categories) when the post has it.
 			if ( array_key_exists( '_yoast_wpseo_primary_category', $row ) ) {
 				$source_term_id = (int) $this->value( $row, '_yoast_wpseo_primary_category' );
 				$category_ids   = wp_get_post_categories( $post_id );
-				$primary_id     = 1 === count( $category_ids ) ? $category_ids[0] : null;
-				if ( null === $primary_id && $source_term_id ) {
-					$source_name = $this->rest_get( 'categories/' . $source_term_id )['name'] ?? null;
-					$matches     = array_filter( $category_ids, fn( $term_id ) => is_string( $source_name ) && html_entity_decode( get_cat_name( $term_id ) ) === html_entity_decode( $source_name ) );
-					$primary_id  = array_shift( $matches );
-				}
-				if ( $primary_id && $source_term_id ) {
+				$primary_id     = 1 === count( $category_ids ) ? $category_ids[0] : ( $term_ids_by_source[ $source_term_id ] ?? null );
+				if ( $primary_id && $source_term_id && in_array( $primary_id, $category_ids, true ) ) {
 					update_post_meta( $post_id, '_yoast_wpseo_primary_category', $primary_id );
 				} else {
 					delete_post_meta( $post_id, '_yoast_wpseo_primary_category' );
 					if ( $source_term_id ) {
-						$this->log( $uid, $post_id, 'unresolved', sprintf( 'Primary category: source term %d is not among the post categories (%s).', $source_term_id, null === $this->rest_url ? 'no --live-rest-url' : 'REST lookup failed or no name match' ) );
+						$this->log( $uid, $post_id, 'unresolved', sprintf( 'Primary category: source term %d is not among the post categories (%s).', $source_term_id, isset( $category_tree[ $source_term_id ] ) ? 'not assigned to the post' : 'not in the live category tree, deleted on the source?' ) );
 					}
 				}
 			}
@@ -1170,13 +1435,18 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 				OriginalPermalink::save_for_post( $post_id, $this->value( $row, 'Permalink' ) );
 			}
 
-			// Old slugs redirect here: the source's old slug, and the source slug when WP changed it on insert. Each value is stored once.
-			$old_slugs = get_post_meta( $post_id, '_wp_old_slug' ); // phpcs:ignore -- WordPress.WP.GetMetaSingle.Missing.
-			foreach ( array_filter( [ $this->value( $row, '_wp_old_slug' ), $this->value( $row, 'Slug' ) ] ) as $old_slug ) {
-				if ( get_post_field( 'post_name', $post_id ) !== $old_slug && ! in_array( $old_slug, $old_slugs, true ) ) {
-					add_post_meta( $post_id, '_wp_old_slug', wp_slash( $old_slug ) );
-					$old_slugs[] = $old_slug;
-				}
+			// The source's old slug redirects here; stored once.
+			$post_name = get_post_field( 'post_name', $post_id );
+			$old_slug  = $this->value( $row, '_wp_old_slug' );
+			if ( null !== $old_slug && $post_name !== $old_slug && ! in_array( $old_slug, get_post_meta( $post_id, '_wp_old_slug' ), true ) ) { // phpcs:ignore -- WordPress.WP.GetMetaSingle.Missing.
+				add_post_meta( $post_id, '_wp_old_slug', wp_slash( $old_slug ) );
+			}
+
+			// A source slug that another post holds gets a WP suffix; not an old slug, since it can't redirect while the other post holds it.
+			$source_slug = $this->value( $row, 'Slug' );
+			if ( null !== $source_slug && $post_name !== $source_slug ) {
+				$holder = $wpdb->get_row( $wpdb->prepare( "SELECT ID, post_type, post_status FROM {$wpdb->posts} WHERE post_name = %s AND ID <> %d LIMIT 1", $source_slug, $post_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$this->log( $uid, $post_id, 'unresolved', sprintf( 'Slug "%s" was imported as "%s": %s.', $source_slug, $post_name, $holder ? sprintf( '%s %d (%s) holds "%s"', $holder->post_type, $holder->ID, $holder->post_status, $source_slug ) : 'WP changed it on save' ) );
 			}
 
 			// Sponsor (stub): a flagged post is linked to a get-or-added sponsor only when the sponsor name exists.
@@ -1204,7 +1474,7 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 			OriginalValueStore::save_for_post( $post_id, 'modified', get_post_field( 'post_modified', $post_id ) );
 
 			$this->touched_post_ids[] = $post_id;
-			$this->log( $uid, $post_id, $status );
+			$this->log( $uid, $post_id, $status, implode( ' ', $notes ) );
 		}
 
 		// Imported posts of this CSV's post types that are no longer in it are reported, never deleted.
@@ -1380,5 +1650,65 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 			'tag'  => strtolower( $tag ),
 			'text' => trim( $text ),
 		];
+	}
+
+	/**
+	 * Sets block media IDs from the block's own markup, recursively: core/image id and core/media-text mediaId from the
+	 * wp-image-{id} class the downloader writes on the <img>, core/file id from its href.
+	 *
+	 * @param array  $blocks  Parsed blocks.
+	 * @param string $uid     Source unique identifier, for the log.
+	 * @param int    $post_id Post ID, for the log.
+	 * @param bool   $changed Set to true when any ID changes.
+	 *
+	 * @return array Blocks with synced media IDs.
+	 */
+	private function sync_block_media_ids( array $blocks, string $uid, int $post_id, bool &$changed ): array {
+		foreach ( $blocks as $index => $block ) {
+			$blocks[ $index ]['innerBlocks'] = $this->sync_block_media_ids( $block['innerBlocks'], $uid, $post_id, $changed );
+
+			$attribute = [
+				'core/image'      => 'id',
+				'core/media-text' => 'mediaId',
+				'core/file'       => 'id',
+			][ $block['blockName'] ] ?? null;
+			if ( null === $attribute ) {
+				continue;
+			}
+
+			// Media URL and ID from the markup; a media-text without an <img> shows the featured image or a video.
+			if ( 'core/file' === $block['blockName'] ) {
+				$url      = (string) ( $block['attrs']['href'] ?? '' );
+				$media_id = attachment_url_to_postid( $url ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.attachment_url_to_postid_attachment_url_to_postid.
+			} else {
+				$tags = new WP_HTML_Tag_Processor( $block['innerHTML'] );
+				if ( ! $tags->next_tag( 'img' ) ) {
+					continue;
+				}
+				$url      = (string) $tags->get_attribute( 'src' );
+				$media_id = 0;
+				foreach ( $tags->class_list() as $class_name ) {
+					$media_id = str_starts_with( $class_name, 'wp-image-' ) ? (int) substr( $class_name, strlen( 'wp-image-' ) ) : $media_id;
+				}
+			}
+
+			// Only a local file proves the download; a remote <img> still has the source site's ID in its class.
+			$current_id = (int) ( $block['attrs'][ $attribute ] ?? 0 );
+			if ( ! str_starts_with( $url, wp_get_upload_dir()['baseurl'] ) || 'attachment' !== get_post_type( $media_id ) ) {
+				$this->log( $uid, $post_id, 'unresolved', sprintf( 'Block %s: %s is not a media file on this site; %s %d kept.', $block['blockName'], $url, $attribute, $current_id ) );
+				continue;
+			}
+			if ( $media_id !== $current_id ) {
+				$blocks[ $index ]['attrs'][ $attribute ] = $media_id;
+				$changed                                 = true;
+			}
+			// The media-text attachment page link (editor only) points to the source site's attachment page.
+			if ( 'core/media-text' === $block['blockName'] && $this->is_source_url( (string) ( $block['attrs']['mediaLink'] ?? '' ) ) ) {
+				$blocks[ $index ]['attrs']['mediaLink'] = get_attachment_link( $media_id );
+				$changed                                = true;
+			}
+		}
+
+		return $blocks;
 	}
 }

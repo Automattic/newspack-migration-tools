@@ -23,6 +23,7 @@ class IndiegrafCSVImporterTest extends WP_UnitTestCase {
 
 	private string $dir;
 	private AbstractLogger $logger;
+	private array $image_ids = [];
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -47,6 +48,7 @@ class IndiegrafCSVImporterTest extends WP_UnitTestCase {
 	}
 
 	protected function tearDown(): void {
+		$this->set_property( 'rest_url', null );
 		array_map( 'unlink', glob( $this->dir . '/*' ) );
 		rmdir( $this->dir ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.directory_rmdir.
 		parent::tearDown();
@@ -207,6 +209,118 @@ class IndiegrafCSVImporterTest extends WP_UnitTestCase {
 			],
 			$this->get_property( 'content_hosts' )
 		);
+	}
+
+	private function sync_media_ids( string $content ): array {
+		$changed = false;
+		$blocks  = ( new ReflectionMethod( IndiegrafCSVImporter::class, 'sync_block_media_ids' ) )->invokeArgs( IndiegrafCSVImporter::get_instance(), [ parse_blocks( $content ), 'indiegraf-post-1', 1, &$changed ] );
+
+		return [ serialize_blocks( $blocks ), $changed ];
+	}
+
+	/**
+	 * Real gallery markup from the Posts CSV (ID 472), captions removed, after the downloader: local src + wp-image-{new ID}, block id still the source ID.
+	 *
+	 * @param integer $image_1 Source ID of the first image in the gallery.
+	 * @param integer $image_2 Source ID of the second image in the gallery.
+	 * @param integer $file_id Source ID of the file block.
+	 * @return string The gallery and file block markup with local media URLs and synced media IDs.
+	 */
+	private function media_fixture( int $image_1, int $image_2, int $file_id ): string {
+		$uploads = wp_get_upload_dir()['baseurl'];
+
+		return '<!-- wp:gallery {"linkTo":"none"} -->
+<figure class="wp-block-gallery has-nested-images columns-default is-cropped"><!-- wp:image {"id":' . $image_1 . ',"sizeSlug":"large","linkDestination":"none"} -->
+<figure class="wp-block-image size-large"><img src="' . $uploads . '/2025/06/show-04-1024x731.jpg" alt="" class="wp-image-' . $this->image_ids[0] . '"/></figure>
+<!-- /wp:image -->
+
+<!-- wp:image {"id":' . $image_2 . ',"sizeSlug":"large","linkDestination":"none"} -->
+<figure class="wp-block-image size-large"><img src="' . $uploads . '/2025/06/show-05-768x1024.jpg" alt="" class="wp-image-' . $this->image_ids[1] . '"/></figure>
+<!-- /wp:image --></figure>
+<!-- /wp:gallery -->
+
+<!-- wp:file {"id":' . $file_id . ',"href":"' . $uploads . '/2026/04/media-kit.pdf"} -->
+<div class="wp-block-file"><a href="' . $uploads . '/2026/04/media-kit.pdf">Media Kit</a></div>
+<!-- /wp:file -->';
+	}
+
+	private function create_media(): int {
+		$this->image_ids = [
+			$this->factory()->attachment->create_object(
+				[
+					'file'           => '2025/06/show-04.jpg',
+					'post_mime_type' => 'image/jpeg',
+				] 
+			),
+			$this->factory()->attachment->create_object(
+				[
+					'file'           => '2025/06/show-05.jpg',
+					'post_mime_type' => 'image/jpeg',
+				] 
+			),
+		];
+
+		return $this->factory()->attachment->create_object(
+			[
+				'file'           => '2026/04/media-kit.pdf',
+				'post_mime_type' => 'application/pdf',
+			] 
+		);
+	}
+
+	public function test_media_ids_are_synced_in_nested_gallery_and_file() {
+		$file_id = $this->create_media();
+
+		[ $content, $changed ] = $this->sync_media_ids( $this->media_fixture( 1944, 1943, 5350 ) );
+
+		$this->assertTrue( $changed );
+		$this->assertSame( $this->media_fixture( $this->image_ids[0], $this->image_ids[1], $file_id ), $content );
+		$this->assertSame( [], $this->get_property( 'log_counts' ) );
+	}
+
+	public function test_media_text_id_and_source_media_link_are_synced() {
+		$this->create_media();
+		$this->set_property( 'rest_url', 'https://yountvillesun.com' );
+		// Real markup from the Posts CSV (ID 1196), content removed; mediaLink is the source attachment page, on a "www." variant of the host.
+		$media_text = fn( int $id, string $link ) => '<!-- wp:media-text {"mediaId":' . $id . ',"mediaLink":"' . $link . '","mediaType":"image","mediaWidth":39} -->
+<div class="wp-block-media-text is-stacked-on-mobile" style="grid-template-columns:39% auto"><figure class="wp-block-media-text__media"><img src="' . wp_get_upload_dir()['baseurl'] . '/2025/06/show-04-1024x731.jpg" alt="" class="wp-image-' . $this->image_ids[0] . ' size-full"/></figure><div class="wp-block-media-text__content"></div></div>
+<!-- /wp:media-text -->';
+
+		[ $content, $changed ] = $this->sync_media_ids( $media_text( 5420, 'https://www.yountvillesun.com/ken_mcnab/' ) );
+
+		$this->assertTrue( $changed );
+		$this->assertSame( $media_text( $this->image_ids[0], get_attachment_link( $this->image_ids[0] ) ), $content );
+	}
+
+	public function test_synced_media_ids_are_a_no_op() {
+		$file_id = $this->create_media();
+		$synced  = $this->media_fixture( $this->image_ids[0], $this->image_ids[1], $file_id );
+
+		[ $content, $changed ] = $this->sync_media_ids( $synced );
+
+		$this->assertFalse( $changed );
+		$this->assertSame( $synced, $content );
+	}
+
+	public function test_unresolvable_media_ids_are_kept_and_logged() {
+		// Not downloaded: remote src, the class still has the source ID. Local src, but no such attachment. Media-text showing the featured image: no <img>, skipped.
+		$content = '<!-- wp:image {"id":5420} -->
+<figure class="wp-block-image"><img src="https://yountvillesun.com/wp-content/uploads/2025/06/remote.jpg" alt="" class="wp-image-5420"/></figure>
+<!-- /wp:image -->
+
+<!-- wp:image {"id":5421} -->
+<figure class="wp-block-image"><img src="' . wp_get_upload_dir()['baseurl'] . '/2025/06/gone.jpg" alt="" class="wp-image-999999"/></figure>
+<!-- /wp:image -->
+
+<!-- wp:media-text {"mediaType":"image","imageFill":false,"useFeaturedImage":true} -->
+<div class="wp-block-media-text is-stacked-on-mobile"><figure class="wp-block-media-text__media"></figure><div class="wp-block-media-text__content"></div></div>
+<!-- /wp:media-text -->';
+
+		[ $synced, $changed ] = $this->sync_media_ids( $content );
+
+		$this->assertFalse( $changed );
+		$this->assertSame( $content, $synced );
+		$this->assertSame( [ 'unresolved' => 2 ], $this->get_property( 'log_counts' ) );
 	}
 
 	public function test_bom_duplicate_headers_and_crlf() {
