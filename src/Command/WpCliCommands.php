@@ -22,6 +22,7 @@ class WpCliCommands {
 			EnviraGalleryMigrator::class,
 			FooGalleryMigrator::class,
 			GhostCMSMigrator::class,
+			IndiegrafCSVImporter::class,
 			MenusMigrator::class,
 			MetaToContentMigrator::class,
 			NewspaperThemeCommand::class,
