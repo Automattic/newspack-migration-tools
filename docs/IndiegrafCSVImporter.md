@@ -54,7 +54,7 @@ The source site's public REST API (`/wp-json/wp/v2/`) fills in what the CSVs lac
 
 | Use | Request | Why |
 |---|---|---|
-| exact post categories + live image URLs | `posts\|pages?include=<100 IDs>&_fields=id,categories,content` | the CSV omits assigned parent categories and has pre-CDN image URLs |
+| exact post categories, live image URLs, local dates | `posts\|pages?include=<100 IDs>&_fields=id,categories,content,date,date_gmt,modified,modified_gmt` | the CSV omits assigned parent categories, has pre-CDN image URLs, and has GMT dates only |
 | category tree | `categories?per_page=100&page=N` | parent chains, live slugs, Yoast primary (a source term ID) |
 | avatars | `media/{id}` | the CSV has only the media ID |
 | bylines/page authors missing from the Users CSV | `users/{id}` | see [Bylines](#bylines-and-authors) |
@@ -68,12 +68,13 @@ The source site's public REST API (`/wp-json/wp/v2/`) fills in what the CSVs lac
 ### Re-runs and conflicts
 
 Every `import-1-of-2` run processes only what changed, so a launch-day refresh is the same 3 steps on fresh CSVs.
-- **Tracking.** On save, the source `Post Modified Date` is written to `post_modified` and stored as `_nmt_original_modified`.
+- **Dates.** The CSV `Date` and `Post Modified Date` are GMT (they equal the live REST `date_gmt`/`modified_gmt`), so they go to `post_date_gmt`/`post_modified_gmt`. The local fields mirror the live display: the GMT date plus the live post's own offset (live local dates may use a fixed offset, or none); posts not in live REST use the site timezone.
+- **Tracking.** On save, the source `Post Modified Date` is written to `post_modified_gmt` and stored as `_nmt_original_modified`.
 - **Next run:**
   - post not found -> create;
   - source date newer -> update in place;
   - otherwise skip;
-  - the post's `post_modified` differs from the stored value -> it was edited on this site: a **conflict**, skipped unless `--update-already-imported-posts`.
+  - the post's `post_modified_gmt` differs from the stored value -> it was edited on this site: a **conflict**, skipped unless `--update-already-imported-posts`.
 - **Hence** every later save (import-2-of-2, fixes) must keep `post_modified`, and the downloader's direct DB update does.
 - **Missing posts** (in the site, gone from the CSV) are reported, never deleted.
 - **Scope.** Created and updated IDs go to `indiegraf_touched_post_ids.txt`, which scopes steps 2 and 3.

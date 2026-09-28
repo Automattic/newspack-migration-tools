@@ -458,8 +458,8 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 			WP_CLI::error( "Install and activate the missing dependencies, then re-run:\n- " . implode( "\n- ", $missing ) );
 		}
 
-		// Site settings gates: the timezone converts source dates to GMT; source URLs are flat /slug/.
-		WP_CLI::confirm( sprintf( "This site's timezone is %s. Source post dates are imported in this timezone. If it is not the source site's timezone, set it now (e.g. wp option update timezone_string America/Los_Angeles), then press y to continue.", wp_timezone_string() ) );
+		// Site settings gates: the timezone converts the source's GMT dates to local post dates; source URLs are flat /slug/.
+		WP_CLI::confirm( sprintf( "This site's timezone is %s. Source post dates (GMT in the CSV) are shown in this timezone. If it is not the source site's timezone, set it now (e.g. wp option update timezone_string America/Los_Angeles), then press y to continue.", wp_timezone_string() ) );
 		if ( '/%postname%/' !== get_option( 'permalink_structure' ) ) {
 			WP_CLI::confirm( sprintf( "This site's permalink structure is '%s'. This importer relies on /%%postname%%/ permalinks (source URLs are flat /slug/; old slugs redirect via _wp_old_slug). Set them now (wp rewrite structure '/%%postname%%/'), then press y to continue.", get_option( 'permalink_structure' ) ) );
 		}
@@ -528,7 +528,7 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 				"%s\nWhen those finish, run:\n  wp newspack-migration-tools indiegraf import-2-of-2 --live-rest-url=%s",
 				empty( $this->touched_post_ids )
 					? 'Import done. No posts were created or updated, so there is no media to download.'
-					: "Import done. Next, download the media in post content, in this order, from the WP root.\nRead newspack-post-image-downloader's README to ensure these commands are correct, and check the hosts and extensions each scan lists:\n  " . implode( "\n  ", $commands ),
+					: "Import done. Next, download the media in post content, in this order, from the WP root.\nRead newspack-post-image-downloader's README to ensure these commands are correct, and check the hosts and extensions each scan lists.\nIf NPID image download breaks with memory, remember to run it in batches (split --post-ids-csv into chunks).\n  " . implode( "\n  ", $commands ),
 				$this->rest_url
 			)
 		);
@@ -1100,7 +1100,7 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 		if ( ! is_wp_error( $user_ids ) && ! empty( $user_ids ) ) {
 			$user_ids = array_values( $user_ids );
 			if ( count( $user_ids ) > 1 ) {
-				$this->log( $uid, $user_ids[0], 'unresolved', sprintf( 'Ambiguous byline "%s" matches users %s; used the first.', $display_name, implode( ', ', $user_ids ) ) );
+				$this->log( $uid, $user_ids[0], 'unresolved', sprintf( 'Ambiguous byline "%s" matches users %s; used  the first.', $display_name, implode( ', ', $user_ids ) ) );
 			}
 
 			return get_user_by( 'id', $user_ids[0] ) ?: null; // phpcs:ignore -- Universal.Operators.DisallowShortTernary.Found.
@@ -1177,7 +1177,7 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 		] as $post_type => $rest_base ) {
 			$source_ids = array_column( array_filter( $rows, fn( $row ) => ( $this->value( $row, 'Post Type' ) ?? 'post' ) === $post_type && null !== $this->value( $row, 'ID' ) ), 'ID' );
 			foreach ( array_chunk( $source_ids, 100 ) as $chunk ) {
-				foreach ( $this->rest_get( sprintf( '%s?include=%s&per_page=100&_fields=id,categories,content', $rest_base, implode( ',', $chunk ) ) ) ?? [] as $live_post ) {
+				foreach ( $this->rest_get( sprintf( '%s?include=%s&per_page=100&_fields=id,categories,content,date,date_gmt,modified,modified_gmt', $rest_base, implode( ',', $chunk ) ) ) ?? [] as $live_post ) {
 					$live_posts[ (int) ( $live_post['id'] ?? 0 ) ] = $live_post;
 				}
 			}
@@ -1211,9 +1211,9 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 			$post_id         = Posts::get_post_by_unique_identifier( $uid );
 			if ( $post_id ) {
 				$imported_modified = (string) OriginalValueStore::get_for_post( $post_id, 'modified' );
-				$is_conflict       = '' !== $imported_modified && get_post_field( 'post_modified', $post_id ) !== $imported_modified;
+				$is_conflict       = '' !== $imported_modified && get_post_field( 'post_modified_gmt', $post_id ) !== $imported_modified;
 				if ( $is_conflict && ! $update_conflicts ) {
-					$this->log( $uid, $post_id, 'conflict', sprintf( 'Edited on this site after the import (%s), skipped. Use --update-already-imported-posts to overwrite it.', get_post_field( 'post_modified', $post_id ) ) );
+					$this->log( $uid, $post_id, 'conflict', sprintf( 'Edited on this site after the import (%s GMT), skipped. Use --update-already-imported-posts to overwrite it.', get_post_field( 'post_modified_gmt', $post_id ) ) );
 					continue;
 				}
 				if ( ! $is_conflict && null !== $source_modified && $source_modified <= $imported_modified ) {
@@ -1233,11 +1233,20 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 				$this->log( $uid, $post_id ?: null, 'unresolved', sprintf( 'Unknown status "%s", imported as draft.', $data['post_status'] ) ); // phpcs:ignore -- Universal.Operators.DisallowShortTernary.Found.
 				$data['post_status'] = 'draft';
 			}
+			/**
+			 * CSV dates are GMT (they equal the live REST date_gmt). The local date mirrors the live display: the live post's
+			 * own offset, as live local dates may use a fixed offset or none (e.g. 2024-03-27 23:00 = 2024-03-28 07:00 GMT
+			 * during DST); posts not in live REST use the site timezone.
+			 */
+			$live_post = $live_posts[ (int) $source_id ] ?? [];
+			$to_local  = fn( string $gmt, string $field ) => isset( $live_post[ $field ], $live_post[ $field . '_gmt' ] )
+				? gmdate( 'Y-m-d H:i:s', strtotime( $gmt ) + strtotime( $live_post[ $field ] ) - strtotime( $live_post[ $field . '_gmt' ] ) )
+				: get_date_from_gmt( $gmt );
 			// A 1970 date is an unset draft date: WP sets one.
 			$date = $this->to_mysql_date( $this->value( $row, 'Date' ) );
 			if ( null !== $date && ! str_starts_with( $date, '1970-01-01' ) ) {
-				$data['post_date']     = $date;
-				$data['post_date_gmt'] = get_gmt_from_date( $date );
+				$data['post_date']     = $to_local( $date, 'date' );
+				$data['post_date_gmt'] = $date;
 			}
 			$notes   = [];
 			$content = null;
@@ -1459,19 +1468,19 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 				}
 			}
 
-			// Source modified date, written last because wp_insert_post() sets it to post_date; stored for the next run's diff.
+			// Source modified date (GMT), written last because wp_insert_post() sets it to post_date; stored in GMT for the next run's diff.
 			if ( null !== $source_modified ) {
 				$wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 					$wpdb->posts,
 					[
-						'post_modified'     => $source_modified,
-						'post_modified_gmt' => get_gmt_from_date( $source_modified ),
+						'post_modified'     => $to_local( $source_modified, 'modified' ),
+						'post_modified_gmt' => $source_modified,
 					],
 					[ 'ID' => $post_id ]
 				);
 				clean_post_cache( $post_id );
 			}
-			OriginalValueStore::save_for_post( $post_id, 'modified', get_post_field( 'post_modified', $post_id ) );
+			OriginalValueStore::save_for_post( $post_id, 'modified', get_post_field( 'post_modified_gmt', $post_id ) );
 
 			$this->touched_post_ids[] = $post_id;
 			$this->log( $uid, $post_id, $status, implode( ' ', $notes ) );
