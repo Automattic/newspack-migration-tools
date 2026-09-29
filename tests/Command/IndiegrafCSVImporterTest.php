@@ -4,6 +4,8 @@ namespace Newspack\MigrationTools\Tests\Command;
 
 use Newspack\MigrationTools\Command\IndiegrafCSVImporter;
 use Newspack\MigrationTools\Logic\GutenbergBlockGenerator;
+use Newspack\MigrationTools\Logic\Posts;
+use Newspack\MigrationTools\Logic\Sponsors;
 use Newspack\MigrationTools\Logic\UsersHelper;
 use Newspack\MigrationTools\Util\CsvIterator;
 use Newspack\MigrationTools\Util\CsvWriter;
@@ -15,7 +17,7 @@ use Stringable;
 use WP_UnitTestCase;
 
 /**
- * Tests the pure-logic parts of IndiegrafCSVImporter.
+ * Tests IndiegrafCSVImporter: transforms, media-ID sync, header normalization, and the posts import's re-run paths.
  *
  * Fixture CSVs are written byte-exact in each test, because a BOM, CRLF and invalid UTF-8 would not survive git or editors.
  */
@@ -407,6 +409,213 @@ class IndiegrafCSVImporterTest extends WP_UnitTestCase {
 
 		$this->assertSame( $bytes, file_get_contents( $path ) ); // phpcs:ignore -- WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown.
 		$this->assertFileDoesNotExist( $this->dir . '/fixture__originalBackup.csv' );
+	}
+
+	/**
+	 * A Posts CSV row with the columns the diff needs. Without --live-rest-url, nothing is fetched and categories come from the CSV.
+	 *
+	 * @param int    $id        Source ID.
+	 * @param string $modified  Post Modified Date (GMT).
+	 * @param array  $overrides Column values to change or add.
+	 * @return array CSV row.
+	 */
+	private function post_row( int $id, string $modified, array $overrides = [] ): array {
+		return array_merge(
+			[
+				'ID'                 => (string) $id,
+				'Post Type'          => 'post',
+				'Title'              => "Post $id",
+				'Content'            => "<!-- wp:paragraph -->\n<p>Body $id</p>\n<!-- /wp:paragraph -->",
+				'Date'               => '2025-01-01 10:00:00',
+				'Post Modified Date' => $modified,
+				'Status'             => 'publish',
+				'Slug'               => "post-$id",
+				'Parent'             => '0',
+			],
+			$overrides
+		);
+	}
+
+	/**
+	 * Writes the rows to a CSV and imports it, with fresh per-run state.
+	 *
+	 * @param array $rows             CSV rows, all with the same columns.
+	 * @param bool  $update_conflicts --update-already-imported-posts.
+	 */
+	private function import_rows( array $rows, bool $update_conflicts = false ): void {
+		$path = $this->dir . '/posts.csv';
+		$fh   = fopen( $path, 'w' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
+		fputcsv( $fh, array_keys( $rows[0] ), ',', '"', '' ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fputcsv.
+		foreach ( $rows as $row ) {
+			fputcsv( $fh, $row, ',', '"', '' ); // phpcs:ignore -- WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_fputcsv.
+		}
+		fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+
+		$this->set_property( 'log_counts', [] );
+		$this->set_property( 'touched_post_ids', [] );
+		( new ReflectionMethod( IndiegrafCSVImporter::class, 'import_posts' ) )->invoke( IndiegrafCSVImporter::get_instance(), $path, $update_conflicts );
+	}
+
+	private function imported_id( int $source_id ): int {
+		return (int) Posts::get_post_by_unique_identifier( 'indiegraf-post-' . $source_id );
+	}
+
+	public function test_rerun_creates_skips_and_updates_by_source_modified_date() {
+		$this->import_rows( [ $this->post_row( 1, '2025-02-01 10:00:00' ), $this->post_row( 2, '2025-02-01 10:00:00' ) ] );
+		$this->assertEquals( [ 'created' => 2 ], $this->get_property( 'log_counts' ) );
+		$post_id = $this->imported_id( 1 );
+		$this->assertSame( '2025-01-01 10:00:00', get_post_field( 'post_date_gmt', $post_id ) );
+		$this->assertSame( '2025-02-01 10:00:00', get_post_field( 'post_modified_gmt', $post_id ) );
+
+		// Same CSV again.
+		$this->import_rows( [ $this->post_row( 1, '2025-02-01 10:00:00' ), $this->post_row( 2, '2025-02-01 10:00:00' ) ] );
+		$this->assertEquals( [ 'skipped' => 2 ], $this->get_property( 'log_counts' ) );
+		$this->assertSame( [], $this->get_property( 'touched_post_ids' ) );
+
+		// Post 1 changed on the source.
+		$this->import_rows( [ $this->post_row( 1, '2025-03-01 10:00:00', [ 'Title' => 'Changed' ] ), $this->post_row( 2, '2025-02-01 10:00:00' ) ] );
+		$this->assertEquals(
+			[
+				'updated' => 1,
+				'skipped' => 1,
+			],
+			$this->get_property( 'log_counts' )
+		);
+		$this->assertSame( $post_id, $this->imported_id( 1 ), 'Updated in place.' );
+		$this->assertSame( 'Changed', get_the_title( $post_id ) );
+		$this->assertSame( '2025-03-01 10:00:00', get_post_field( 'post_modified_gmt', $post_id ) );
+		$this->assertSame( [ $post_id ], $this->get_property( 'touched_post_ids' ) );
+	}
+
+	public function test_local_edit_is_a_conflict_unless_overridden() {
+		$this->import_rows( [ $this->post_row( 1, '2025-02-01 10:00:00' ) ] );
+		$post_id = $this->imported_id( 1 );
+		wp_update_post(
+			[
+				'ID'         => $post_id,
+				'post_title' => 'Edited here',
+			]
+		);
+
+		$this->import_rows( [ $this->post_row( 1, '2025-03-01 10:00:00' ) ] );
+		$this->assertEquals( [ 'conflict' => 1 ], $this->get_property( 'log_counts' ) );
+		$this->assertSame( 'Edited here', get_the_title( $post_id ) );
+
+		$this->import_rows( [ $this->post_row( 1, '2025-03-01 10:00:00' ) ], true );
+		$this->assertEquals( [ 'updated' => 1 ], $this->get_property( 'log_counts' ) );
+		$this->assertSame( $post_id, $this->imported_id( 1 ), 'Updated in place.' );
+		$this->assertSame( 'Post 1', get_the_title( $post_id ) );
+		$this->assertSame( '2025-03-01 10:00:00', get_post_field( 'post_modified_gmt', $post_id ) );
+	}
+
+	public function test_posts_missing_from_the_csv_are_reported_not_deleted() {
+		$this->import_rows( [ $this->post_row( 1, '2025-02-01 10:00:00' ), $this->post_row( 2, '2025-02-01 10:00:00' ) ] );
+
+		$this->import_rows( [ $this->post_row( 1, '2025-02-01 10:00:00' ) ] );
+
+		$this->assertEquals(
+			[
+				'skipped' => 1,
+				'missing' => 1,
+			],
+			$this->get_property( 'log_counts' )
+		);
+		$this->assertSame( 'publish', get_post_status( $this->imported_id( 2 ) ) );
+	}
+
+	public function test_empty_source_modified_date_updates_on_every_run() {
+		$this->import_rows( [ $this->post_row( 1, '' ) ] );
+		$this->assertEquals( [ 'created' => 1 ], $this->get_property( 'log_counts' ) );
+
+		$this->import_rows( [ $this->post_row( 1, '' ) ] );
+		$this->assertEquals( [ 'updated' => 1 ], $this->get_property( 'log_counts' ) );
+		$this->assertStringContainsString( 'No Post Modified Date', file_get_contents( $this->dir . '/log.csv' ) ); // phpcs:ignore -- WordPressVIPMinimum.Performance.FetchingRemoteData.FileGetContentsUnknown.
+	}
+
+	public function test_parent_after_its_child_in_the_csv_is_set() {
+		$page = fn( int $id, int $parent ) => $this->post_row( // phpcs:ignore -- Universal.NamingConventions.NoReservedKeywordParameterNames.parentFound.
+			$id,
+			'2025-02-01 10:00:00',
+			[
+				'Post Type' => 'page',
+				'Parent'    => (string) $parent,
+			]
+		);
+
+		$this->import_rows( [ $page( 20, 10 ), $page( 10, 0 ), $page( 30, 99 ) ] );
+
+		$child_id = $this->imported_id( 20 );
+		$this->assertSame( $this->imported_id( 10 ), wp_get_post_parent_id( $child_id ) );
+		$this->assertSame( '2025-02-01 10:00:00', get_post_field( 'post_modified_gmt', $child_id ), 'Setting the parent keeps post_modified.' );
+		$this->assertSame( 0, wp_get_post_parent_id( $this->imported_id( 30 ) ), 'Source parent 99 is not in the CSV.' );
+		$this->assertEquals(
+			[
+				'created'    => 3,
+				'unresolved' => 1,
+			],
+			$this->get_property( 'log_counts' )
+		);
+
+		// No conflict on the next run.
+		$this->import_rows( [ $page( 20, 10 ), $page( 10, 0 ) ] );
+		$this->assertEquals(
+			[
+				'skipped' => 2,
+				'missing' => 1,
+			],
+			$this->get_property( 'log_counts' )
+		);
+	}
+
+	public function test_sponsors_are_cleared_when_unflagged_and_kept_when_unresolved() {
+		// Newspack Sponsors is not active in tests; its taxonomy is enough for the replace and clear paths.
+		register_taxonomy( Sponsors::SPONSORS_TAXONOMY, 'post' );
+		$sponsor_row = fn( string $flag, string $modified ) => $this->post_row(
+			1,
+			$modified,
+			[
+				'sponsor_settings_is_sponsored' => $flag,
+				'Sponsor settings_name'         => '',
+			]
+		);
+		try {
+			$this->import_rows( [ $sponsor_row( '0', '2025-02-01 10:00:00' ) ] );
+			$post_id = $this->imported_id( 1 );
+			wp_set_object_terms( $post_id, 'Old Sponsor', Sponsors::SPONSORS_TAXONOMY );
+
+			// Flagged, but no sponsor name: the current sponsor stays.
+			$this->import_rows( [ $sponsor_row( '1', '2025-03-01 10:00:00' ) ] );
+			$this->assertEquals(
+				[
+					'updated'    => 1,
+					'unresolved' => 1,
+				],
+				$this->get_property( 'log_counts' )
+			);
+			$this->assertSame( [ 'Old Sponsor' ], wp_get_object_terms( $post_id, Sponsors::SPONSORS_TAXONOMY, [ 'fields' => 'names' ] ) );
+
+			// No longer sponsored.
+			$this->import_rows( [ $sponsor_row( '0', '2025-04-01 10:00:00' ) ] );
+			$this->assertSame( [], wp_get_object_terms( $post_id, Sponsors::SPONSORS_TAXONOMY, [ 'fields' => 'names' ] ) );
+		} finally {
+			unregister_taxonomy( Sponsors::SPONSORS_TAXONOMY );
+		}
+	}
+
+	public function test_byline_merged_by_slug_is_logged() {
+		$get_byline = fn( string $name ) => ( new ReflectionMethod( IndiegrafCSVImporter::class, 'get_or_create_byline_user' ) )->invoke( IndiegrafCSVImporter::get_instance(), $name, null );
+
+		$first  = $get_byline( 'Smith-Jones' );
+		$second = $get_byline( 'Smith Jones' );
+
+		$this->assertSame( $first->ID, $second->ID );
+		$this->assertEquals(
+			[
+				'created'    => 1,
+				'unresolved' => 1,
+			],
+			$this->get_property( 'log_counts' )
+		);
 	}
 }
 

@@ -496,7 +496,7 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 		// Hand-off: newspack-post-image-downloader commands in its README order (scan, images, scan non-images, non-images), then step 2.
 		// PDFs only from hosts that also serve the images, i.e. the source's own storage.
 		$this->content_hosts['pdf'] = array_intersect_key( $this->content_hosts['pdf'] ?? [], ( $this->content_hosts['wp'] ?? [] ) + ( $this->content_hosts['cdn'] ?? [] ) );
-		$posts                      = sprintf( '--post-types=post,page --post-statuses=%s --post-ids-csv=$(cat %s)', implode( ',', self::POST_STATUSES ), $ids_file );
+		$posts                      = sprintf( '--post-types=post,page --post-statuses=%s --post-ids-csv=$(cat %s)', implode( ',', self::POST_STATUSES ), escapeshellarg( $ids_file ) );
 		$hosts                      = fn( string $group ) => implode( ',', array_keys( $this->content_hosts[ $group ] ?? [] ) );
 		// Run as an admin: Safe SVG allows SVG uploads only to users who can upload files, and WP-CLI runs as no user.
 		$download = sprintf(
@@ -1100,7 +1100,7 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 		if ( ! is_wp_error( $user_ids ) && ! empty( $user_ids ) ) {
 			$user_ids = array_values( $user_ids );
 			if ( count( $user_ids ) > 1 ) {
-				$this->log( $uid, $user_ids[0], 'unresolved', sprintf( 'Ambiguous byline "%s" matches users %s; used  the first.', $display_name, implode( ', ', $user_ids ) ) );
+				$this->log( $uid, $user_ids[0], 'unresolved', sprintf( 'Ambiguous byline "%s" matches users %s; used the first.', $display_name, implode( ', ', $user_ids ) ) );
 			}
 
 			return get_user_by( 'id', $user_ids[0] ) ?: null; // phpcs:ignore -- Universal.Operators.DisallowShortTernary.Found.
@@ -1138,6 +1138,12 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 
 			return null;
 		}
+		// The uid is the name's slug, so names that differ only in punctuation ("A & B", "A-B", "A B") resolve to the first one's user.
+		if ( ! $is_same_name( $user->display_name ) ) {
+			$this->log( $uid, $user->ID, 'unresolved', sprintf( 'Byline "%s" was merged into user "%s" (same slug); split it by hand if they are different people.', $display_name, $user->display_name ) );
+
+			return $user;
+		}
 		if ( is_numeric( $rest_author['profile_picture'] ?? null ) ) {
 			$this->set_user_avatar( $user->ID, (int) $rest_author['profile_picture'] );
 		}
@@ -1161,9 +1167,10 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 	private function import_posts( string $csv, bool $update_conflicts ): void {
 		global $wpdb;
 
-		$taxonomy   = new Taxonomy();
-		$seen_uids  = [];
-		$post_types = [];
+		$taxonomy        = new Taxonomy();
+		$seen_uids       = [];
+		$post_types      = [];
+		$pending_parents = [];
 
 		// Live data (REST shows published posts only): each post's exact categories, as CSV paths omit an assigned parent; its rendered
 		// content, which has the current image URLs (the CSV may have pre-CDN ones that 404); and the category tree.
@@ -1250,6 +1257,9 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 			}
 			$notes   = [];
 			$content = null;
+			if ( $post_id && null === $source_modified ) {
+				$notes[] = 'No Post Modified Date, so changes cannot be detected: updated on every run.';
+			}
 			if ( array_key_exists( 'Content', $row ) ) {
 				/**
 				 * Live image URLs. The CSV has the source's local image URLs, but the live site renders images from a dedicated image CDN,
@@ -1288,11 +1298,13 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 				$content              = $this->transform_content( $content, $uid );
 				$data['post_content'] = $content;
 			}
+			// A parent later in the CSV is set after the loop.
+			$pending_parent_id = 0;
 			if ( array_key_exists( 'Parent', $row ) ) {
 				$source_parent_id    = (int) $this->value( $row, 'Parent' );
 				$data['post_parent'] = $source_parent_id ? Posts::get_post_by_unique_identifier( self::UID_POST . $source_parent_id ) : 0;
 				if ( false === $data['post_parent'] ) {
-					$this->log( $uid, $post_id ?: null, 'unresolved', sprintf( 'Parent %d is not imported (yet); parent not set.', $source_parent_id ) ); // phpcs:ignore -- Universal.Operators.DisallowShortTernary.Found.
+					$pending_parent_id = $source_parent_id;
 					unset( $data['post_parent'] );
 				}
 			}
@@ -1370,6 +1382,9 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 				continue;
 			}
 			$post_id = $result;
+			if ( $pending_parent_id ) {
+				$pending_parents[ $post_id ] = [ $uid, $pending_parent_id ];
+			}
 
 			// Yoast primary category: the post's only category, or the source term's local ID (mapped from live categories) when the post has it.
 			if ( array_key_exists( '_yoast_wpseo_primary_category', $row ) ) {
@@ -1440,6 +1455,7 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 					update_post_meta( $post_id, $meta_key, wp_slash( $value ) );
 				}
 			}
+			// Never cleared: the last known source permalink keys link rewrites and the permalink report, and its URL still means this post.
 			if ( null !== $this->value( $row, 'Permalink' ) ) {
 				OriginalPermalink::save_for_post( $post_id, $this->value( $row, 'Permalink' ) );
 			}
@@ -1458,12 +1474,19 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 				$this->log( $uid, $post_id, 'unresolved', sprintf( 'Slug "%s" was imported as "%s": %s.', $source_slug, $post_name, $holder ? sprintf( '%s %d (%s) holds "%s"', $holder->post_type, $holder->ID, $holder->post_status, $source_slug ) : 'WP changed it on save' ) );
 			}
 
-			// Sponsor (stub): a flagged post is linked to a get-or-added sponsor only when the sponsor name exists.
-			if ( in_array( '1', [ $this->value( $row, 'sponsor_settings_is_sponsored' ), $this->value( $row, 'Sponsor settings_is_sponsored' ) ], true ) ) {
-				$sponsor_name = $this->value( $row, 'Sponsor settings_name' );
+			// Sponsor (stub): a flagged post gets its get-or-added sponsor only when the sponsor name exists. The flagged sponsor replaces the post's
+			// sponsors, and an unflagged post loses them; a flagged sponsor that doesn't resolve leaves the current ones.
+			$sponsor_flags = array_intersect_key( $row, array_flip( [ 'sponsor_settings_is_sponsored', 'Sponsor settings_is_sponsored' ] ) );
+			if ( ! empty( $sponsor_flags ) ) {
+				$is_sponsored = in_array( '1', $sponsor_flags, true );
+				$sponsor_name = $is_sponsored ? $this->value( $row, 'Sponsor settings_name' ) : null;
 				$sponsors     = null === $sponsor_name ? null : new Sponsors();
 				$sponsor_id   = $sponsors?->get_or_add_sponsor( $sponsor_name, array_filter( [ 'url' => $this->value( $row, 'Sponsor settings_link' ) ] ) );
-				if ( ! $sponsor_id || ! $sponsors->add_sponsor_to_post( $sponsor_id, $post_id ) ) {
+				// Newspack Sponsors is optional, and without it the taxonomy doesn't exist.
+				if ( taxonomy_exists( Sponsors::SPONSORS_TAXONOMY ) && ( ! $is_sponsored || $sponsor_id ) ) {
+					wp_delete_object_term_relationships( $post_id, Sponsors::SPONSORS_TAXONOMY );
+				}
+				if ( $is_sponsored && ( ! $sponsor_id || ! $sponsors->add_sponsor_to_post( $sponsor_id, $post_id ) ) ) {
 					$this->log( $uid, $post_id, 'unresolved', null === $sponsor_name ? 'Flagged as sponsored, but has no sponsor name.' : sprintf( 'Sponsor "%s" could not be linked, see sponsors.log.', $sponsor_name ) );
 				}
 			}
@@ -1484,6 +1507,17 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 
 			$this->touched_post_ids[] = $post_id;
 			$this->log( $uid, $post_id, $status, implode( ' ', $notes ) );
+		}
+
+		// Parents that came after their children in the CSV; a direct write keeps post_modified, or the next import sees a conflict.
+		foreach ( $pending_parents as $child_id => [ $child_uid, $source_parent_id ] ) {
+			$parent_id = Posts::get_post_by_unique_identifier( self::UID_POST . $source_parent_id );
+			if ( ! $parent_id ) {
+				$this->log( $child_uid, $child_id, 'unresolved', sprintf( 'Parent %d is not imported; parent not set.', $source_parent_id ) );
+				continue;
+			}
+			$wpdb->update( $wpdb->posts, [ 'post_parent' => $parent_id ], [ 'ID' => $child_id ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			clean_post_cache( $child_id );
 		}
 
 		// Imported posts of this CSV's post types that are no longer in it are reported, never deleted.

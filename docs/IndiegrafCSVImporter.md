@@ -42,7 +42,7 @@ Other Indiegraf exports will differ in columns, blocks and hosts. Most differenc
 **Rules for changes:**
 - **Keep Yountville Sun's results unchanged,** unless changing them is the goal. Its verification queries are in the migration plan.
 - **Prefer data-driven behavior** (a no-op when the data is absent) over flags. Add a flag only when a behavior can hurt some publications, and default it to the safe choice.
-- **Honor the data rules:** an absent column is never touched; an empty value clears the field on update; a failed lookup skips only its own field and is logged.
+- **Honor the data rules:** an absent column is never touched; an empty value clears the field on update (except `Permalink` and `_wp_old_slug`, which are only added: they key redirects and link rewrites); a failed lookup skips only its own field and is logged.
 - **Save posts only via `Posts::update_post_without_modified_date()`** (see [Re-runs](#re-runs-and-conflicts)).
 - **Add a section below for each new feature.**
 
@@ -73,10 +73,13 @@ Every `import-1-of-2` run processes only what changed, so a launch-day refresh i
 - **Next run:**
   - post not found -> create;
   - source date newer -> update in place;
+  - no source date -> update in place on every run, since changes can't be detected (noted in the audit row);
   - otherwise skip;
   - the post's `post_modified_gmt` differs from the stored value -> it was edited on this site: a **conflict**, skipped unless `--update-already-imported-posts`.
 - **Hence** every later save (import-2-of-2, fixes) must keep `post_modified`, and the downloader's direct DB update does.
 - **Missing posts** (in the site, gone from the CSV) are reported, never deleted.
+- **Parents** that come after their children in the CSV are set once the whole CSV is imported, keeping `post_modified`.
+- **Sponsors** are replaced, not added: a flagged post gets its sponsor, an unflagged one loses its sponsors, and a flagged sponsor that doesn't resolve leaves the current ones (logged).
 - **Scope.** Created and updated IDs go to `indiegraf_touched_post_ids.txt`, which scopes steps 2 and 3.
 
 ### Bylines and authors
@@ -89,6 +92,8 @@ Everyone becomes a guest contributor. Each byline name (or a page's `Author ID`)
 5. **No name and no user anywhere:** an `AuthorID_{id}` placeholder user (logged).
 
 Co-author order follows the CSV.
+
+Byline users are keyed by the name's slug (`indiegraf-byline-{slug}`), so names that differ only in punctuation ("A & B", "A-B", "A B") share one user. Case and accent variants are the same person; any other merge is logged as `unresolved` for a manual split.
 
 ### Live image URLs
 
