@@ -28,7 +28,7 @@ class DrupalHelper extends FgHelper {
 	 */
 	public function __construct( int $version ) {
 		parent::__construct( 'drupal' );
-		$this->drupal_version = $version;		
+		$this->drupal_version = $version;
 	}
 
 	/**

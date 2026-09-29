@@ -95,7 +95,7 @@ class FgHelper {
 		$this->add_hooks();
 
 		do_action( 'fg_helper_pre_import', [ $pos_args, $assoc_args ] );
-		
+
 		// Note that the 'launch' arg is important – without it the hooks above will not be registered.
 		\WP_CLI::runcommand( "import-$this->type import", [ 'launch' => false ] );
 	}
