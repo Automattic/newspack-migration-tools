@@ -137,7 +137,7 @@ class IndiegrafCSVImporterTest extends WP_UnitTestCase {
 <!-- /wp:indiegraf/accordion --></div>
 <!-- /wp:group -->';
 
-		$accordion = ( new GutenbergBlockGenerator() )->get_accordion(
+		$accordion = ( new GutenbergBlockGenerator() )->get_core_accordion(
 			[
 				[
 					'title'  => 'Is your website secure?',

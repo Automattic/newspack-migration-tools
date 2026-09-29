@@ -1120,7 +1120,7 @@ HTML;
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_accordion( array $items, int $heading_level = 3, bool $show_icon = true, string $icon_position = 'right', bool $autoclose = false ): array {
+	public function get_core_accordion( array $items, int $heading_level = 3, bool $show_icon = true, string $icon_position = 'right', bool $autoclose = false ): array {
 		// Core serializes only non-default attributes; the heading blocks carry their own copy of level and icon settings.
 		$heading_attrs       = array_filter(
 			[
@@ -1216,7 +1216,7 @@ HTML;
 	 *
 	 * @return array to be used in the serialize_blocks function to get the raw content of a Gutenberg Block.
 	 */
-	public function get_accordion_genesis_block( $title, $body, $use_html_block = false, $open = false ) {
+	public function get_accordion( $title, $body, $use_html_block = false, $open = false ) {
 		$inner_block = $use_html_block ? $this->get_html( $body ) : $this->get_paragraph( $body );
 
 		$attrs = $open ? [ 'accordionOpen' => $open ] : [];

@@ -497,28 +497,27 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 		// PDFs only from hosts that also serve the images, i.e. the source's own storage.
 		$this->content_hosts['pdf'] = array_intersect_key( $this->content_hosts['pdf'] ?? [], ( $this->content_hosts['wp'] ?? [] ) + ( $this->content_hosts['cdn'] ?? [] ) );
 		$posts                      = sprintf( '--post-types=post,page --post-statuses=%s --post-ids-csv=$(cat %s)', implode( ',', self::POST_STATUSES ), escapeshellarg( $ids_file ) );
-		$hosts                      = fn( string $group ) => implode( ',', array_keys( $this->content_hosts[ $group ] ?? [] ) );
+		// Hosts come from imported content, and a URL host may hold shell metacharacters, so every printed value is shell-escaped.
+		$hosts = fn( string $group ) => empty( $this->content_hosts[ $group ] ) ? null : escapeshellarg( implode( ',', array_keys( $this->content_hosts[ $group ] ) ) );
 		// Run as an admin: Safe SVG allows SVG uploads only to users who can upload files, and WP-CLI runs as no user.
-		$download = sprintf(
-			'wp --user=%s newspack-post-image-downloader',
-			get_users(
-				[
-					'role'   => 'administrator',
-					'number' => 1,
-					'fields' => 'user_login',
-				] 
-			)[0] ?? '<admin-login>' 
-		);
-		$commands = array_filter(
+		$admin_login = get_users(
+			[
+				'role'   => 'administrator',
+				'number' => 1,
+				'fields' => 'user_login',
+			]
+		)[0] ?? null;
+		$download    = sprintf( 'wp --user=%s newspack-post-image-downloader', null === $admin_login ? '<admin-login>' : escapeshellarg( $admin_login ) );
+		$commands    = array_filter(
 			[
 				'# Deactivating NCCM for potential clash of NMT dependencies.',
 				'wp plugin deactivate newspack-custom-content-migrator',
 				'wp plugin activate newspack-post-image-downloader',
 				"$download scan-existing-urls $posts",
-				'' === $hosts( 'wp' ) ? null : "$download download-images $posts --do-not-download-root-relative-urls --only-download-from-hosts=" . $hosts( 'wp' ),
-				'' === $hosts( 'cdn' ) ? null : "$download download-images $posts --do-not-download-root-relative-urls --only-download-from-hosts=" . $hosts( 'cdn' ) . ' --do-not-download-large-sizes',
+				null === $hosts( 'wp' ) ? null : "$download download-images $posts --do-not-download-root-relative-urls --only-download-from-hosts=" . $hosts( 'wp' ),
+				null === $hosts( 'cdn' ) ? null : "$download download-images $posts --do-not-download-root-relative-urls --only-download-from-hosts=" . $hosts( 'cdn' ) . ' --do-not-download-large-sizes',
 				"$download scan-existing-urls --include-non-image-urls $posts",
-				'' === $hosts( 'pdf' ) ? null : "$download download-non-images-files $posts --do-not-download-root-relative-urls --extensions=pdf --only-download-from-hosts=" . $hosts( 'pdf' ),
+				null === $hosts( 'pdf' ) ? null : "$download download-non-images-files $posts --do-not-download-root-relative-urls --extensions=pdf --only-download-from-hosts=" . $hosts( 'pdf' ),
 				'wp plugin deactivate newspack-post-image-downloader',
 				'wp plugin activate newspack-custom-content-migrator',
 			]
@@ -1633,7 +1632,7 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 			];
 		}
 
-		return empty( $items ) ? [] : [ ( new GutenbergBlockGenerator() )->get_accordion( $items ) ];
+		return empty( $items ) ? [] : [ ( new GutenbergBlockGenerator() )->get_core_accordion( $items ) ];
 	}
 
 	/**
