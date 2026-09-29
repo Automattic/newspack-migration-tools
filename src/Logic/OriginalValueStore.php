@@ -20,7 +20,7 @@ class OriginalValueStore {
 	 *
 	 * @var string
 	 */
-	const string META_KEY_PREFIX = '_nmt_original_';
+	const META_KEY_PREFIX = '_nmt_original_';
 
 	/**
 	 * Saves an original value for a post.
