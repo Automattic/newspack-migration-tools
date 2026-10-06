@@ -27,7 +27,7 @@ class OriginalPermalink {
 	 *
 	 * @var string
 	 */
-	const string KEY = 'permalink';
+	const KEY = 'permalink';
 
 	/**
 	 * Saves a post source permalink.
