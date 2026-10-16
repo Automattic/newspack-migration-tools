@@ -273,7 +273,8 @@ class Attachments {
 	/**
 	 * Download a file from a URL or a local path.
 	 *
-	 * @param string $path The path to the file.
+	 * @param string $path             The path to the file.
+	 * @param string $desired_filename (Optional) If set, file extension fixes will not be applied.
 	 *
 	 * @return array|WP_Error The file array.
 	 */
@@ -286,36 +287,43 @@ class Attachments {
 				return $tmpfname;
 			}
 		} else {
-			// The `media_handle_sideload()` function deletes the local file after import, so to preserve the local path, we're
-			// first saving it to a temp location, in exactly the same way the WP's own `\download_url()` function above does.
-			$tmpfname = wp_tempnam( $path );
+			// Verify local file exists before copying it into a temp file.
 			if ( ! file_exists( $path ) ) {
 				return new WP_Error( sprintf( 'File %s was not found', $path ) );
 			}
+			// The `media_handle_sideload()` function deletes the local file after import, so to preserve the local file, we're
+			// first saving it to a temp location, in exactly the same way the WP's own `\download_url()` function above does,
+			// then the temp file will be used for `media_handle_sideload()`.
+			$tmpfname = wp_tempnam( $path );
 			copy( $path, $tmpfname );
 		}
 
 		if ( filesize( $tmpfname ) < 1 ) {
+			// If temp file is blank, remove it from disk before returning the error.
+			@unlink( $tmpfname ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			return new WP_Error( sprintf( 'File %s was empty', $path ) );
 		}
 
 		$file_array = [
-			'name'     => wp_basename( $path ),
+			'name'     => wp_basename( $path ), // note: this could include "?querystring" if exists on path.
 			'tmp_name' => $tmpfname,
 		];
 
-		$file_type                   = wp_check_filetype( $path );
-		$file_has_extension          = pathinfo( $path, PATHINFO_EXTENSION );
-		$file_extension_is_supported = ! empty( $file_type['ext'] ) && ! empty( $file_type['type'] );
-
+		// If desired filename is set, return now.
 		if ( ! empty( $desired_filename ) ) {
 			$file_array['name'] = $desired_filename;
-		} elseif ( ! $file_has_extension || ! $file_extension_is_supported ) {
-			// If the path does not have a file extension, let's try to find one for it.
-			// Without the extension, the upload will fail because WP will not allow that "file type".
+			return $file_array;
+		}
+
+		// If the path does not have a file extension or has an unknown extension, let's try to find one for it.
+		// Without the extension, the upload will fail because WP will not allow that "file type".
+		// Check against all known extensions ("wp_get_mime_types").
+		$file_type = wp_check_filetype( $path, wp_get_mime_types() );
+
+		// Value $file_type['ext'] will be false for both missing and unknown cases.
+		if ( ! $file_type['ext'] ) {
 			$mimetype          = mime_content_type( $tmpfname );
 			$default_extension = wp_get_default_extension_for_mime_type( $mimetype );
-
 			if ( ! empty( $default_extension ) ) {
 				$file_array['name'] .= '.' . $default_extension;
 			}
