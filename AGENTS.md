@@ -167,7 +167,8 @@ Helpers use inconsistent patterns for static vs instance methods and error handl
 | `Posts` | Mixed. `create_or_get_post()`, `update_post_*()` are static. `get_all_posts_ids()`, `throttled_posts_loop()` require `new Posts()` | Returns `WP_Error` |
 | `Attachments` | All static | Returns `int\|WP_Error` |
 | `UsersHelper` | All static | Returns `WP_Error` AND throws `InvalidArgumentException`/`Exception` |
-| `CoAuthorsPlusHelper` | `new CoAuthorsPlusHelper()`. Constructor **throws** if CAP plugin is not active | Constructor throws `Exception`; methods throw `RuntimeException`, `UnexpectedValueException` |
+| `GuestContributorsHelper` | All static. Requires Newspack Plugin active (initializes the Guest Contributor role) | Returns `WP_Error`. `create_or_get_contributor()` also throws like `UsersHelper` |
+| `CoAuthorsPlusHelper` | **Do not use.** See the authors pitfall below | N/A |
 | `Taxonomy` | `new Taxonomy()` | Newer methods return `WP_Error`, older `get_or_create_category_by_name_and_parent_id()` throws `RuntimeException` |
 | `GutenbergBlockGenerator` | `new GutenbergBlockGenerator()` | N/A (returns arrays) |
 | `GutenbergBlockManipulator` | All static | N/A (returns arrays) |
@@ -177,7 +178,7 @@ Helpers use inconsistent patterns for static vs instance methods and error handl
 Key method-level pitfalls:
 
 - `GutenbergBlockGenerator::get_image()` takes a **`WP_Post` object**, not an attachment ID.
-- `CoAuthorsPlusHelper::get_guest_author_by_display_name()` returns `null`, a single object, OR an **array** of objects. Handle all three.
+- Authors: never use `CoAuthorsPlusHelper`. Create Guest Contributors with `GuestContributorsHelper::create_or_get_contributor()`, other roles with `UsersHelper::create_or_get_user()`. Assign with `UsersHelper::assign_authors_to_post()` or `UsersHelper::reassign_author()` (both still require the Co-Authors Plus plugin active).
 - `Taxonomy::get_or_create_category()` expects `wp_insert_category` keys (`cat_name`, `category_parent`). `get_or_create_tag()` expects different keys (`name`, `slug`).
 - `UsersHelper::create_or_get_user()` auto-generates missing fields (email, login, nicename) using hashes and appends `role` even to existing users.
 - `Shortcodes::get_shortcode_attribute()` returns three types: `string` (value), `true` (flag exists), or `false` (not found). Use strict comparison.
@@ -259,7 +260,7 @@ $json_iterator->items( $file, [ 'pointer' => '/data/posts' ] );
 - `CsvIterator` yields associative arrays, `JsonIterator` yields `stdClass` objects. Do not use array syntax on JSON items.
 - `CsvIterator` trims all values and silently skips empty rows. Whitespace-sensitive data will be corrupted.
 - `JsonWriter` prepends `getcwd()` to filenames. Passing absolute paths produces mangled paths like `/cwd//absolute/path`.
-- `CoAuthorsPlusHelper` constructor throws if Co-Authors Plus is not active. Wrap instantiation in try/catch.
+- `UsersHelper::reassign_author()` returns `null` (not `WP_Error`) if `$from_user_id` is not an author of the post. Use strict comparison.
 - `Posts::create_or_get_post()` is get-or-create, not upsert. It never updates existing posts.
 - `MigrationMetaForCommand::should_skip_post()` uses strict `>`, not `>=`. The stored version is always `command_version + 1`.
 - `MigrationMeta::get()` returns `null` for missing keys. `OriginalValueStore::get_for_*()` returns empty string `''`. Different conventions for the same "not found" concept.
