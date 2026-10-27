@@ -7,6 +7,12 @@ use CoAuthors_Plus;
 use Exception;
 use WP_Error;
 
+/**
+ * Co-Authors Plus helper.
+ *
+ * @deprecated Use GuestContributorsHelper::create_or_get_contributor() or UsersHelper::create_or_get_user() to create authors,
+ *             and UsersHelper::assign_authors_to_post() or UsersHelper::reassign_author() to assign them.
+ */
 class CoAuthorsPlusHelper {
 
 	/**
