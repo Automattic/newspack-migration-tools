@@ -60,6 +60,19 @@ UsersHelper::assign_authors_to_post( 1, [ 1, 2, 3 ] );
 
 Please see the underlying Co-Authors Plus function [add_coauthors](https://github.com/Automattic/Co-Authors-Plus/blob/30602dbd59c6cd73bd4aa3ff8a3e6eda0c1bccea/php/class-coauthors-plus.php#L1022) (specifically the variables [$query_type and $field](https://github.com/Automattic/Co-Authors-Plus/blob/30602dbd59c6cd73bd4aa3ff8a3e6eda0c1bccea/php/class-coauthors-plus.php#L1050-L1052)) for other argument options.
 
+## Reassigning an Author on a Post
+
+The `reassign_author()` function replaces one author of a post with another, preserving any other co-authors. It also requires Co-Authors Plus.
+
+It returns `true` on success, `null` if `$from_user_id` is not one of the post's authors, and a `WP_Error` if the post has no authors or the assignment fails.
+
+```php
+// Replace author 2 with author 5 on post 1.
+UsersHelper::reassign_author( 1, 2, 5 );
+```
+
+To create Guest Contributors (instead of regular users), see [Guest Contributors](guest-contributors.md).
+
 ## Logging
 This class logs to file in `UsersHelper.log`.
 
