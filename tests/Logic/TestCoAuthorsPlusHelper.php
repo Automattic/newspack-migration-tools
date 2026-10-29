@@ -10,6 +10,13 @@ use WP_UnitTestCase;
  * Class TestCoAuthorsPlusHelper
  *
  * @package Newspack\MigrationTools\Tests\Logic
+ * 
+ * CoAuthorsPlusHelper is deprecated but keep the existing tests since the code
+ * could technically still be used. Don't delete the tests until the Helper is deleted.
+ * 
+ * Set tests to expect a deprecation notice:
+ * @expectedDeprecated Newspack\MigrationTools\Logic\CoAuthorsPlusHelper
+ * 
  */
 class TestCoAuthorsPlusHelper extends WP_UnitTestCase {
 

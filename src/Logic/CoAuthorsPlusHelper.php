@@ -35,6 +35,13 @@ class CoAuthorsPlusHelper {
 	 * @throws Exception If CoAuthors Plus is not installed or active.
 	 */
 	public function __construct() {
+
+		_deprecated_class(
+			__CLASS__,
+			'',
+			'the Class docblock above to see instructions'
+		);
+
 		if ( ! $this->validate_co_authors_plus_dependencies() ) {
 			// CoAuthors Plus is a dependency, and will have to be installed before the public functions/commands can be used.
 			throw new Exception( 'CoAuthors Plus is not installed or active.' );
