@@ -16,7 +16,6 @@ use WP_UnitTestCase;
  * 
  * Set tests to expect a deprecation notice:
  * @expectedDeprecated Newspack\MigrationTools\Logic\CoAuthorsPlusHelper
- * 
  */
 class TestCoAuthorsPlusHelper extends WP_UnitTestCase {
 
