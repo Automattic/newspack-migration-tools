@@ -133,7 +133,7 @@ install_test_suite() {
 		sed $ioption "s/yourusernamehere/$DB_USER/" "$WP_TESTS_DIR"/wp-tests-config.php
 		sed $ioption "s/yourpasswordhere/$DB_PASS/" "$WP_TESTS_DIR"/wp-tests-config.php
 		sed $ioption "s|localhost|${DB_HOST}|" "$WP_TESTS_DIR"/wp-tests-config.php
-		# allow CAP in Newspack Plugin otherwise CAP tests fail:
+		# allow CAP in Newspack Plugin otherwise tests fail. Remove only after TestCoAuthorsPlusHelper is deleted:
 		echo "define( 'NEWSPACK_ENABLE_CAP_GUEST_AUTHORS', true );" >> "$WP_TESTS_DIR"/wp-tests-config.php
 	fi
 
