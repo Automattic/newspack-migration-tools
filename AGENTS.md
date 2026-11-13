@@ -309,3 +309,9 @@ After writing or modifying code, always run these checks:
 ## Documentation
 
 Detailed docs for specific helpers live in `docs/`. See [README.md](README.md) for the full index.
+
+### Migration workflows in NCCM
+
+Step-by-step migration workflows live in the NCCM repo (`newspack-custom-content-migrator`), not here:
+
+- **WordPress sources that use ACF (Advanced Custom Fields):** NCCM `docs/ACF-MIGRATION-PLAYBOOK.md`. Audit commands (`newspack-content-migrator acf-ai-audit-*`) plus an AI-guided process that classifies every ACF field group and produces the spec for the publisher's migrators.
