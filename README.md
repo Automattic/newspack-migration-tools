@@ -29,6 +29,9 @@ The repository contains a set of WP commands to migrate different data to WordPr
 * [Indiegraf CSV importer](./docs/IndiegrafCSVImporter.md)
 * [Newspaper Theme](./docs/newspaper-theme.md)
 
+### Migration workflows (in the NCCM repo)
+* ACF (Advanced Custom Fields) sources: `docs/ACF-MIGRATION-PLAYBOOK.md` in `newspack-custom-content-migrator`. Audit commands plus an AI-guided process that turns a site's ACF setup into a migration spec.
+
 ## Using the library
 
 You can load this package in your PHP project as follows:
