@@ -44,7 +44,56 @@ trait AttachmentUnitTestTrait {
 	 */
 	public function wrap_import_attachments_for_post( int $post_id, string $path, string $alt_text = '', array $attachment_args = [], string $desired_filename = '' ): int|WP_Error {
 		$attachment_id          = Attachments::import_attachment_for_post( $post_id, $path, $alt_text, $attachment_args, $desired_filename );
-		$this->attachment_ids[] = $attachment_id;
+
+		// If not an error, save the id for tear down.
+		if ( ! is_wp_error( $attachment_id ) ) {
+			$this->attachment_ids[] = $attachment_id;
+		}
+	
+		return $attachment_id;
+	}
+
+	/**
+	 * This just wraps Attachments::download_file() and keeps track of the /tmp/ files so we can delete them on tearDown().
+	 *
+	 * @param string $path             The path to the file.
+	 * @param string $desired_filename (Optional) If set, file extension fixes will not be applied.
+	 *
+	 * @return array|WP_Error The file array.
+	 */
+	public function wrap_download_file( $path, $desired_filename = '' ) {
+		$file_array = Attachments::download_file( $path, $desired_filename );
+		
+		// Keep a file path reference for deletion during tear down - only if file array is not an error, has path info, and file exists.
+		if ( ! is_wp_error( $file_array ) && isset( $file_array['tmp_name'] ) && file_exists( $file_array['tmp_name'] )) {	
+			$this->temp_files[] = $file_array['tmp_name'];
+		}
+
+		return $file_array;
+	}
+
+	/**
+	 * This just wraps WP Core `media_handle_sideload()` and keeps track of the attachment IDs so we can delete them on tearDown().
+	 *
+	 * @param string[] $file_array Array that represents a `$_FILES` upload array.
+	 * @param int      $post_id    Optional. The post ID the media is associated with.
+	 * @param string   $desc       Optional. Description of the side-loaded file. Default null.
+	 * @param array    $post_data  Optional. Post data to override. Default empty array.
+	 * @return int|WP_Error The ID of the attachment or a WP_Error on failure.
+	 */
+	public function wrap_media_handle_sideload( $file_array, $post_id = 0, $desc = null, $post_data = array() ) {
+
+		$attachment_id = media_handle_sideload( $file_array, $post_id, $desc, $post_data );
+
+		if ( is_wp_error( $attachment_id ) ) {
+			// If there was an error then remove the temp file.
+			@unlink( $file_array['tmp_name'] ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		}
+		else {
+			// Save the id for tear down.
+			$this->attachment_ids[] = $attachment_id;
+		}
+
 		return $attachment_id;
 	}
 
