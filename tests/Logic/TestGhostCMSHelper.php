@@ -1021,8 +1021,9 @@ class TestGhostCMSHelper extends WP_UnitTestCase {
 	 */
 	public function test_ghostcms_import(): void {
 
-		// Run test.
-		$test_ghostcms_helper = new GhostCMSHelper();
+		// Run test using TestableGhostCMSHelper so get_or_import_url() is stubbed
+		// and no outbound HTTP requests are made (e.g. for gallery/feature images).
+		$test_ghostcms_helper = new TestableGhostCMSHelper();
 		$test_ghostcms_helper->ghostcms_import( 
 			[], 
 			[
