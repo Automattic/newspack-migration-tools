@@ -617,6 +617,23 @@ class IndiegrafCSVImporterTest extends WP_UnitTestCase {
 			$this->get_property( 'log_counts' )
 		);
 	}
+
+	public function test_byline_matches_imported_user_of_any_role() {
+		$editor_id = $this->factory()->user->create(
+			[
+				'display_name' => 'Lisa Adams Walter',
+				'role'         => 'editor',
+			]
+		);
+		update_user_meta( $editor_id, UsersHelper::UNIQUE_IDENTIFIER_META_KEY, 'indiegraf-user-37' );
+		$this->factory()->user->create( [ 'display_name' => 'Lisa Adams Walter' ] ); // Not imported: ignored.
+
+		// Author ID 11 is another account, so the byline must resolve by name.
+		$user = ( new ReflectionMethod( IndiegrafCSVImporter::class, 'get_or_create_byline_user' ) )->invoke( IndiegrafCSVImporter::get_instance(), 'Lisa Adams Walter', 11 );
+
+		$this->assertSame( $editor_id, $user->ID );
+		$this->assertEquals( [], $this->get_property( 'log_counts' ) );
+	}
 }
 
 /**

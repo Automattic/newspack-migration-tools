@@ -1053,9 +1053,11 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 	 *
 	 * Order:
 	 * 1. the imported user of the post's Author ID, when its name matches (disambiguates duplicate names);
-	 * 2. a guest contributor with that exact display name;
-	 * 3. a Users CSV row skipped by --import-roles with that name (Author ID's row first), imported now;
-	 * 4. a new byline-only user, enriched from the source REST user when its name matches (D11).
+	 * 2. the Author ID's Users CSV row skipped by --import-roles, when its name matches, imported now;
+	 * 3. an imported Users CSV user of any role with that name (a byline's Author ID is often another account);
+	 * 4. a guest contributor with that exact display name;
+	 * 5. another Users CSV row skipped by --import-roles with that name, imported now;
+	 * 6. a new byline-only user, enriched from the source REST user when its name matches (D11).
 	 * An empty $display_name (pages have no Authors column) resolves by Author ID only; an author found nowhere
 	 * becomes a placeholder user "AuthorID_{id}".
 	 *
@@ -1094,7 +1096,39 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 			return $author_user;
 		}
 
-		// 2. Existing guest contributor with the exact name.
+		// 2. Author ID's role-skipped Users CSV row.
+		$author_row = $source_author_id ? ( $this->skipped_user_rows[ $source_author_id ] ?? null ) : null;
+		if ( $author_row && $is_same_name( $this->value( $author_row, 'Display Name' ) ?? '' ) ) {
+			unset( $this->skipped_user_rows[ $source_author_id ] );
+
+			return $this->upsert_user( $author_row );
+		}
+
+		// 3. Imported Users CSV user of any role with the name. Guest contributor lookup (4.) misses users whose role was changed, e.g. to editor.
+		$imported_users = array_values(
+			array_filter(
+				get_users(
+					[
+						'search'         => $display_name,
+						'search_columns' => [ 'display_name' ],
+						'meta_key'       => UsersHelper::UNIQUE_IDENTIFIER_META_KEY, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+						'meta_value'     => self::UID_USER, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+						'meta_compare'   => 'LIKE',
+						'orderby'        => 'ID',
+					]
+				),
+				fn( WP_User $user ) => $is_same_name( $user->display_name )
+			)
+		);
+		if ( ! empty( $imported_users ) ) {
+			if ( count( $imported_users ) > 1 ) {
+				$this->log( $uid, $imported_users[0]->ID, 'unresolved', sprintf( 'Ambiguous byline "%s" matches users %s; used the first.', $display_name, implode( ', ', wp_list_pluck( $imported_users, 'ID' ) ) ) );
+			}
+
+			return $imported_users[0];
+		}
+
+		// 4. Existing guest contributor with the exact name.
 		$user_ids = GuestContributorsHelper::get_by_display_name( $display_name );
 		if ( ! is_wp_error( $user_ids ) && ! empty( $user_ids ) ) {
 			$user_ids = array_values( $user_ids );
@@ -1105,12 +1139,8 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 			return get_user_by( 'id', $user_ids[0] ) ?: null; // phpcs:ignore -- Universal.Operators.DisallowShortTernary.Found.
 		}
 
-		// 3. Role-skipped Users CSV row with that name, the Author ID's row first.
-		$skipped_rows = $this->skipped_user_rows;
-		if ( isset( $skipped_rows[ $source_author_id ] ) ) {
-			$skipped_rows = [ $source_author_id => $skipped_rows[ $source_author_id ] ] + $skipped_rows;
-		}
-		foreach ( $skipped_rows as $source_id => $row ) {
+		// 5. Other role-skipped Users CSV row with that name.
+		foreach ( $this->skipped_user_rows as $source_id => $row ) {
 			if ( $is_same_name( $this->value( $row, 'Display Name' ) ?? '' ) ) {
 				unset( $this->skipped_user_rows[ $source_id ] );
 
@@ -1118,7 +1148,7 @@ class IndiegrafCSVImporter implements WpCliCommandInterface {
 			}
 		}
 
-		// 4. New byline-only user; Author ID is the source post_author account, often not the byline, so only a same-name REST user enriches it.
+		// 6. New byline-only user; Author ID is the source post_author account, often not the byline, so only a same-name REST user enriches it.
 		$data        = [ 'display_name' => $display_name ];
 		$rest_author = null;
 		if ( $source_author_id && ! $author_user ) {
