@@ -178,6 +178,7 @@ Helpers use inconsistent patterns for static vs instance methods and error handl
 Key method-level pitfalls:
 
 - `GutenbergBlockGenerator::get_image()` takes a **`WP_Post` object**, not an attachment ID.
+- `GutenbergBlockGenerator::get_paragraph()` wraps what it is given in `<p>`. Pass the inner HTML of the paragraph: `'<p>Text.</p>'` comes out as `<p><p>Text.</p></p>`.
 - Authors: never use `CoAuthorsPlusHelper`. Create Guest Contributors with `GuestContributorsHelper::create_or_get_contributor()`, other roles with `UsersHelper::create_or_get_user()`. Assign with `UsersHelper::assign_authors_to_post()` or `UsersHelper::reassign_author()` (both still require the Co-Authors Plus plugin active).
 - `Taxonomy::get_or_create_category()` expects `wp_insert_category` keys (`cat_name`, `category_parent`). `get_or_create_tag()` expects different keys (`name`, `slug`).
 - `UsersHelper::create_or_get_user()` auto-generates missing fields (email, login, nicename) using hashes and appends `role` even to existing users.
@@ -192,7 +193,7 @@ $generator = new GutenbergBlockGenerator();
 
 $blocks = [
 	$generator->get_heading( 'My Title', 'h2' ),
-	$generator->get_paragraph( '<p>Some content.</p>' ),
+	$generator->get_paragraph( 'Some content.' ),         // inner HTML, the method adds the <p>
 	$generator->get_image( get_post( $attachment_id ) ),  // WP_Post object, not int
 ];
 
