@@ -12,6 +12,15 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
 
+      # Without this step the job takes the runner image's PHP, which changes
+      # with ubuntu-latest, and composer.lock has to install on it. Same action
+      # and commit as unittest.yml; 8.1 is the lowest PHP composer.json allows.
+      - name: Set up PHP
+        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # 2.37.1
+        with:
+          php-version: "8.1"
+          coverage: none
+
       - name: Install dependencies
         run: composer install
 
