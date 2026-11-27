@@ -559,7 +559,7 @@ class Taxonomy {
 				]
 			);
 			if ( is_wp_error( $new_category ) ) {
-				throw new RuntimeException( 'Failed to create category: ' . wp_kses_allowed_html( $new_category->get_error_message() ) );
+				throw new RuntimeException( 'Failed to create category: ' . esc_html( $new_category->get_error_message() ) );
 			}
 
 			$new_category_id = $new_category['term_id'];

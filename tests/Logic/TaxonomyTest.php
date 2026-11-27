@@ -474,4 +474,24 @@ class TaxonomyTest extends WP_UnitTestCase {
 		$stored_unique_id = get_term_meta( $result, Taxonomy::UNIQUE_TAG_IDENTIFIER_META_KEY, true );
 		$this->assertEmpty( $stored_unique_id );
 	}
+
+	/**
+	 * Test that a category WordPress refuses to create throws with WordPress's reason.
+	 */
+	public function test_recreate_category_tree_error_gives_the_reason() {
+		$category  = get_term( self::factory()->category->create( [ 'name' => 'Local News' ] ) );
+		$parent_id = self::factory()->category->create( [ 'name' => 'New Top Parent' ] );
+
+		add_filter(
+			'pre_insert_term',
+			function () {
+				return new WP_Error( 'refused', 'Refused by a test filter' );
+			}
+		);
+
+		$this->expectException( \RuntimeException::class );
+		$this->expectExceptionMessage( 'Failed to create category: Refused by a test filter' );
+
+		$this->taxonomy->recreate_category_tree( $category, $parent_id );
+	}
 }
