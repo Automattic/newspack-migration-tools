@@ -23,7 +23,9 @@ class Posts {
 	 * @param array  $data              The data to create the post with. The array is the same as wp_insert_post accepts. https://developer.wordpress.org/reference/functions/wp_insert_post.
 	 * @param string $unique_identifier The unique identifier for the post.
 	 *
-	 * @return int|WP_Error The post ID if created or found, or a WP_Error if the post cannot be created.
+	 * @return int|WP_Error The post ID if created or found, or a WP_Error if the post cannot be created. WordPress reports some errors,
+	 *                      such as an unknown page template, after it has inserted the post. That post carries the unique identifier,
+	 *                      so the next call returns its ID.
 	 */
 	public static function create_or_get_post( array $data, string $unique_identifier ): int|WP_Error {
 		// Validate that the unique identifier is not empty.
@@ -36,16 +38,11 @@ class Posts {
 			return $wp_post_id;
 		}
 
-		// If it doesn't exist, then create it.
-		$wp_post_id = wp_insert_post( $data );
-		if ( is_wp_error( $wp_post_id ) ) {
-			return $wp_post_id;
-		}
+		// If it doesn't exist, then create it. The insert stores the unique identifier itself, so a post never exists without
+		// one: wp_insert_post() can return an error for a post it has already inserted.
+		$data['meta_input'] = [ self::UNIQUE_POST_IDENTIFIER_META_KEY => $unique_identifier ] + (array) ( $data['meta_input'] ?? [] );
 
-		// Set the unique identifier for the post.
-		update_post_meta( $wp_post_id, self::UNIQUE_POST_IDENTIFIER_META_KEY, $unique_identifier );
-
-		return $wp_post_id;
+		return wp_insert_post( $data, true );
 	}
 
 	/**

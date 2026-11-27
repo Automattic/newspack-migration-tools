@@ -106,6 +106,82 @@ class PostsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that a post WordPress refuses to insert comes back as a WP_Error, not as 0.
+	 */
+	public function test_error_when_wordpress_refuses_the_post() {
+		$post_data         = [
+			'post_title'   => '',
+			'post_content' => '',
+			'post_excerpt' => '',
+			'post_status'  => 'publish',
+		];
+		$unique_identifier = 'refused-post-707';
+
+		$result = Posts::create_or_get_post( $post_data, $unique_identifier );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertEquals( 'empty_content', $result->get_error_code() );
+		$this->assertFalse( Posts::get_post_by_unique_identifier( $unique_identifier ) );
+	}
+
+	/**
+	 * Test that a post keeps its unique identifier when the error comes after the insert.
+	 *
+	 * An unknown page template is such a case: wp_insert_post() checks it once the post exists.
+	 * Without its identifier, the next run would create the post a second time.
+	 */
+	public function test_post_keeps_its_identifier_when_the_error_comes_after_the_insert() {
+		$post_data         = [
+			'post_title'    => 'Post with an unknown template',
+			'post_content'  => 'Content',
+			'post_status'   => 'publish',
+			'page_template' => 'no-such-template.php',
+		];
+		$unique_identifier = 'unknown-template-808';
+
+		$result = Posts::create_or_get_post( $post_data, $unique_identifier );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertEquals( 'invalid_page_template', $result->get_error_code() );
+
+		$post_id = Posts::get_post_by_unique_identifier( $unique_identifier );
+		$this->assertIsInt( $post_id );
+
+		// A second run finds that post and creates nothing.
+		$this->assertSame( $post_id, Posts::create_or_get_post( $post_data, $unique_identifier ) );
+		$this->assertCount(
+			1,
+			get_posts(
+				[
+					'title'       => 'Post with an unknown template',
+					'post_status' => 'any',
+					'fields'      => 'ids',
+				]
+			)
+		);
+	}
+
+	/**
+	 * Test that the meta a caller passes in meta_input is stored beside the unique identifier.
+	 */
+	public function test_meta_input_from_the_caller_is_kept() {
+		$post_data         = [
+			'post_title'   => 'Post with meta',
+			'post_content' => 'Content',
+			'meta_input'   => [
+				'source_section' => 'harbour',
+			],
+		];
+		$unique_identifier = 'meta-input-909';
+
+		$result = Posts::create_or_get_post( $post_data, $unique_identifier );
+
+		$this->assertIsInt( $result );
+		$this->assertSame( 'harbour', get_post_meta( $result, 'source_section', true ) );
+		$this->assertSame( $unique_identifier, get_post_meta( $result, Posts::UNIQUE_POST_IDENTIFIER_META_KEY, true ) );
+	}
+
+	/**
 	 * Test creating a post with minimal required data.
 	 */
 	public function test_create_post_with_minimal_data() {
